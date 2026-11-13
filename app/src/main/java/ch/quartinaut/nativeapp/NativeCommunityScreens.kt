@@ -109,7 +109,7 @@ fun NativeCreateHubPage(
     val rawPrice=price.trim().replace(',','.')
     val priceValue=rawPrice.toDoubleOrNull()
     val priceValid=kind !in listOf("market","lend") ||
-        (rawPrice.matches(Regex("[0-9]+(\\\\.[0-9]{1,2})?")) &&
+        (rawPrice.matches(Regex("""[0-9]+(\.[0-9]{1,2})?""")) &&
          priceValue!=null && priceValue in 0.0..100000.0)
     val count=capacity.toIntOrNull()
     val capValid=kind !in listOf("group","project") ||
