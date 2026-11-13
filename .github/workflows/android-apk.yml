@@ -46,16 +46,22 @@ jobs:
         run: |
           node --check functions/enhancements/index.js
           node --test functions/enhancements/test/validators.test.js
+      - name: Verify Firestore and Storage rules in emulators
+        run: |
+          npm ci --prefix firebase/rules-tests
+          npx -y firebase-tools@latest emulators:exec --only firestore,storage \
+            --project demo-quartinaut-rules "npm --prefix firebase/rules-tests test"
       - name: Assemble debug APK (native)
         run: gradle :app:assembleDebug --no-daemon --stacktrace
       - name: Package native Android Studio sources and original images
         run: |
           zip -q -r Quartinaut_Native_Quellcode.zip \
-            README.md ANDROID_STATUS.md AUDIT_NATIVE_54_2026-11-13.md .gitignore \
-            settings.gradle.kts build.gradle.kts gradle.properties \
-            scripts app/build.gradle.kts app/src \
+            README.md ANDROID_STATUS.md AUDIT_NATIVE_54_2026-11-13.md FIREBASE_NATIVE_FOUNDATION.md .gitignore \
+            settings.gradle.kts build.gradle.kts gradle.properties firebase.json .firebaserc \
+            scripts app/build.gradle.kts app/google-services.json app/src firebase \
             functions/appearance functions/nativeChats functions/enhancements \
-            firebase.appearance.json firebase.chats.json firebase.enhancements.json web-bridge
+            firebase.appearance.json firebase.chats.json firebase.enhancements.json web-bridge \
+            -x 'firebase/rules-tests/node_modules/*'
       - name: Upload native source ZIP
         uses: actions/upload-artifact@v4
         with:

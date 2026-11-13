@@ -1,0 +1,41 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && (
+          request.auth.token.admin == true
+          || request.auth.token.role in ['admin', 'area_admin']
+        );
+    }
+
+    match /verification-photos/{uid}/{photoFile} {
+      // Verification evidence is immutable after upload. A replacement must
+      // use a new verification request and therefore a new object name.
+      allow write: if (
+          isOwner(uid)
+          && resource == null
+          && request.resource != null
+          && request.resource.size < 900000
+          && request.resource.contentType == 'image/jpeg'
+          && photoFile.matches('^[A-Za-z0-9_-]+\\.jpg$')
+        ) || (
+          request.resource == null
+          && (isAdmin() || isOwner(uid))
+        );
+      allow read: if isAdmin();
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

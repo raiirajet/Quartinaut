@@ -3,8 +3,8 @@
 *.iml
 local.properties
 **/build/
+artifacts/
 **/.DS_Store
-**/google-services.json
 *.jks
 *.keystore
 *.aab
@@ -18,6 +18,8 @@ app/src/main/res/mipmap-nodpi/ic_launcher.png
 functions/appearance/node_modules/
 functions/appearance/.env*
 firebase-debug.log
+firestore-debug.log
+firebase/rules-tests/node_modules/
 
 # Private chat callable dependencies
 functions/nativeChats/node_modules/
