@@ -365,7 +365,8 @@ class QuartinautRepository(context: Context) {
                 }
             }
     }
-    fun createRequest(title: String, description: String, category: String, kind: String, urgency: String) {
+    fun createRequest(title: String, description: String, category: String, kind: String,
+                      urgency: String, onCreated: () -> Unit = {}) {
         val uid = user?.uid ?: return
         if (title.trim().length < 4 || description.trim().length < 5) {
             message = "Bitte Titel und Beschreibung ausfüllen."; return
@@ -390,8 +391,12 @@ class QuartinautRepository(context: Context) {
         busy = true
         db.collection("requests").document(id).set(data).addOnCompleteListener {
             busy = false
-            message = if (it.isSuccessful) "Eintrag gespeichert – " + (if (status=="offen") "veröffentlicht." else "wartet auf Freigabe.")
-                else it.exception?.localizedMessage ?: "Speichern fehlgeschlagen."
+            if (it.isSuccessful) {
+                message = "Eintrag gespeichert – " + (if (status == "offen") "veröffentlicht." else "wartet auf Freigabe.")
+                onCreated()
+            } else {
+                message = it.exception?.localizedMessage ?: "Speichern fehlgeschlagen."
+            }
         }
     }
     fun openRequestChat(request: DocumentSnapshot, onOpen: () -> Unit) {
@@ -436,7 +441,7 @@ class QuartinautRepository(context: Context) {
         }
     }
     fun closeChat() { chatId = ""; messages = emptyList() }
-    fun sendChat(text: String) {
+    fun sendChat(text: String, onSent: () -> Unit = {}) {
         val uid = user?.uid ?: return
         val chat = chats.find { it.id == chatId } ?: return
         if (text.isBlank()) return
@@ -452,9 +457,15 @@ class QuartinautRepository(context: Context) {
             "text" to text.trim().take(500), "createdAt" to now, "readAt" to "", "deliveryStatus" to "sent")
         db.collection("chatMessages").document(id).set(data).addOnCompleteListener {
             if (!it.isSuccessful) message = it.exception?.localizedMessage ?: "Nachricht fehlgeschlagen."
-            else db.collection("chats").document(chat.id).update(mapOf("lastMessageAt" to now,
-                "lastMessagePreview" to text.take(120), "lastSenderUid" to uid,
-                "readBy." + uid to now))
+            else {
+                onSent()
+                db.collection("chats").document(chat.id).update(mapOf("lastMessageAt" to now,
+                    "lastMessagePreview" to text.take(120), "lastSenderUid" to uid,
+                    "readBy." + uid to now)).addOnFailureListener { e ->
+                    message = "Nachricht gesendet, aber Vorschau konnte nicht synchronisiert werden: " +
+                        (e.localizedMessage ?: "Netzwerkfehler")
+                }
+            }
         }
     }
     /**
