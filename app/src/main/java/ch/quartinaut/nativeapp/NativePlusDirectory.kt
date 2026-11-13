@@ -26,7 +26,7 @@ private val PlusBorder=Color(0xFF52725E)
 
 private data class PlusRoute(val key:String,val name:String,val detail:String,val emoji:String)
 private val allExtensions=listOf(
-    PlusRoute("enh-chat","Private Chats","Nachrichten, sichere Kontakte und Lesestatus","💬"),
+    PlusRoute("chats","Private Chats","Nachrichten, sichere Kontakte und Lesestatus","💬"),
     PlusRoute("enh-posts","Meine Beiträge","Bearbeiten, pausieren und abschliessen","📝"),
     PlusRoute("create","Fotos & Inserate","Bilder hochladen und Beiträge erstellen","📷"),
     PlusRoute("enh-radar","Quartinaut Radar","Neue Angebote in Kanton oder Gemeinde","📡"),
