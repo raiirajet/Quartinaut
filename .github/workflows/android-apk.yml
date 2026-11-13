@@ -3,6 +3,9 @@ on:
   push:
     branches: [native-android-v1]
   workflow_dispatch:
+concurrency:
+  group: android-native-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   build:
     runs-on: ubuntu-24.04
