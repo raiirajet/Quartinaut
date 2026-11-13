@@ -74,6 +74,12 @@ class QuartinautRepository(context: Context) {
         private set
     var hubItems by mutableStateOf<List<Map<String,Any?>>>(emptyList())
         private set
+    var enhancedItems by mutableStateOf<List<Map<String,Any?>>>(emptyList())
+        private set
+    var enhancementLoading by mutableStateOf(false)
+        private set
+    var enhancementError by mutableStateOf("")
+        private set
     var communitySettings by mutableStateOf<Map<String,Any?>>(emptyMap())
         private set
     var v50Items by mutableStateOf<List<Map<String,Any?>>>(emptyList())
@@ -126,6 +132,7 @@ class QuartinautRepository(context: Context) {
                 serverChats = emptyList(); serverMessages = emptyList()
                 serverChatReady = false; serverChatLoading = false; serverChatActive = false
                 hubItems = emptyList(); v50Items = emptyList()
+                enhancedItems=emptyList();enhancementLoading=false;enhancementError=""
                 chatId = ""
                 dashboardBackground = null
                 dashboardBackgroundStatus = "checking"
@@ -435,7 +442,8 @@ class QuartinautRepository(context: Context) {
             }
     }
     fun createRequest(title: String, description: String, category: String, kind: String,
-                      urgency: String, onCreated: () -> Unit = {}) {
+                      urgency: String, onCreated: () -> Unit = {},
+                      photoPaths: List<String> = emptyList()) {
         val uid = user?.uid ?: return
         if (title.trim().length < 4 || description.trim().length < 5) {
             message = "Bitte Titel und Beschreibung ausfüllen."; return
@@ -456,7 +464,8 @@ class QuartinautRepository(context: Context) {
             "status" to status, "anonymousOffer" to false, "radiusKm" to 15,
             "createdAt" to now, "submittedAt" to now,
             "expiresAt" to Instant.now().plusSeconds(hours * 3600).toString(),
-            "reports" to 0, "recurringMode" to "einmalig", "escalationLevel" to "keine")
+            "reports" to 0, "recurringMode" to "einmalig", "escalationLevel" to "keine",
+            "photoPaths" to photoPaths)
         busy = true
         db.collection("requests").document(id).set(data).addOnCompleteListener {
             busy = false
@@ -877,6 +886,70 @@ class QuartinautRepository(context: Context) {
             } else {
                 message=result.exception?.localizedMessage ?: "Chat konnte nicht eröffnet werden."
             }
+        }
+    }
+
+
+    /**
+     * Additional functionality is accessible only via a separate Firebase
+     * callable. We do not introduce permissive Firestore collection rules.
+     */
+    fun enhancement(
+        action: String, args: Map<String,Any?> = emptyMap(),
+        onDone: (Map<String,Any?>) -> Unit = {}
+    ) {
+        val uid=user?.uid ?: return
+        if(!active())return
+        enhancementLoading=true
+        enhancementError=""
+        functions.getHttpsCallable("quartinautEnhancements")
+            .call(args + ("action" to action))
+            .addOnCompleteListener { task ->
+                if(user?.uid!=uid)return@addOnCompleteListener
+                enhancementLoading=false
+                if(!task.isSuccessful) {
+                    val error=task.exception
+                    enhancementError=if(
+                        error is com.google.firebase.functions.FirebaseFunctionsException &&
+                        error.code==com.google.firebase.functions.FirebaseFunctionsException.Code.NOT_FOUND
+                    ) "Erweiterungsdienst noch nicht veröffentlicht. Der neue Firebase-Code muss zuerst bereitgestellt werden."
+                    else error?.localizedMessage ?: "Erweiterung derzeit nicht verfügbar."
+                    syncIssues=syncIssues + ("Erweiterungen" to enhancementError)
+                } else {
+                    syncIssues=syncIssues - "Erweiterungen"
+                    val payload=task.result?.data as? Map<*,*> ?: emptyMap<String,Any?>()
+                    onDone(payload.entries.associate { DocString(it.key) to it.value })
+                }
+            }
+    }
+    fun loadEnhancementList(action: String, params: Map<String,Any?> = emptyMap()) {
+        enhancement(action,params) { result ->
+            val entries=result["items"] as? List<*> ?: emptyList<Any>()
+            enhancedItems=entries.mapNotNull { row ->
+                (row as? Map<*,*>)?.entries?.associate { DocString(it.key) to it.value }
+            }
+        }
+    }
+    fun updateMyPost(collection:String,id:String, action:String,
+                     args:Map<String,Any?> = emptyMap(),
+                     completed:()->Unit = {}) {
+        enhancement(action,args + mapOf("collection" to collection,"id" to id)) {
+            message="Beitrag wurde aktualisiert."
+            loadHub()
+            loadEnhancementList("posts.mine")
+            completed()
+        }
+    }
+    fun uploadPostPhoto(
+        namespace:String,token:String,index:Int,base64:String,
+        completed:(String)->Unit
+    ) {
+        enhancement("photo.put",mapOf(
+            "namespace" to namespace,"token" to token,
+            "index" to index,"jpegBase64" to base64
+        )) { response ->
+            val path=DocString(response["path"])
+            if(path.isNotBlank())completed(path)
         }
     }
 
