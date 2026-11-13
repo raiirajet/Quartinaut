@@ -79,4 +79,3 @@ jobs:
           name: Quartinaut-Native-Debug-APK
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
-
