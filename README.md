@@ -1,15 +1,37 @@
-# Quartinaut – Native Android
+# Quartinaut Native Android
 
-Native Kotlin-/Jetpack-Compose-App für Quartinaut. **Keine WebView** und keine Übernahme der HTML-Oberfläche.
+**Quartinaut 5.4 → Kotlin + Jetpack Compose · ohne WebView.**
 
-## Quelle
-Ausgangsbasis: Quartinaut 5.4 (13.11.2026). Der bestehende Web-Client und das produktive Firebase-Backend bleiben unverändert.
+Eigenständige Android-App auf Grundlage des von der Eigentümerin bereitgestellten Quartinaut-5.4-Release-Kandidaten. Es handelt sich nicht um eine umverpackte Website. Produktives Hosting und Firebase-Regeln werden beim APK-Build nicht verändert.
 
-## Stand
-Android-Neuentwicklung; gegenüber der Web-Version noch keine Funktionsparität. Funktionsumfang und Grenzen stehen in `ANDROID_STATUS.md`.
+## Natives Design und Originalressourcen
 
-## Build
-Android Studio öffnen, Android SDK 35 und JDK 17 installieren, dann `gradle :app:assembleDebug`.
-Die Debug-APK liegt in `app/build/outputs/apk/debug/app-debug.apk`.
+Die originalen Dateien der Web-Version 5.4 werden zur Buildzeit mit `scripts/sync-original-assets.sh` in die App eingebunden:
 
-Firebase: Im Source-Modus wird zunächst die bereits öffentlich im Web-Client vorhandene Firebase-Web-Konfiguration für die SDK-Initialisierung genutzt. Für eine produktive Android-Veröffentlichung die App zusätzlich in Firebase registrieren, den nativen Android-App-Identifier und `google-services.json` konfigurieren sowie Google-Login, Push und App Check passend einrichten. Keine Geheimnisse ins öffentliche Repository hochladen.
+- App-Logo und Launcher-Icon, `icon-192.png`, `icon-512.png`
+- Schweizer-Kantonskarte `quartinaut-logo.svg` (26 antippbare Pfade)
+- Die fünf farbigen 3D-Navigationselemente Start, Quartier+, Neu, Chats und Profil
+- BFS-Gemeindeverzeichnis `ch-locations-2026.json`: **26 Kantone, 2'110 Gemeinden**, offline nutzbar
+
+Die detailgenauen Gemeinde-Grenzpolygone der Web-Version kommen **aus dem öffentlichen 2025er GeoJSON-Datensatz** und werden auch in der nativen Fassung beim ersten Öffnen eines Kantons geladen. Bei fehlender Internetverbindung bleibt die örtliche Gemeindeliste erhalten.
+
+## Android-Build
+
+Android Studio / JDK 17 / Android SDK 35 und Gradle 8.9:
+
+```bash
+bash scripts/sync-original-assets.sh
+gradle :app:assembleDebug
+```
+
+APK: `app/build/outputs/apk/debug/app-debug.apk`. Im GitHub-Entwicklungszweig werden Debug-APK und Quellcode in **Actions** automatisch als Downloads veröffentlicht.
+
+Für eine **produktive Android-App** sind eine separate Firebase-Android-App-Registrierung, die korrekten App-Fingerprints, eigene stabile Signierung, Google Sign-in/FCM-Setup, App Check sowie Sicherheits-, Geräte- und Regressionstests notwendig. Die jetzigen GitHub-Debug-APKs werden nicht mit einem stabilen produktiven Signaturschlüssel signiert; ältere Preview-Versionen müssen deshalb vor der Neuinstallation gegebenenfalls deinstalliert werden.
+
+## Backend
+
+Benutzt bestehende Firestore-/Firebase-Auth-/Functions-Schnittstellen im Projekt `quartinaut`, Cloud Functions in `europe-west6`. Geschützte Beitragsfotos werden über `quartinautPhoto` gelesen, **nicht** über ungeschützte Storage-URLs.
+
+## Vollständigkeit
+
+**Noch keine vollständige 1:1-Funktionsparität.** Siehe `ANDROID_STATUS.md` mit dem detaillierten Stand. Kein Firebase-Deployment, keine geänderten Backend-Regeln, keine Konten-/Datenmigration.
