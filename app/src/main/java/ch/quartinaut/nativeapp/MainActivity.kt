@@ -402,6 +402,8 @@ private fun DashboardPage(repo: QuartinautRepository, go: (String) -> Unit) = Sc
     Feature("Schwarzes Brett", "Hilfe suchen oder anbieten", { Icon(Icons.Default.ViewList, null,tint=Forest) }) { go("board") }
     Feature("Quartier+", "Marktplatz, Ausleihe, Vereine", { Icon(Icons.Default.GridView,null,tint=Forest) }) { go("plus") }
     Feature("Schweizkarte", "26 Kantone und alle Gemeinden", { Icon(Icons.Default.Map,null,tint=Forest) }) { go("map") }
+    Feature("Dashboard-Hintergrund", "Persönliches Foto auswählen und privat speichern",
+        { Icon(Icons.Default.Wallpaper,null,tint=Forest) }) { go("settings") }
     Feature("Gemeinde-Informationen", "Offizielle Hinweise und Alarme",
         { Icon(Icons.Default.Campaign,null,tint=Forest) }) { go("official") }
     SectionTitle("Schweizkarte","Registrierungen nach Kanton")
