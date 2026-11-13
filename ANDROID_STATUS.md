@@ -1,19 +1,43 @@
-# Android-Nativisierung – Implementierungsstand
+# Quartinaut 5.4 – Stand der nativen Android-Rekonstruktion
 
-## Architektur
-- Kotlin, Jetpack Compose Material 3, Firebase Android SDK.
-- Keine WebView, kein HTML-Wrapper, keine Firebase-Regeländerung.
-- Entwicklungsbranch: native-android-v1.
+Stand: 13. November 2026. Grundlage: hochgeladener, lokal geprüfter Quartinaut-5.4-Quellcode, nicht ein Reverse-Engineering einer unbekannten Website.
 
-## Funktional
-- E-Mail-Anmeldung / Sitzungsverwaltung, Profil aus bestehender users-Collection.
-- Natives Dashboard, Schwarzes Brett, Quartier+-Einträge und private Chats.
-- Native Schweiz-Auswahl mit amtlichem Gemeindeverzeichnis als HTTP-JSON aus dem bestehenden Quartinaut-Hosting, ohne HTML.
-- Cloud-Functions-Verbindungen für Hub und Quartinaut 5.0.
+## Native Basismodule
 
-## Noch nicht funktionsgleich mit der Web-App
-Administrations-Workflows, Verifikationsfoto, Moderation, erweiterte Benachrichtigungen, Push, Medien-Uploads, alle Chat-Sonderfälle, vollständige geografische Polygon-Karte, Offline-Synchronisation und sämtliche Einstellungen der Web-App. Diese Punkte sind nicht als fertig zu betrachten.
+| Bestandteil | Umsetzung | Nachprüfung |
+|---|---|---|
+| Compose Material 3, Android Navigation | Nativ | Gerätetest offen |
+| Quartinaut-Logo und 5 originale 3D-Navigationsbilder | In APK gebündelt | Bilddarstellung auf Gerät testen |
+| Offizielle 26 Kantone, 2'110 Gemeinden (BFS 2026) | Nativ, offline als Datenliste | Gemeindesuche testen |
+| Klickbare Kantonskarte mit offiziellen Kürzeln | Natives Canvas, lokales SVG | Präzision der kleinen Kantone testen |
+| Kanton-Zoom und Gemeinde-Polygone | Native Android-Pfade, öffentliches 2025-GeoJSON | 2025/2026-Gemeindefusionen beachten; Netzwerk nötig |
+| Kanton-Steckbriefe, Hauptort, Gemeindezahl, öffentliche Registrierungen | Firestore/Offline-Stammdaten | Live-Rechte prüfen |
+| E-Mail-Anmeldung und Privatkonto-Registrierung | Firebase Android SDK | Nutzeranlage und Verifikation E2E testen |
+| Geschützte Benutzerprofile | Firestore, Auth | Alle Rollenkonstellationen testen |
+| Persönliche Startseite, Dark Mode, Benachrichtigungsthemen | Nativ, quartinautHub-Settings | Synchronisation testen |
+| Dashboard, Schwarzes Brett, Beitragserstellung | Compose, Firestore | Filter / Freigabe testen |
+| Private 1:1-Chats | Compose, Firestore | Push / Sonderfälle fehlen |
+| Quartier+: Marktplatz, Leihbörse, Vereine, Fundbüro, Projekte, Mängel, Kalender | Native Listen, Detailseiten und Erstellformulare | Backend-End-to-End testen |
+| V5.0: Marktreservierungen, Ausleih-Zeitfenster, Vereinsanmeldungen | Callable-API integriert | Stornierung und volle Verwaltungs-Flows unvollständig |
+| Öffentliche Likes/Kommentare | Geschützte Social-Cloud-Function | Live testen |
+| Bilder aus Beiträgen | Authentifizierter Callable-Fotoabruf, native Galerie | Begrenzungen/Quoten testen |
+| Offizielle Mitteilungen & Alarme | Native Listen | Lesebestätigungen unvollständig |
+| Moderationsbasis für Quartier+ | Approve/Reject über serverseitige Funktion | Vollständige Administration fehlt |
 
-## Wichtige Sicherheitsbedingungen
-Alle produktiven Rechte bleiben in Firebase Rules/Functions. Der Client darf niemals direkt Adminrechte vergeben.
-Android benötigt für eine vollständig produktive Firebase-Konfiguration eine registrierte Android-App und ggf. App Check, signierte SHA-Fingerprints für Google Sign-In und FCM-Setup.
+## Nicht oder erst teilweise in dieser APK
+
+- **Komplette Administration** inklusive Benutzerfreigabe, Verwaltung aller Kontoarten, Einladungen, Verifizierungs- und Standortwechselanträge, Audit-Log.
+- **Foto-Upload**, Kamerazugriff, EXIF-Entfernung/Komprimierung und private Verifikationsfotos; der geschützte Fotoabruf ist vorhanden.
+- **Push-Benachrichtigungen/FCM**, Android App Check, Google-Anmeldung, Passkeys, Deep Links, Hintergrunddienste.
+- Alle Detailfunktionen rund um Chats (Papierkorb, Stummschaltung, ungelesen), Boards (Umkreissuche, Urgency-Filter, Favoriten), Moderationsfälle und Community-Kalender.
+- Alle Einstellungen, Rechtsseiten, Download-/Exportfunktionen, Mehrsprachigkeit und Assistenzfunktionen.
+- Vollständig offline verfügbare 2026-Gemeindepolygone und Gemeindewappen aller Gemeinden.
+- Vollständige Geräte-, Regression-, Accessibility- und Firebase-Integrationsprüfungen.
+
+## Architektur und Sicherheit
+
+Keine WebView oder Website-Oberfläche. Keinerlei ungeprüfte Regeländerung an Firebase. Der vorhandene Web-Bestand ist unangetastet.
+
+**Achtung:** Der aktuelle Debug-Build benutzt die vorhandene Produktions-Firebase-Konfiguration für die Kommunikation; Testeinträge können echte Daten erzeugen. Die Einrichtung einer eigenen Android-App in der Firebase-Konsole ist **vor Veröffentlichung erforderlich**. Prüfungen des GitHub-Kotlin-Builds beweisen Kompilierbarkeit, nicht fehlerfreie Anwendung auf echten Geräten.
+
+Gemeindegrenzen: vereinfachter Stand 01.01.2025, Quelle `samkhavandi/Swiss_Geography_Look_Ups`; Namen/BFS: 05.11.2026. Bei Fusionen können Grenze und Gemeindeliste auseinanderfallen. Offizielle Kanton-/Gemeindewappen sind noch nicht als eigenständige Assets eingebunden.
