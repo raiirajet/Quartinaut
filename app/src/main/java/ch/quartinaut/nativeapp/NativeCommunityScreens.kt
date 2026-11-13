@@ -331,6 +331,36 @@ fun NativeHubDetail(
                 color=MaterialTheme.colorScheme.error)
         }
         NativeProtectedGallery(repo,paths)
+        if(doc.str("status")=="offen" && doc.str("uid")!=repo.user?.uid) {
+            OutlinedButton(onClick={
+                repo.enhancement("favorite.toggle",mapOf(
+                    "collection" to "requests","id" to doc.id
+                )) { repo.showMessage("Favoriten wurden aktualisiert.") }
+            }) {Text("Anliegen merken")}
+        }
+        if(published&&!owner) {
+            OutlinedButton(onClick={
+                repo.enhancement("favorite.toggle",mapOf(
+                    "collection" to "communityHubItems","id" to id
+                )) { result ->
+                    repo.loadEnhancementList("favorites.list")
+                }
+            }) {
+                Icon(Icons.Default.BookmarkAdd,null)
+                Spacer(Modifier.width(8.dp))
+                Text("Merken / nicht mehr merken")
+            }
+            OutlinedButton(onClick={
+                repo.enhancement("trust.profile",mapOf(
+                    "collection" to "communityHubItems","id" to id
+                )) { result ->
+                    val data=result["profile"] as? Map<*,*> ?: emptyMap<String,Any?>()
+                    repo.showMessage("Anbieter: "+DocString(data["displayName"]) +
+                        " · "+(if(data["verified"]==true)"verifiziert" else "nicht verifiziert") +
+                        " · Bewertungen: "+DocString(data["totalReviews"]))
+                }
+            }) {Text("Anbieterprofil prüfen")}
+        }
         Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)) {
             Column(Modifier.padding(17.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
                 Text(DocString(item["description"]))
