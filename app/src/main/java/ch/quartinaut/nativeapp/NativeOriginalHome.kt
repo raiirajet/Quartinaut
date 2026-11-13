@@ -37,7 +37,7 @@ data class HomeLink(val id: String, val title: String, val subtitle: String,
                     val emoji: String, val route: String)
 private val links = listOf(
     HomeLink("need","Hilfe suchen","Unterstützung finden","✋","create-request"),
-    HomeLink("offer","Hilfe anbieten","Nachbarn unterstützen","♡","create-request"),
+    HomeLink("offer","Hilfe anbieten","Nachbarn unterstützen","♡","create-offer"),
     HomeLink("market","Marktplatz","Kaufen & verschenken","🛍️","market"),
     HomeLink("group","Vereine","Gemeinsam aktiv","👥","group"),
     HomeLink("loans","Leihbörse","Gegenstände ausleihen","🧰","lend"),
