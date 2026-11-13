@@ -4,6 +4,9 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.SystemBarStyle
+import androidx.compose.ui.graphics.toArgb
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -46,6 +49,14 @@ private val SwissDarkScheme = darkColorScheme(
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Android 15/16 draw behind transparent system bars by default.
+        // Explicit edge-to-edge plus a dark full-screen Compose underlay
+        // prevents the white band and keeps status-bar icons legible.
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.rgb(16,31,25)),
+            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.rgb(16,31,25))
+        )
+        window.decorView.setBackgroundColor(android.graphics.Color.rgb(16,31,25))
         setContent {
             val repository = remember { QuartinautRepository(applicationContext) }
             val prefs = remember {
@@ -53,9 +64,11 @@ class MainActivity : ComponentActivity() {
             }
             var dark by remember { mutableStateOf(prefs.getBoolean("dark",false)) }
             MaterialTheme(colorScheme = if(dark) SwissDarkScheme else SwissScheme) {
-                QuartinautApp(repository,dark) { next ->
-                    dark=next
-                    prefs.edit().putBoolean("dark",next).apply()
+                Box(Modifier.fillMaxSize().background(Color(0xFF101F19))) {
+                    QuartinautApp(repository,dark) { next ->
+                        dark=next
+                        prefs.edit().putBoolean("dark",next).apply()
+                    }
                 }
             }
         }
@@ -314,7 +327,7 @@ private fun LoginPage(repo: QuartinautRepository) {
             fontWeight = FontWeight.Bold)
         Text("Deine Nachbarschaft. Dein Quartier.")
         Spacer(Modifier.height(26.dp))
-        Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), color = Color.White, shadowElevation = 4.dp) {
+        Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 4.dp) {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Text("Anmelden", style = MaterialTheme.typography.titleLarge)
                 OutlinedTextField(value = email, onValueChange = { email=it },
@@ -418,25 +431,25 @@ private fun ScrollPage(content: @Composable ColumnScope.() -> Unit) {
 private fun SectionTitle(title: String, subtitle: String = "") {
     Column {
         Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        if (subtitle.isNotBlank()) Text(subtitle, color = Color.DarkGray, style = MaterialTheme.typography.bodyMedium)
+        if (subtitle.isNotBlank()) Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
     }
 }
 @Composable
 private fun Panel(title: String, body: String, foot: String = "", onClick: (() -> Unit)? = null) {
     Card(modifier = Modifier.fillMaxWidth().then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(1.dp)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(title, fontWeight = FontWeight.Bold, color = Forest, style = MaterialTheme.typography.titleMedium)
+            Text(title, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium)
             if (body.isNotBlank()) Text(body, style = MaterialTheme.typography.bodyMedium)
-            if (foot.isNotBlank()) Text(foot, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+            if (foot.isNotBlank()) Text(foot, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
 @Composable
 private fun Feature(label: String, explanation: String, icon: @Composable () -> Unit, action: () -> Unit) {
     Surface(Modifier.fillMaxWidth().clickable(onClick = action), shape = RoundedCornerShape(14.dp),
-        color = Color.White, shadowElevation = 1.dp) {
+        color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp) {
         Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(44.dp).background(SoftGreen, RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center) { icon() }
@@ -645,7 +658,7 @@ private fun ChatsPage(repo: QuartinautRepository) {
             LazyColumn(modifier=Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(8.dp)) {
                 items(repo.messages,key={it.id}) { doc ->
                     val mine=doc.str("senderUid") == repo.user?.uid
-                    Surface(color=if(mine) SoftGreen else Color.White,
+                    Surface(color=if(mine) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface,
                         shape=RoundedCornerShape(12.dp), modifier=Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp)) {
                             Text(doc.str("text"))
