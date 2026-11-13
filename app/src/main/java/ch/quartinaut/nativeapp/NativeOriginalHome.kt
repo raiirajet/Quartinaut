@@ -190,6 +190,8 @@ fun NativeOriginalHome(repo: QuartinautRepository, navigate: (String) -> Unit) {
                 HomeLink("board","Schwarzes Brett","Hilfe suchen und anbieten","🤝","board"),
                 HomeLink("plus","Quartier+","Alle Bereiche entdecken","🏘️","plus"),
                 HomeLink("settings","Dashboard-Hintergrund","Dein Foto festlegen","🖼️","settings"),
+                HomeLink("enhancements","Alle Erweiterungen","Radar, QR, Vereinszentrale und mehr","🧩","enhancements"),
+                HomeLink("enh-posts","Meine Beiträge","Beitragsstatus und Angebote","📝","enh-posts"),
                 HomeLink("alerts","Gemeinde-Alarme","Wichtige Nachrichten","🔔","alerts")
             ).forEach { card ->
                 HomeShortcut(card,Modifier.fillMaxWidth()) { navigate(card.route) }
