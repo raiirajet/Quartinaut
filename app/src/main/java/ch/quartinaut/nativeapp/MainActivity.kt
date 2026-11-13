@@ -31,6 +31,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.core.view.WindowCompat
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -317,21 +320,21 @@ private fun QuartinautApp(repo: QuartinautRepository,
                         IconButton(onClick={
                             context.startActivity(Intent(Intent.ACTION_VIEW,
                                 Uri.parse("https://quartinaut.web.app")))
-                        },modifier=Modifier.size(40.dp)) {
+                        },modifier=Modifier.size(48.dp)) {
                             Icon(Icons.Default.DesktopWindows,
                                 contentDescription="Website im Browser öffnen",
                                 tint=toolbarForeground)
                         }
-                        IconButton(onClick={navTo("official")},modifier=Modifier.size(40.dp)) {
+                        IconButton(onClick={navTo("official")},modifier=Modifier.size(48.dp)) {
                             Icon(Icons.Default.NotificationsNone,
                                 contentDescription="Mitteilungen öffnen",tint=toolbarForeground)
                         }
                     } else {
-                        IconButton(onClick={navTo("search")},modifier=Modifier.size(40.dp)) {
+                        IconButton(onClick={navTo("search")},modifier=Modifier.size(48.dp)) {
                             Icon(Icons.Default.Search,contentDescription="Suche",tint=toolbarForeground)
                         }
                     }
-                    IconButton(onClick={navTo("profile")},modifier=Modifier.size(40.dp)) {
+                    IconButton(onClick={navTo("profile")},modifier=Modifier.size(48.dp)) {
                         Icon(Icons.Default.PersonOutline,contentDescription="Profil öffnen",
                             tint=toolbarForeground)
                     }
@@ -368,7 +371,8 @@ private fun QuartinautApp(repo: QuartinautRepository,
                             .then(if(active) Modifier.border(1.dp,
                                 Color(0xFF4CA46A),RoundedCornerShape(22.dp))
                                 else Modifier)
-                            .clickable { navTo(route) },
+                            .clickable { navTo(route) }
+                            .semantics { selected=active; contentDescription=label },
                             verticalArrangement=Arrangement.Center,
                             horizontalAlignment=Alignment.CenterHorizontally) {
                             Box(Modifier.size(45.dp).clip(RoundedCornerShape(15.dp))

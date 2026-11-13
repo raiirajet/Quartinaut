@@ -6,6 +6,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.consume
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -84,6 +89,7 @@ private fun priorities(repo: QuartinautRepository): List<String> {
 @Composable
 fun NativeOriginalHome(repo: QuartinautRepository, navigate: (String) -> Unit,
     openRequest:(com.google.firebase.firestore.DocumentSnapshot)->Unit = {navigate("board")}) {
+    val columns=if(LocalConfiguration.current.screenWidthDp>=600) 4 else 2
     val chosen=quickIds(repo)
     val ordered=priorities(repo)
     var showShortcuts by remember { mutableStateOf(false) }
@@ -106,7 +112,7 @@ fun NativeOriginalHome(repo: QuartinautRepository, navigate: (String) -> Unit,
 
         HomeSection("SCHNELLZUGRIFFE","Direkt loslegen","Anpassen",{showShortcuts=true})
         Column(verticalArrangement=Arrangement.spacedBy(9.dp)) {
-            chosen.chunked(2).forEach { row ->
+            chosen.chunked(columns).forEach { row ->
                 Row(horizontalArrangement=Arrangement.spacedBy(9.dp)) {
                     row.forEach { id ->
                         val card=links.firstOrNull { it.id==id } ?: return@forEach
@@ -123,7 +129,7 @@ fun NativeOriginalHome(repo: QuartinautRepository, navigate: (String) -> Unit,
             .background(NightCard).border(1.dp,PanelLine,RoundedCornerShape(25.dp))
             .padding(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
             HomeSection("PERSÖNLICHER ÜBERBLICK","Für dich wichtig","Sortieren",{showPriorities=true})
-            ordered.take(4).chunked(2).forEach { row ->
+            ordered.take(if(columns==4)8 else 4).chunked(columns).forEach { row ->
                 Row(horizontalArrangement=Arrangement.spacedBy(9.dp)) {
                     row.forEach { id ->
                         val card=priorityCatalog.firstOrNull { it.id==id } ?: return@forEach
@@ -132,7 +138,7 @@ fun NativeOriginalHome(repo: QuartinautRepository, navigate: (String) -> Unit,
                     if(row.size==1) Spacer(Modifier.weight(1f))
                 }
             }
-            if(ordered.size>4) {
+            if(ordered.size>(if(columns==4)8 else 4)) {
                 TextButton(onClick={showPriorities=true}) {
                     Text("Weitere Bereiche und Reihenfolge anpassen",color=Lime)
                 }
@@ -247,9 +253,28 @@ fun NativeOriginalHome(repo: QuartinautRepository, navigate: (String) -> Unit,
             title={Text("Persönliche Übersicht sortieren")},
             text={
                 Column(Modifier.heightIn(max=425.dp).verticalScroll(rememberScrollState())) {
+                    Text("Lange drücken und ziehen oder mit den Pfeilen sortieren.",
+                        style=MaterialTheme.typography.bodySmall)
                     edit.toList().forEachIndexed { index,id ->
+                        var dragY by remember(id) { mutableFloatStateOf(0f) }
+                        val threshold=with(LocalDensity.current){44.dp.toPx()}
                         val meta=priorityCatalog.first { it.id==id }
-                        Row(verticalAlignment=Alignment.CenterVertically) {
+                        Row(Modifier.fillMaxWidth().heightIn(min=52.dp)
+                            .pointerInput(index,id) {
+                                detectDragGesturesAfterLongPress(
+                                    onDragStart={dragY=0f},
+                                    onDragCancel={dragY=0f},
+                                    onDragEnd={
+                                        val delta=when {dragY>threshold->1;dragY< -threshold-> -1;else->0}
+                                        val target=(index+delta).coerceIn(0,edit.lastIndex)
+                                        if(target!=index) {edit.removeAt(index);edit.add(target,id)}
+                                        dragY=0f
+                                    },
+                                    onDrag={change,drag->change.consume();dragY+=drag.y}
+                                )
+                            },verticalAlignment=Alignment.CenterVertically) {
+                            Icon(Icons.Default.DragIndicator,contentDescription="Verschieben")
+                            Spacer(Modifier.width(7.dp))
                             Text(meta.emoji+" "+meta.title,modifier=Modifier.weight(1f))
                             IconButton(onClick={
                                 if(index>0){edit.removeAt(index);edit.add(index-1,id)}

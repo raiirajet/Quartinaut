@@ -10,6 +10,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -78,13 +83,35 @@ fun NativePostPhotoPicker(
         Text("Bis zu 3 Bilder · Fotos werden verkleinert und privat gespeichert.",
             style=MaterialTheme.typography.bodySmall)
         paths.forEachIndexed { index,path ->
+            var preview by remember(path) {mutableStateOf<android.graphics.Bitmap?>(null)}
+            LaunchedEffect(path) { repo.readProtectedPhoto(path) {preview=it} }
             Surface(color=MaterialTheme.colorScheme.surfaceVariant,
                 shape=RoundedCornerShape(12.dp)) {
                 Row(Modifier.fillMaxWidth().padding(horizontal=10.dp,vertical=8.dp),
                     verticalAlignment=Alignment.CenterVertically) {
-                    Text("Foto " + (index+1) + " bereit",
-                        modifier=Modifier.weight(1f),
+                    if(preview!=null) Image(
+                        bitmap=preview!!.asImageBitmap(),contentDescription="Foto "+(index+1)+" Vorschau",
+                        modifier=Modifier.size(46.dp).clip(RoundedCornerShape(9.dp)),
+                        contentScale=ContentScale.Crop)
+                    else Icon(Icons.Default.AddPhotoAlternate,contentDescription=null,
+                        modifier=Modifier.size(32.dp))
+                    Spacer(Modifier.width(7.dp))
+                    Text("Foto "+(index+1),modifier=Modifier.weight(1f),
                         style=MaterialTheme.typography.bodySmall)
+                    IconButton(onClick={
+                        if(index>0) {
+                            val changed=paths.toMutableList()
+                            val entry=changed.removeAt(index);changed.add(index-1,entry)
+                            onChange(changed)
+                        }
+                    },enabled=index>0) {Icon(Icons.Default.ArrowUpward,"Foto nach oben")}
+                    IconButton(onClick={
+                        if(index<paths.lastIndex) {
+                            val changed=paths.toMutableList()
+                            val entry=changed.removeAt(index);changed.add(index+1,entry)
+                            onChange(changed)
+                        }
+                    },enabled=index<paths.lastIndex) {Icon(Icons.Default.ArrowDownward,"Foto nach unten")}
                     IconButton(onClick={
                         val photoIndex=path.substringAfterLast('/')
                             .removeSuffix(".jpg").toIntOrNull() ?: return@IconButton

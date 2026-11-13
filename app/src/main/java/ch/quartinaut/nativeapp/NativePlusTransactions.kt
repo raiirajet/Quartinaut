@@ -197,7 +197,7 @@ fun NativeCalendarPlus(repo:QuartinautRepository) {
         verticalArrangement=Arrangement.spacedBy(10.dp)) {
         Text("Gemeindekalender+",color=MaterialTheme.colorScheme.onSurface,
             style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold)
-        Text("Termine, Entsorgung und Veranstaltungen aus offiziellen Quellen.",
+        Text("Termine und Veranstaltungen aus den in Quartinaut geladenen Daten.",
             color=TMute)
         OutlinedButton(onClick={repo.loadV50("calendar.list")}){Text("Kalender aktualisieren")}
         LazyColumn(verticalArrangement=Arrangement.spacedBy(10.dp)) {
@@ -216,19 +216,20 @@ fun NativeCalendarPlus(repo:QuartinautRepository) {
                             }.getOrNull()
                             if(date==null)repo.loadV50("calendar.list")
                             else {
-                                val start=date.atStartOfDay(ZoneId.of("Europe/Zurich"))
+                                val start=date.atStartOfDay(java.time.ZoneOffset.UTC)
                                     .toInstant().toEpochMilli()
                                 val intent=Intent(Intent.ACTION_INSERT).apply {
                                     data=CalendarContract.Events.CONTENT_URI
                                     putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME,start)
-                                    putExtra(CalendarContract.EXTRA_EVENT_END_TIME,start+3600000L)
+                                    putExtra(CalendarContract.EXTRA_EVENT_END_TIME,start+86400000L)
+                                    putExtra(CalendarContract.EXTRA_EVENT_ALL_DAY,true)
                                     putExtra(CalendarContract.Events.TITLE,DocString(event["title"]))
                                     putExtra(CalendarContract.Events.DESCRIPTION,DocString(event["description"]))
                                     putExtra(CalendarContract.Events.EVENT_LOCATION,DocString(event["venue"]))
                                 }
                                 runCatching{context.startActivity(intent)}
                             }
-                        }) {Text("In Handy-Kalender")}
+                        }) {Text("Als Ganztagstermin übernehmen")}
                         OutlinedButton(onClick={selected=id}){Text("Erinnerung")}
                     }
                     if(selected==id) {
