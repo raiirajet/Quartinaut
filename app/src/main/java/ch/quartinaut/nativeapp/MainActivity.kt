@@ -212,7 +212,9 @@ private fun QuartinautApp(repo: QuartinautRepository,
                 "hub-detail" -> NativeHubDetail(repo,selectedHubItem) { page = "plus" }
                 "map" -> RegionPage(repo)
                 "alerts" -> DocumentsPage(repo, "Alarme", repo.alerts.filter {
-                    it.str("cantonCode") == repo.canton() || it.str("scopeLevel") == "canton"
+                    it.str("cantonCode") == repo.canton() &&
+                        (it.str("scopeLevel") == "canton" ||
+                         it.str("areaKey") == repo.areaKey())
                 })
                 "official" -> DocumentsPage(repo, "Offizielle Mitteilungen", repo.notices)
                 "market" -> HubItemsPage(repo, "market", navTo, openHub)
@@ -497,7 +499,7 @@ private fun CreateRequestPage(repo: QuartinautRepository, go: (String) -> Unit) 
             Text(option)
         }
     }
-    Button(onClick={repo.createRequest(title,body,category,kind,urgency);go("board")},
+    Button(onClick={repo.createRequest(title,body,category,kind,urgency) { go("board") }},
         modifier=Modifier.fillMaxWidth(),enabled=!repo.busy) { Text("Anliegen einreichen") }
 }
 
@@ -597,7 +599,7 @@ private fun ChatsPage(repo: QuartinautRepository) {
             Row(verticalAlignment=Alignment.CenterVertically) {
                 OutlinedTextField(input,{input=it.take(500)}, modifier=Modifier.weight(1f),
                     label={Text("Nachricht")}, maxLines=3)
-                IconButton(onClick={repo.sendChat(input);input=""},enabled=input.isNotBlank()) {
+                IconButton(onClick={repo.sendChat(input) { input = "" }},enabled=input.isNotBlank()) {
                     Icon(Icons.Default.Send,"Senden",tint=Forest)
                 }
             }
