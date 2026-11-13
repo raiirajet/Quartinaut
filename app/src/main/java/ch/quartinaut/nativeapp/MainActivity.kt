@@ -8,6 +8,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.SystemBarStyle
 import androidx.compose.ui.graphics.toArgb
 import androidx.activity.compose.setContent
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -24,6 +28,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.core.view.WindowCompat
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -41,6 +46,24 @@ private val SwissScheme = lightColorScheme(
     surfaceVariant = SoftGreen, onSurface = Color(0xFF183127)
 )
 
+private val SwissGreenScheme = darkColorScheme(
+    primary=Color(0xFF8DDEAC), onPrimary=Color(0xFF103624),
+    background=Color(0xFF123525), surface=Color(0xFF1E4733),
+    onBackground=Color.White, onSurface=Color.White,
+    surfaceVariant=Color(0xFF29533B), onSurfaceVariant=Color(0xFFDBEFE1)
+)
+private val SwissBlackScheme = darkColorScheme(
+    primary=Color(0xFF91E6B4), onPrimary=Color(0xFF04190E),
+    background=Color(0xFF030504), surface=Color(0xFF111715),
+    onBackground=Color.White, onSurface=Color(0xFFE7F4EA),
+    surfaceVariant=Color(0xFF202A24), onSurfaceVariant=Color(0xFFB6CABD)
+)
+private val SwissRedScheme = lightColorScheme(
+    primary=Color(0xFFD52B1E), onPrimary=Color.White,
+    background=Color(0xFFFFF7F6), surface=Color.White,
+    onBackground=Color(0xFF411E1B), onSurface=Color(0xFF411E1B),
+    surfaceVariant=Color(0xFFFCE8E6), onSurfaceVariant=Color(0xFF6F4541)
+)
 private val SwissDarkScheme = darkColorScheme(
     primary = Color(0xFF87D5AE), onPrimary = Color(0xFF123624),
     background=Color(0xFF101C16), surface=Color(0xFF1D2D24),
@@ -62,12 +85,40 @@ class MainActivity : ComponentActivity() {
             val prefs = remember {
                 applicationContext.getSharedPreferences("quartinaut_android", MODE_PRIVATE)
             }
-            var dark by remember { mutableStateOf(prefs.getBoolean("dark",false)) }
-            MaterialTheme(colorScheme = if(dark) SwissDarkScheme else SwissScheme) {
-                Box(Modifier.fillMaxSize().background(Color(0xFF101F19))) {
-                    QuartinautApp(repository,dark) { next ->
-                        dark=next
-                        prefs.edit().putBoolean("dark",next).apply()
+            var mode by remember { mutableStateOf(prefs.getString("theme_mode",null)
+                ?: if(prefs.getBoolean("dark",false)) "dark" else "light") }
+            val scheme=when(mode) {
+                "green" -> SwissGreenScheme
+                "dark" -> SwissBlackScheme
+                "red" -> SwissRedScheme
+                else -> SwissScheme
+            }
+            val header=when(mode) {
+                "light" -> Color.White
+                "red" -> Color(0xFFD52B1E)
+                "dark" -> Color(0xFF030504)
+                else -> Color(0xFF173E31)
+            }
+            val bars=when(mode) {
+                "light" -> Color.White
+                "red" -> Color(0xFFD52B1E)
+                "dark" -> Color(0xFF030504)
+                else -> Color(0xFF123525)
+            }
+            SideEffect {
+                window.statusBarColor=header.toArgb()
+                window.navigationBarColor=bars.toArgb()
+                WindowCompat.getInsetsController(window,window.decorView).apply {
+                    isAppearanceLightStatusBars=(mode=="light")
+                    isAppearanceLightNavigationBars=(mode=="light")
+                }
+                window.decorView.setBackgroundColor(scheme.background.toArgb())
+            }
+            MaterialTheme(colorScheme = scheme) {
+                Box(Modifier.fillMaxSize().background(scheme.background)) {
+                    QuartinautApp(repository,mode) { next ->
+                        mode=next
+                        prefs.edit().putString("theme_mode",next).apply()
                     }
                 }
             }
@@ -77,8 +128,11 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun QuartinautApp(repo: QuartinautRepository,
-    dark: Boolean, updateDark: (Boolean) -> Unit) {
+    mode: String, updateMode: (String) -> Unit) {
     var page by remember { mutableStateOf("home") }
+    val history=remember { mutableStateListOf<String>() }
+    var mapCanton by remember { mutableStateOf("") }
+    var mapMunicipality by remember { mutableStateOf("") }
     var selectedHubItem by remember { mutableStateOf<Map<String,Any?>>(emptyMap()) }
     var selectedRequest by remember { mutableStateOf<DocumentSnapshot?>(null) }
     val authUser = repo.user
@@ -93,6 +147,7 @@ private fun QuartinautApp(repo: QuartinautRepository,
                 "events" -> "calendar"; "inbox" -> "official"
                 "chats" -> "chats"; else -> "home"
             }
+            history.clear()
             appliedHome=true
         }
     }
@@ -141,9 +196,47 @@ private fun QuartinautApp(repo: QuartinautRepository,
         }
         return
     }
-    val navTo: (String) -> Unit = { page = it; if (it == "plus") repo.loadHub() }
-    val openHub: (Map<String,Any?>) -> Unit = { selectedHubItem = it; page = "hub-detail" }
-    val openRequest: (DocumentSnapshot) -> Unit = { selectedRequest = it; page = "request-detail" }
+    val navTo: (String) -> Unit = { target ->
+        if(target!=page) {
+            if(target=="home") history.clear() else history.add(page)
+            if(history.size>40) history.removeAt(0)
+            if(target=="map" && page!="map") { mapCanton="";mapMunicipality="" }
+            page=target
+        }
+        if(target=="plus")repo.loadHub()
+    }
+    val goBack: () -> Unit = {
+        when {
+            page=="chats" && repo.chatId.isNotBlank() -> repo.closeChat()
+            page=="map" && mapMunicipality.isNotBlank() -> mapMunicipality=""
+            page=="map" && mapCanton.isNotBlank() -> mapCanton=""
+            history.isNotEmpty() -> page=history.removeAt(history.lastIndex)
+            page!="home" -> page="home"
+        }
+    }
+    BackHandler(enabled=page!="home" || history.isNotEmpty()) { goBack() }
+    val openHub: (Map<String,Any?>) -> Unit = { selectedHubItem=it;navTo("hub-detail") }
+    val openRequest: (DocumentSnapshot) -> Unit = { selectedRequest=it;navTo("request-detail") }
+    val toolbarBackground=when(mode) {
+        "light" -> Color.White
+        "red" -> Color(0xFFD52B1E)
+        "dark" -> Color(0xFF030504)
+        else -> Color(0xFF173E31)
+    }
+    val toolbarForeground=if(mode=="light") Forest else Color.White
+    val bottomBackground=when(mode) {
+        "light" -> Color.White
+        "red" -> Color(0xFFD52B1E)
+        "dark" -> Color(0xFF030504)
+        else -> Color(0xFF123525)
+    }
+    val bottomLabel=if(mode=="light") Forest else Color.White
+    val bottomActive=when(mode) {
+        "light" -> Color(0xFFE5F4EB)
+        "red" -> Color(0xFFFBE8E6)
+        "dark" -> Color(0xFF10231A)
+        else -> Color(0xFF27533E)
+    }
     val title = when(page) {
         "home" -> "Mein Quartier"
         "board" -> "Schwarzes Brett"
@@ -190,22 +283,22 @@ private fun QuartinautApp(repo: QuartinautRepository,
         // Reserve real system insets for BOTH header and bottom navigation.
         modifier=Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing),
         contentWindowInsets=WindowInsets(0,0,0,0),
-        containerColor=if(page=="home") Color(0xFF101F19) else MaterialTheme.colorScheme.background,
+        containerColor=MaterialTheme.colorScheme.background,
         topBar={
-            Surface(color=Color(0xFF173E31),shadowElevation=2.dp) {
+            Surface(color=toolbarBackground,shadowElevation=2.dp) {
                 Row(Modifier.fillMaxWidth().height(70.dp).padding(horizontal=12.dp),
                     verticalAlignment=Alignment.CenterVertically) {
-                    if(page !in listOf("home","plus","create","chats","profile")) {
-                        IconButton(onClick={page="home"},modifier=Modifier.size(34.dp)) {
+                    if(page!="home") {
+                        IconButton(onClick=goBack,modifier=Modifier.size(44.dp)) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription="Zur Startseite",tint=Color.White)
+                                contentDescription="Einen Schritt zurück",tint=toolbarForeground)
                         }
                         Spacer(Modifier.width(5.dp))
                     }
                     QuartinautLogo(modifier=Modifier.size(52.dp))
                     Spacer(Modifier.width(9.dp))
                     Text(if(page=="home") "Quartinaut" else title,
-                        color=Color.White,style=MaterialTheme.typography.titleLarge,
+                        color=toolbarForeground,style=MaterialTheme.typography.titleLarge,
                         maxLines=1,overflow=TextOverflow.Ellipsis,
                         modifier=Modifier.weight(1f))
                     if(page=="home") {
@@ -216,20 +309,20 @@ private fun QuartinautApp(repo: QuartinautRepository,
                         },modifier=Modifier.size(40.dp)) {
                             Icon(Icons.Default.DesktopWindows,
                                 contentDescription="Website im Browser öffnen",
-                                tint=Color.White)
+                                tint=toolbarForeground)
                         }
-                        IconButton(onClick={page="official"},modifier=Modifier.size(40.dp)) {
+                        IconButton(onClick={navTo("official")},modifier=Modifier.size(40.dp)) {
                             Icon(Icons.Default.NotificationsNone,
-                                contentDescription="Mitteilungen öffnen",tint=Color.White)
+                                contentDescription="Mitteilungen öffnen",tint=toolbarForeground)
                         }
                     } else {
-                        IconButton(onClick={page="search"},modifier=Modifier.size(40.dp)) {
-                            Icon(Icons.Default.Search,contentDescription="Suche",tint=Color.White)
+                        IconButton(onClick={navTo("search")},modifier=Modifier.size(40.dp)) {
+                            Icon(Icons.Default.Search,contentDescription="Suche",tint=toolbarForeground)
                         }
                     }
-                    IconButton(onClick={page="profile"},modifier=Modifier.size(40.dp)) {
+                    IconButton(onClick={navTo("profile")},modifier=Modifier.size(40.dp)) {
                         Icon(Icons.Default.PersonOutline,contentDescription="Profil öffnen",
-                            tint=Color.White)
+                            tint=toolbarForeground)
                     }
                 }
             }
@@ -242,31 +335,34 @@ private fun QuartinautApp(repo: QuartinautRepository,
                 Triple("chats","Chats","chats"),
                 Triple("profile","Profil","profil")
             )
-            Box(Modifier.fillMaxWidth().background(
-                if(page=="home") Color(0xFF101F19) else MaterialTheme.colorScheme.background)
+            Box(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)
                 .padding(horizontal=11.dp,vertical=4.dp)) {
                 Row(Modifier.fillMaxWidth().height(78.dp)
                     .clip(RoundedCornerShape(28.dp))
-                    .background(Color(0xFF091D18))
-                    .border(1.dp,Color(0xFF517564),RoundedCornerShape(28.dp))
+                    .background(bottomBackground)
+                    .border(1.dp,if(mode=="light") Color(0xFFDAE9DD) else Color(0xFF537564),RoundedCornerShape(28.dp))
                     .padding(horizontal=6.dp,vertical=4.dp),
                     verticalAlignment=Alignment.CenterVertically) {
                     routes.forEach { (route,label,asset) ->
                         val active=page==route || (route=="plus" &&
                             page in listOf("board","market","lend","group","calendar"))
-                        val selectedColor=if(active) Color(0xFF174A36) else Color.Transparent
+                        val selectedColor=if(active) bottomActive else Color.Transparent
                         Column(Modifier.weight(1f).fillMaxHeight()
                             .padding(horizontal=2.dp)
                             .clip(RoundedCornerShape(22.dp))
                             .background(selectedColor)
                             .then(if(active) Modifier.border(1.dp,
-                                Color(0xFF68C78A),RoundedCornerShape(22.dp))
+                                Color(0xFF4CA46A),RoundedCornerShape(22.dp))
                                 else Modifier)
                             .clickable { navTo(route) },
                             verticalArrangement=Arrangement.Center,
                             horizontalAlignment=Alignment.CenterHorizontally) {
-                            OriginalNavigationIcon(asset,Modifier.size(if(active)43.dp else 40.dp))
-                            Text(label,color=Color.White,
+                            Box(Modifier.size(45.dp).clip(RoundedCornerShape(15.dp))
+                                .background(if(mode=="dark") Color(0xFF10281B)
+                                    else Color(0xFFF5FBF7)),contentAlignment=Alignment.Center) {
+                                OriginalNavigationIcon(asset,Modifier.size(if(active)42.dp else 39.dp))
+                            }
+                            Text(label,color=if(active && mode=="red") Forest else bottomLabel,
                                 style=MaterialTheme.typography.labelSmall,
                                 maxLines=1,overflow=TextOverflow.Ellipsis)
                         }
@@ -275,7 +371,20 @@ private fun QuartinautApp(repo: QuartinautRepository,
             }
         }
     ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding)) {
+        val edgePixels=with(LocalDensity.current) { 32.dp.toPx() }
+        val swipeDistance=with(LocalDensity.current) { 88.dp.toPx() }
+        var fromEdge by remember { mutableStateOf(false) }
+        var dragged by remember { mutableFloatStateOf(0f) }
+        Box(Modifier.fillMaxSize().padding(padding).pointerInput(page,mapCanton,mapMunicipality) {
+            detectHorizontalDragGestures(
+                onDragStart={ start -> fromEdge=start.x<=edgePixels;dragged=0f },
+                onDragEnd={ if(fromEdge && dragged>swipeDistance) goBack() },
+                onHorizontalDrag={ change,amount ->
+                    if(fromEdge && amount>0f) dragged+=amount
+                    if(fromEdge) change.consume()
+                }
+            )
+        }) {
             when(page) {
                 "home" -> NativeOriginalHome(repo, navTo)
                 "board" -> BulletinPage(repo, navTo, openRequest)
@@ -298,10 +407,11 @@ private fun QuartinautApp(repo: QuartinautRepository,
                 "create-request" -> NativeRequestComposer(repo,initialKind="Suche") { navTo("board") }
                 "create-offer" -> NativeRequestComposer(repo,initialKind="Biete") { navTo("board") }
                 "request-detail" -> selectedRequest?.let { doc ->
-                    NativeRequestDetail(repo,doc,{page="board"},{repo.openRequestChat(doc){page="chats"}})
+                    NativeRequestDetail(repo,doc,goBack,{repo.openRequestChat(doc){navTo("chats")}})
                 }
-                "hub-detail" -> NativeHubDetail(repo,selectedHubItem) { page = "plus" }
-                "map" -> RegionPage(repo)
+                "hub-detail" -> NativeHubDetail(repo,selectedHubItem,goBack)
+                "map" -> RegionPage(repo,mapCanton,mapMunicipality,
+                    {mapCanton=it;mapMunicipality=""},{mapMunicipality=it})
                 "alerts" -> DocumentsPage(repo, "Alarme", repo.alerts.filter {
                     it.str("cantonCode") == repo.canton() &&
                         (it.str("scopeLevel") == "canton" ||
@@ -317,7 +427,7 @@ private fun QuartinautApp(repo: QuartinautRepository,
                 "issue" -> HubItemsPage(repo, "issue", navTo, openHub)
                 "v50market", "v50loans", "v50associations" -> V50Page(repo, page)
                 "search" -> SearchPage(repo, navTo)
-                "settings" -> NativeSettingsScreen(repo,dark,updateDark,navTo)
+                "settings" -> NativeSettingsScreen(repo,mode,updateMode,navTo)
                 "admin" -> NativeAdminScreen(repo,navTo)
                 "help" -> NativeHelpScreen()
                 "diagnostics" -> NativeSyncDiagnostics(repo)
@@ -744,54 +854,69 @@ private fun ProfilePage(repo: QuartinautRepository, go:(String)->Unit) = ScrollP
     Button(onClick=repo::logout,modifier=Modifier.fillMaxWidth()) { Text("Abmelden") }
 }
 @Composable
-private fun RegionPage(repo: QuartinautRepository) {
-    var selectedCode by remember { mutableStateOf("") }
-    var selectedMunicipality by remember { mutableStateOf<Municipality?>(null) }
-    var search by remember { mutableStateOf("") }
-    val canton = repo.regions.firstOrNull { it.code == selectedCode }
-    val matches = if (selectedCode.isBlank()) repo.regions.filter {
-        (it.name+" "+it.code).contains(search,ignoreCase=true)
-            || it.municipalities.any { m->m.name.contains(search,ignoreCase=true) }
-    } else canton?.municipalities?.filter { it.name.contains(search, ignoreCase=true) } ?: emptyList()
-    Column(Modifier.fillMaxSize().padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-        SectionTitle(if(canton==null) "Schweiz entdecken" else canton.name,
-            if(canton==null) "26 Kantone · 2'110 Gemeinden" else "Kanton " + canton.code + " · " + canton.municipalities.size + " Gemeinden")
-        if (canton == null) {
-            NativeCantonMap(selectedCode,repo.cantonCounts) {
-                selectedCode=it;selectedMunicipality=null;search=""
+private fun RegionPage(repo: QuartinautRepository, selectedCode: String,selectedBfs: String,
+    selectCanton: (String)->Unit, selectMunicipality: (String)->Unit) {
+    var search by remember(selectedCode) { mutableStateOf("") }
+    val canton=repo.regions.firstOrNull { it.code==selectedCode }
+    val selected=canton?.municipalities?.firstOrNull { it.bfs==selectedBfs }
+    val filteredCantons=repo.regions.filter { region ->
+        (region.name+" "+region.code).contains(search,ignoreCase=true)
+            || region.municipalities.any { it.name.contains(search,ignoreCase=true) }
+    }
+    val filteredMunicipalities=canton?.municipalities?.filter {
+        it.name.contains(search,ignoreCase=true)
+    } ?: emptyList()
+    LazyColumn(Modifier.fillMaxSize(), contentPadding=PaddingValues(16.dp),
+        verticalArrangement=Arrangement.spacedBy(10.dp)) {
+        item {
+            SectionTitle(if(canton==null) "Schweiz entdecken" else canton.name,
+                if(canton==null) "26 Kantone · 2'110 Gemeinden"
+                else "${canton.code} · ${canton.municipalities.size} Gemeinden")
+        }
+        if(canton!=null) {
+            item {
+                TextButton(onClick={selectCanton("")}) { Text("← Alle Kantone") }
+            }
+            if(selected!=null) {
+                item { NativeMunicipalityFactCard(selected,canton) }
+            }
+            item {
+                NativeMunicipalityMap(canton,selected) { selectMunicipality(it.bfs) }
+            }
+            item {
+                Panel("Kanton ${canton.code}",
+                    "Hauptort: ${SwissCapitals[canton.code] ?: "Nicht hinterlegt"}",
+                    "${canton.municipalities.size} Gemeinden · BFS-Kantonnummer ${canton.bfs}")
+            }
+            if(selected!=null) {
+                item {
+                    val context=LocalContext.current
+                    TextButton(onClick={
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(
+                            "https://www.agvchapp.bfs.admin.ch/de/communes/query")))
+                    }) { Text("Amtliches BFS-Gemeindeverzeichnis öffnen") }
+                }
             }
         } else {
-            NativeMunicipalityMap(canton,selectedMunicipality) { selectedMunicipality=it }
-        }
-        if(canton != null) {
-            TextButton(onClick={selectedCode="";selectedMunicipality=null;search=""}) { Text("← Alle Kantone") }
-            Panel("Kanton "+canton.code,
-                "Hauptort: " + (SwissCapitals[canton.code] ?: "Nicht hinterlegt") +
-                    " · " + canton.municipalities.size + " Gemeinden",
-                "BFS-Kantonnummer: " + canton.bfs +
-                    " · Quartinaut-Registrierungen: " + (repo.cantonCounts[canton.code] ?: 0))
-            selectedMunicipality?.let { m ->
-                Panel(m.name,"Kanton " + canton.code + " · Schweiz",
-                    "Amtliche BFS-Nummer: " + m.bfs)
-                val ctx=LocalContext.current
-                TextButton(onClick={
-                    ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(
-                        "https://www.agvchapp.bfs.admin.ch/de/communes/results?BfsNr="+m.bfs)))
-                }) { Text("Offizieller Gemeindesteckbrief") }
+            item {
+                NativeCantonMap(selectedCode,repo.cantonCounts) { selectCanton(it) }
             }
         }
-        OutlinedTextField(search,{search=it},modifier=Modifier.fillMaxWidth(),singleLine=true,
-            label={Text(if(canton==null) "Kanton suchen" else "Gemeinde suchen")})
-        LazyColumn(verticalArrangement=Arrangement.spacedBy(5.dp)) {
-            if(canton==null) {
-                items(matches.filterIsInstance<Region>()) { region ->
-                    Panel(region.name,region.code,region.municipalities.size.toString()+" Gemeinden") {
-                        selectedCode=region.code;selectedMunicipality=null;search=""
-                    }
+        item {
+            OutlinedTextField(search,{search=it},modifier=Modifier.fillMaxWidth(),
+                singleLine=true,label={Text(if(canton==null)"Kanton oder Gemeinde suchen"
+                    else "Gemeinde suchen")})
+        }
+        if(canton==null) {
+            items(filteredCantons,key={it.code}) { region ->
+                Panel(region.name,region.code,"${region.municipalities.size} Gemeinden") {
+                    selectCanton(region.code)
                 }
-            } else {
-                items(matches.filterIsInstance<Municipality>()) { m ->
-                    Panel(m.name,canton.code,"Gemeindesteckbrief öffnen") { selectedMunicipality=m }
+            }
+        } else {
+            items(filteredMunicipalities,key={it.bfs}) { municipality ->
+                Panel(municipality.name,canton.code,"Gemeindesteckbrief öffnen") {
+                    selectMunicipality(municipality.bfs)
                 }
             }
         }
@@ -809,7 +934,7 @@ private fun V50Page(repo: QuartinautRepository, page:String) {
                 val title=DocString(entry["title"]).ifBlank {
                     DocString(entry["listingId"]).ifBlank {DocString(entry["eventId"])}
                 }
-                Card(colors=CardDefaults.cardColors(containerColor=Color.White)) {
+                Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)) {
                     Column(Modifier.fillMaxWidth().padding(14.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
                         Text(title,fontWeight=FontWeight.Bold)
                         Text("Status: " + DocString(entry["status"]))

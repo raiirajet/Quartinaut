@@ -10,6 +10,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -25,10 +27,11 @@ fun QuartinautLogo(modifier: Modifier = Modifier, contentScale: ContentScale = C
 }
 @Composable
 fun OriginalNavigationIcon(name: String, modifier: Modifier = Modifier) {
-    OriginalImage("navigation/$name.png",modifier)
+    OriginalImage("navigation/$name.png",modifier,tint=Color(0xFF19834B))
 }
 @Composable
-private fun OriginalImage(path: String, modifier: Modifier, scale: ContentScale = ContentScale.Fit) {
+private fun OriginalImage(path: String, modifier: Modifier,
+                          scale: ContentScale = ContentScale.Fit,tint: Color? = null) {
     val context = LocalContext.current
     val bitmap = remember(path) {
         runCatching {
@@ -37,10 +40,11 @@ private fun OriginalImage(path: String, modifier: Modifier, scale: ContentScale 
     }
     if (bitmap != null) {
         Image(bitmap.asImageBitmap(),contentDescription = null,modifier=modifier,
-            contentScale=scale)
+            contentScale=scale,colorFilter=tint?.let { ColorFilter.tint(it) })
     } else {
         Box(modifier, contentAlignment=Alignment.Center) {
-            Icon(Icons.Default.LocationCity,contentDescription=null,modifier=Modifier.size(30.dp))
+            Icon(Icons.Default.LocationCity,contentDescription=null,modifier=Modifier.size(30.dp),
+                tint=tint ?: androidx.compose.material3.LocalContentColor.current)
         }
     }
 }

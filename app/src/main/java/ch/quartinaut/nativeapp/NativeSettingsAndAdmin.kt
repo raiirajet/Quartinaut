@@ -31,8 +31,8 @@ private val Topics = linkedMapOf(
 )
 
 @Composable
-fun NativeSettingsScreen(repo: QuartinautRepository,dark: Boolean,
-                         updateDark: (Boolean) -> Unit, navigate: (String) -> Unit) {
+fun NativeSettingsScreen(repo: QuartinautRepository,mode: String,
+                         updateMode: (String) -> Unit, navigate: (String) -> Unit) {
     val context=LocalContext.current
     val notificationPermission=rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -57,13 +57,22 @@ fun NativeSettingsScreen(repo: QuartinautRepository,dark: Boolean,
         verticalArrangement=Arrangement.spacedBy(13.dp)) {
         Text("Einstellungen",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold)
         Text("Darstellung",style=MaterialTheme.typography.titleMedium)
-        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,
-            verticalAlignment=Alignment.CenterVertically) {
-            Column {
-                Text("Dunkles Design",fontWeight=FontWeight.Medium)
-                Text("Auch für den ganzen Android-Bildschirm",style=MaterialTheme.typography.bodySmall)
+        Text("Vier vollständige Farbdesigns · inklusive Status- und Navigationsleiste",
+            style=MaterialTheme.typography.bodySmall)
+        listOf(
+            Triple("light","Hell · Weiss","Helle Flächen, dunkle Schrift"),
+            Triple("green","Grün · Quartinaut","Grüne Flächen und natürliche Akzente"),
+            Triple("dark","Dunkel · Tiefschwarz","Schwarze Flächen und grüne Symbole"),
+            Triple("red","Schweiz · Wappenrot","Rot nach Schweizer Flagge mit grünen Navigationssymbolen")
+        ).forEach { (key,title,description) ->
+            Row(Modifier.fillMaxWidth().clickable { updateMode(key) }
+                .padding(vertical=7.dp),verticalAlignment=Alignment.CenterVertically) {
+                RadioButton(selected=mode==key,onClick={updateMode(key)})
+                Column(Modifier.weight(1f)) {
+                    Text(title,fontWeight=FontWeight.SemiBold)
+                    Text(description,style=MaterialTheme.typography.bodySmall)
+                }
             }
-            Switch(dark,onCheckedChange=updateDark)
         }
         HorizontalDivider()
         NativeDashboardBackgroundSettings(repo)

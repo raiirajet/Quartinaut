@@ -27,11 +27,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlin.math.min
 
-private val Night = Color(0xFF101F19)
-private val NightCard = Color(0xFF1C342A)
-private val PanelLine = Color(0xFF456C58)
-private val Quiet = Color(0xFFB5C6B8)
-private val Lime = Color(0xFFB4E3BF)
+private val Night: Color @Composable get() = MaterialTheme.colorScheme.background
+private val NightCard: Color @Composable get() = MaterialTheme.colorScheme.surface
+private val PanelLine: Color @Composable get() = MaterialTheme.colorScheme.outlineVariant
+private val Quiet: Color @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant
+private val Lime: Color @Composable get() = MaterialTheme.colorScheme.primary
 
 data class HomeLink(val id: String, val title: String, val subtitle: String,
                     val emoji: String, val route: String)
@@ -155,7 +155,7 @@ fun NativeOriginalHome(repo: QuartinautRepository, navigate: (String) -> Unit) {
                     border=androidx.compose.foundation.BorderStroke(1.dp,PanelLine),
                     onClick={navigate("board")},modifier=Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
-                        Text(doc.title(),fontWeight=FontWeight.SemiBold,color=Color.White,
+                        Text(doc.title(),fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.onSurface,
                             maxLines=2,overflow=TextOverflow.Ellipsis)
                         Text(doc.str("category")+" · "+doc.str("area"),
                             color=Quiet,style=MaterialTheme.typography.bodySmall)
@@ -171,7 +171,7 @@ fun NativeOriginalHome(repo: QuartinautRepository, navigate: (String) -> Unit) {
                 Text("🇨🇭",style=MaterialTheme.typography.headlineSmall)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Schweizkarte",color=Color.White,fontWeight=FontWeight.SemiBold)
+                    Text("Schweizkarte",color=MaterialTheme.colorScheme.onSurface,fontWeight=FontWeight.SemiBold)
                     Text("26 Kantone · 2'110 Gemeinden",color=Quiet,
                         style=MaterialTheme.typography.bodySmall)
                 }
@@ -361,7 +361,7 @@ private fun HomeSection(kicker:String,title:String,button:String,onClick:()->Uni
         Column(Modifier.weight(1f)) {
             Text(kicker,color=Quiet,style=MaterialTheme.typography.labelMedium)
             Spacer(Modifier.height(3.dp))
-            Text(title,color=Color.White,style=MaterialTheme.typography.titleLarge)
+            Text(title,color=MaterialTheme.colorScheme.onBackground,style=MaterialTheme.typography.titleLarge)
         }
         TextButton(onClick=onClick) {
             Text(button,color=Lime,style=MaterialTheme.typography.bodyMedium)
@@ -376,7 +376,7 @@ private fun HomeShortcut(card:HomeLink,modifier:Modifier,onClick:()->Unit) {
         Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(5.dp)) {
             Text(card.emoji,style=MaterialTheme.typography.headlineSmall)
             Spacer(Modifier.height(3.dp))
-            Text(card.title,color=Color.White,
+            Text(card.title,color=MaterialTheme.colorScheme.onSurface,
                 style=MaterialTheme.typography.titleMedium,maxLines=1)
             Text(card.subtitle,color=Quiet,
                 style=MaterialTheme.typography.bodySmall,maxLines=2)
@@ -387,7 +387,7 @@ private fun HomeShortcut(card:HomeLink,modifier:Modifier,onClick:()->Unit) {
 private fun HomePriority(card:HomeLink,repo:QuartinautRepository,
                          modifier:Modifier,onClick:()->Unit) {
     Surface(onClick=onClick,modifier=modifier.heightIn(min=105.dp),
-        color=Color(0xFF294638),shape=RoundedCornerShape(18.dp),
+        color=MaterialTheme.colorScheme.surfaceVariant,shape=RoundedCornerShape(18.dp),
         border=androidx.compose.foundation.BorderStroke(1.dp,PanelLine)) {
         Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(7.dp)) {
             Row(verticalAlignment=Alignment.CenterVertically) {
@@ -401,7 +401,7 @@ private fun HomePriority(card:HomeLink,repo:QuartinautRepository,
                 }
                 if(number>0) Text(number.toString(),color=Lime,fontWeight=FontWeight.Bold)
             }
-            Text(card.title,color=Color.White,maxLines=2,
+            Text(card.title,color=MaterialTheme.colorScheme.onSurface,maxLines=2,
                 style=MaterialTheme.typography.bodyMedium)
         }
     }

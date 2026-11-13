@@ -27,10 +27,10 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.coroutines.coroutineContext
 
-private val ChatBackground=Color(0xFF111F19)
-private val MyBubble=Color(0xFF24583D)
-private val OtherBubble=Color(0xFF283B31)
-private val ChatMuted=Color(0xFFBED2C3)
+private val ChatBackground: Color @Composable get() = MaterialTheme.colorScheme.background
+private val MyBubble: Color @Composable get() = MaterialTheme.colorScheme.primaryContainer
+private val OtherBubble: Color @Composable get() = MaterialTheme.colorScheme.surfaceVariant
+private val ChatMuted: Color @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant
 
 @Composable
 fun NativePrivateChatsPage(repo: QuartinautRepository) {
@@ -89,21 +89,21 @@ fun NativePrivateChatsPage(repo: QuartinautRepository) {
             Row(verticalAlignment=Alignment.CenterVertically) {
                 IconButton(onClick=repo::closeChat,modifier=Modifier.size(44.dp)) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription="Zur Chatliste",tint=Color.White)
+                        contentDescription="Zur Chatliste",tint=MaterialTheme.colorScheme.onSurface)
                 }
                 Column(Modifier.weight(1f)) {
                     Text(DocString(current?.get("requestTitle")).ifBlank{"Privater Chat"},
-                        color=Color.White,fontWeight=FontWeight.SemiBold,
+                        color=MaterialTheme.colorScheme.onSurface,fontWeight=FontWeight.SemiBold,
                         maxLines=1,overflow=TextOverflow.Ellipsis)
                     Text("Nur die beiden Teilnehmenden",color=ChatMuted,
                         style=MaterialTheme.typography.labelSmall)
                 }
                 IconButton(onClick={
                     if(repo.serverChatActive)repo.refreshServerMessages() else repo.retryFeeds()
-                }) {Icon(Icons.Default.Refresh,"Nachrichten aktualisieren",tint=Color.White)}
+                }) {Icon(Icons.Default.Refresh,"Nachrichten aktualisieren",tint=MaterialTheme.colorScheme.onSurface)}
                 Box {
                     IconButton(onClick={menuOpen=true}) {
-                        Icon(Icons.Default.MoreVert,"Chatoptionen",tint=Color.White)
+                        Icon(Icons.Default.MoreVert,"Chatoptionen",tint=MaterialTheme.colorScheme.onSurface)
                     }
                     DropdownMenu(expanded=menuOpen,onDismissRequest={menuOpen=false}) {
                         DropdownMenuItem(
@@ -154,7 +154,7 @@ fun NativePrivateChatsPage(repo: QuartinautRepository) {
                                 val mediaPath=DocString(msg["mediaPath"])
                                 if(mediaPath.isNotBlank())ChatMediaPreview(repo,mediaPath)
                                 val text=DocString(msg["text"])
-                                if(text.isNotBlank())Text(text,color=Color.White)
+                                if(text.isNotBlank())Text(text,color=MaterialTheme.colorScheme.onSurface)
                                 Text((if(mine)"Du · " else "")+
                                     DocString(msg["createdAt"]).replace('T',' ').take(16),
                                     color=ChatMuted,style=MaterialTheme.typography.labelSmall)
@@ -170,14 +170,14 @@ fun NativePrivateChatsPage(repo: QuartinautRepository) {
             if(blocked) {
                 Surface(color=Color(0xFF402D2D),shape=RoundedCornerShape(14.dp)) {
                     Text(if(blockedByMe)"Du hast diese Person blockiert. Neue Nachrichten und Bilder sind deaktiviert."
-                        else "Diese Unterhaltung ist blockiert.",color=Color.White,
+                        else "Diese Unterhaltung ist blockiert.",color=MaterialTheme.colorScheme.onSurface,
                         modifier=Modifier.fillMaxWidth().padding(12.dp))
                 }
             } else Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.Bottom,
                 horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                 IconButton(onClick={imagePicker.launch("image/*")},
                     enabled=repo.serverChatActive&&!repo.busy) {
-                    Icon(Icons.Default.AddPhotoAlternate,"Sicheres Foto senden",tint=Color.White)
+                    Icon(Icons.Default.AddPhotoAlternate,"Sicheres Foto senden",tint=MaterialTheme.colorScheme.onSurface)
                 }
                 OutlinedTextField(draft,{draft=it.take(500)},modifier=Modifier.weight(1f),
                     placeholder={Text("Nachricht schreiben")},label={Text("Nachricht")},
@@ -199,13 +199,13 @@ fun NativePrivateChatsPage(repo: QuartinautRepository) {
             Row(verticalAlignment=Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("Private Chats",style=MaterialTheme.typography.headlineSmall,
-                        fontWeight=FontWeight.Bold,color=Color.White)
+                        fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.onSurface)
                     Text("Deine vertraulichen Unterhaltungen",color=ChatMuted,
                         style=MaterialTheme.typography.bodySmall)
                 }
                 IconButton(onClick={
                     if(server||"Private Chats" in repo.syncIssues)repo.loadServerChats() else repo.retryFeeds()
-                }) {Icon(Icons.Default.Refresh,"Chats aktualisieren",tint=Color.White)}
+                }) {Icon(Icons.Default.Refresh,"Chats aktualisieren",tint=MaterialTheme.colorScheme.onSurface)}
             }
             OutlinedTextField(filter,{filter=it},modifier=Modifier.fillMaxWidth(),
                 leadingIcon={Icon(Icons.Default.Search,null)},
@@ -219,7 +219,7 @@ fun NativePrivateChatsPage(repo: QuartinautRepository) {
                             fontWeight=FontWeight.SemiBold)
                         Text(repo.syncIssues["Privater Chat-Dienst"]
                             ?:"Firebase verweigert die direkte Chat-Abfrage. Ein geschützter Serverkanal wird geprüft.",
-                            color=Color.White,style=MaterialTheme.typography.bodySmall)
+                            color=MaterialTheme.colorScheme.onSurface,style=MaterialTheme.typography.bodySmall)
                         OutlinedButton(onClick=repo::loadServerChats) {
                             Text("Geschützten Chat-Abruf versuchen")
                         }
@@ -243,12 +243,12 @@ fun NativePrivateChatsPage(repo: QuartinautRepository) {
                         Row(Modifier.padding(16.dp),verticalAlignment=Alignment.CenterVertically) {
                             Box(Modifier.size(45.dp).background(MyBubble,RoundedCornerShape(15.dp)),
                                 contentAlignment=Alignment.Center) {
-                                Icon(Icons.Default.Forum,null,tint=Color.White)
+                                Icon(Icons.Default.Forum,null,tint=MaterialTheme.colorScheme.onSurface)
                             }
                             Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(4.dp)) {
                                 Text(DocString(chat["requestTitle"]).ifBlank{"Unterhaltung"},
-                                    color=Color.White,fontWeight=FontWeight.SemiBold,
+                                    color=MaterialTheme.colorScheme.onSurface,fontWeight=FontWeight.SemiBold,
                                     maxLines=1,overflow=TextOverflow.Ellipsis)
                                 Text(DocString(chat["lastMessagePreview"]).ifBlank{"Noch keine Nachrichten"},
                                     color=ChatMuted,maxLines=2,style=MaterialTheme.typography.bodySmall)

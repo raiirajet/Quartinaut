@@ -1,6 +1,16 @@
 package ch.quartinaut.nativeapp
 
 import android.graphics.Region as AndroidRegion
+import android.graphics.Bitmap
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -148,6 +158,27 @@ fun NativeMunicipalityMap(
     canton: Region, selected: Municipality?,
     onSelect: (Municipality) -> Unit
 ) {
+    val context=LocalContext.current
+    val imageLoader=remember(context) { wappenLoader(context) }
+    var wappenLoading by remember(canton.code) { mutableStateOf(false) }
+    val coats by produceState<Map<String,Bitmap>>(initialValue=emptyMap(),canton.code) {
+        wappenLoading=true
+        val urls=withContext(Dispatchers.IO) { queryCantonWappen(canton) }
+        // Progressive loading: keep the map usable while the coats arrive.
+        val semaphore=Semaphore(6)
+        coroutineScope {
+            urls.map { (bfs,url) ->
+                launch {
+                    semaphore.withPermit {
+                        wappenBitmap(context,imageLoader,url)?.let { image ->
+                            value=value+(bfs to image)
+                        }
+                    }
+                }
+            }.joinAll()
+        }
+        wappenLoading=false
+    }
     val regions by produceState<List<MapMunicipality>?>(initialValue=null,canton.code) {
         value=withContext(Dispatchers.IO) { loadFeatures(canton) }
     }
@@ -196,11 +227,27 @@ fun NativeMunicipalityMap(
                     features.forEach { feature ->
                         val active=feature.bfs==selected?.bfs
                         drawPath(feature.path,if(active)Color(0xFFDBAA39) else Color(0xFF95C7A7))
-                        drawPath(feature.path,Color.White,style=Stroke(if(active)2.5f else 1.25f))
+                        coats[feature.bfs]?.let { bitmap ->
+                            val bounds=feature.path.getBounds()
+                            if(bounds.width>8f && bounds.height>8f) {
+                                drawIntoCanvas { canvas ->
+                                    val native=canvas.nativeCanvas
+                                    val saved=native.save()
+                                    native.clipPath(feature.path.asAndroidPath())
+                                    native.drawBitmap(bitmap,null,android.graphics.RectF(
+                                        bounds.left,bounds.top,bounds.right,bounds.bottom),null)
+                                    native.restoreToCount(saved)
+                                }
+                            }
+                        }
+                        drawPath(feature.path,
+                            if(active) Color(0xFFFFCD57) else Color.White,
+                            style=Stroke(if(active)2.5f else 1.25f))
                     }
                 }
             }
-            Text("Gemeindegrenzen: vereinfachter Geodatenstand 2025 · Verzeichnis: BFS 2026",
+            Text("Gemeindegrenzen 2025 · BFS-Verzeichnis 2026 · Wappen: Wikimedia Commons" +
+                (if(wappenLoading) " (Wappen werden geladen …)" else ""),
                 style=MaterialTheme.typography.labelSmall,color=Color.Gray)
         }
     }
