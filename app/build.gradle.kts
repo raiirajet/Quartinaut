@@ -10,8 +10,8 @@ android {
         applicationId = "ch.quartinaut.nativeapp"
         minSdk = 26
         targetSdk = 35
-        versionCode = 6
-        versionName = "5.5.0-native-preview"
+        versionCode = 7
+        versionName = "5.5.1-native-preview"
     }
     buildTypes {
         release { isMinifyEnabled = false }
@@ -38,6 +38,8 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
     implementation("com.google.zxing:core:3.5.3")
+    // Bundled image label model: genuine offline ML, no server API key.
+    implementation("com.google.mlkit:image-labeling:17.0.9")
     implementation("androidx.compose.material3:material3-window-size-class:1.3.0")
     implementation(platform("com.google.firebase:firebase-bom:33.5.1"))
     implementation("com.google.firebase:firebase-auth")
