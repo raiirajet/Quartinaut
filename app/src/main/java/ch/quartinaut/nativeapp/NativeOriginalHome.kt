@@ -46,7 +46,7 @@ private val links = listOf(
     HomeLink("bulletin","Schwarzes Brett","Gesuche & Angebote","📋","board"),
     HomeLink("inbox","Mitteilungen","Neues und Anfragen","🔔","official"),
     HomeLink("chats","Chats","Privat austauschen","💬","chats"),
-    HomeLink("saved","Favoriten","Gespeicherte Beiträge","⭐","profile"),
+    HomeLink("saved","Favoriten","Gespeicherte Beiträge","⭐","enh-favorites"),
     HomeLink("map","Quartierkarte","Deine Umgebung","📍","map"),
     HomeLink("swissmap","Schweizkarte","Kantone & Gemeinden","🇨🇭","map")
 )
