@@ -61,7 +61,7 @@ private fun ItemAction(label: String, description: String,
                        icon: androidx.compose.ui.graphics.vector.ImageVector,
                        action: () -> Unit) {
     Card(Modifier.fillMaxWidth().clickable(onClick=action),
-        colors=CardDefaults.cardColors(containerColor=Color.White),
+        colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),
         elevation=CardDefaults.cardElevation(2.dp)) {
         Row(Modifier.padding(15.dp),verticalAlignment=Alignment.CenterVertically) {
             Icon(icon,null,tint=FieldGreen,modifier=Modifier.size(29.dp))
@@ -191,7 +191,7 @@ fun NativeHubDetail(
                 color=MaterialTheme.colorScheme.error)
         }
         NativeProtectedGallery(repo,paths)
-        Card(colors=CardDefaults.cardColors(containerColor=Color.White)) {
+        Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)) {
             Column(Modifier.padding(17.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
                 Text(DocString(item["description"]))
                 if(item["priceChf"]!=null) Text("CHF " + DocString(item["priceChf"]),
@@ -264,7 +264,7 @@ fun NativeHubDetail(
             if(showComments) {
                 if(comments.isEmpty()) Text("Noch keine sichtbaren Kommentare.")
                 comments.forEach { entry ->
-                    Card(colors=CardDefaults.cardColors(containerColor=Color.White)) {
+                    Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)) {
                         Column(Modifier.fillMaxWidth().padding(12.dp)) {
                             Text(DocString(entry["authorName"]),fontWeight=FontWeight.SemiBold)
                             Text(DocString(entry["text"]))
@@ -308,7 +308,7 @@ fun NativeRequestDetail(
         Text(doc.str("category") + " · " + doc.str("area"),
             style=MaterialTheme.typography.bodySmall)
         NativeProtectedGallery(repo,paths)
-        Card(colors=CardDefaults.cardColors(containerColor=Color.White)) {
+        Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)) {
             Text(doc.str("text").ifBlank{doc.str("description")},
                 modifier=Modifier.padding(16.dp))
         }
@@ -335,7 +335,7 @@ fun NativeRequestDetail(
         }) { Text(if(showComments) "Kommentare ausblenden" else "Kommentare anzeigen") }
         if(showComments) {
             comments.forEach { entry ->
-                Card(colors=CardDefaults.cardColors(containerColor=Color.White)) {
+                Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)) {
                     Column(Modifier.fillMaxWidth().padding(12.dp)) {
                         Text(DocString(entry["authorName"]),fontWeight=FontWeight.Bold)
                         Text(DocString(entry["text"]))
