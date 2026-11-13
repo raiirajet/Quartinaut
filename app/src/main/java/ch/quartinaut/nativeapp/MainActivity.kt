@@ -155,6 +155,7 @@ private fun QuartinautApp(repo: QuartinautRepository,
         "hub-detail" -> "Quartier+"
         "request-detail" -> "Anliegen"
         "create-request" -> "Anliegen erstellen"
+        "create-offer" -> "Hilfe anbieten"
         else -> "Quartinaut"
     }
     Scaffold(
@@ -256,7 +257,8 @@ private fun QuartinautApp(repo: QuartinautRepository,
                 "chats" -> ChatsPage(repo)
                 "profile" -> ProfilePage(repo, navTo)
                 "create" -> NativeNewChooser(navTo)
-                "create-request" -> CreateRequestPage(repo, navTo)
+                "create-request" -> CreateRequestPage(repo, navTo, initialKind="Suche")
+                "create-offer" -> CreateRequestPage(repo, navTo, initialKind="Biete")
                 "request-detail" -> selectedRequest?.let { doc ->
                     NativeRequestDetail(repo,doc,{page="board"},{repo.openRequestChat(doc){page="chats"}})
                 }
@@ -522,11 +524,12 @@ private val Categories = listOf("Alltagshilfe","Kinder","Werkzeug","Mobilität",
     "Information","Notfall","Gesundheit","Seniorenhilfe","Digitalhilfe","Wohnen",
     "Bildung","Nachhaltigkeit","Firmen / Arbeit")
 @Composable
-private fun CreateRequestPage(repo: QuartinautRepository, go: (String) -> Unit) = ScrollPage {
+private fun CreateRequestPage(repo: QuartinautRepository, go: (String) -> Unit,
+    initialKind:String = "Suche") = ScrollPage {
     var title by remember { mutableStateOf("") }
     var body by remember { mutableStateOf("") }
     var category by remember { mutableStateOf(Categories.first()) }
-    var kind by remember { mutableStateOf("Suche") }
+    var kind by remember(initialKind) { mutableStateOf(initialKind) }
     var urgency by remember { mutableStateOf("Diese Woche") }
     var categoryExpanded by remember { mutableStateOf(false) }
     SectionTitle("Neues Anliegen", "Einträge werden gemäss deinen Quartinaut-Rechten zur Prüfung eingereicht.")
