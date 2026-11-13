@@ -391,8 +391,17 @@ private fun BulletinPage(repo: QuartinautRepository, go: (String) -> Unit) {
         }
         LazyColumn(verticalArrangement=Arrangement.spacedBy(10.dp)) {
             items(rows,key={it.id}) { doc ->
-                Panel(doc.title(), doc.str("text"),
-                    doc.str("category") + " · " + doc.str("area") + " · " + doc.str("status"))
+                Column {
+                    Panel(doc.title(), doc.str("text"),
+                        doc.str("category") + " · " + doc.str("area") + " · " + doc.str("status"))
+                    if (doc.str("uid") != repo.user?.uid && doc.str("status") == "offen") {
+                        TextButton(onClick = { repo.openRequestChat(doc) { go("chats") } }) {
+                            Icon(Icons.AutoMirrored.Filled.Chat, null)
+                            Spacer(Modifier.width(6.dp))
+                            Text("Private Nachricht schreiben")
+                        }
+                    }
+                }
             }
             if(rows.isEmpty()) item { Text("Keine passenden Anliegen gefunden.") }
         }
