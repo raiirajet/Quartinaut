@@ -37,24 +37,51 @@ private val SwissScheme = lightColorScheme(
     surfaceVariant = SoftGreen, onSurface = Color(0xFF183127)
 )
 
+private val SwissDarkScheme = darkColorScheme(
+    primary = Color(0xFF87D5AE), onPrimary = Color(0xFF123624),
+    background=Color(0xFF101C16), surface=Color(0xFF1D2D24),
+    surfaceVariant=Color(0xFF294739)
+)
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             val repository = remember { QuartinautRepository(applicationContext) }
-            MaterialTheme(colorScheme = SwissScheme) {
-                QuartinautApp(repository)
+            val prefs = remember {
+                applicationContext.getSharedPreferences("quartinaut_android", MODE_PRIVATE)
+            }
+            var dark by remember { mutableStateOf(prefs.getBoolean("dark",false)) }
+            MaterialTheme(colorScheme = if(dark) SwissDarkScheme else SwissScheme) {
+                QuartinautApp(repository,dark) { next ->
+                    dark=next
+                    prefs.edit().putBoolean("dark",next).apply()
+                }
             }
         }
     }
 }
 
 @Composable
-private fun QuartinautApp(repo: QuartinautRepository) {
+private fun QuartinautApp(repo: QuartinautRepository,
+    dark: Boolean, updateDark: (Boolean) -> Unit) {
     var page by remember { mutableStateOf("home") }
     var selectedHubItem by remember { mutableStateOf<Map<String,Any?>>(emptyMap()) }
     var selectedRequest by remember { mutableStateOf<DocumentSnapshot?>(null) }
     val authUser = repo.user
+    var appliedHome by remember(authUser?.uid) { mutableStateOf(false) }
+    LaunchedEffect(authUser?.uid) {
+        if(authUser != null) repo.loadCommunitySettings()
+    }
+    LaunchedEffect(repo.communitySettings,authUser?.uid) {
+        if(!appliedHome && authUser != null && repo.communitySettings.isNotEmpty()) {
+            page = when(DocString(repo.communitySettings["homeView"])) {
+                "hub" -> "plus"; "bulletin" -> "board"
+                "events" -> "calendar"; "inbox" -> "official"
+                "chats" -> "chats"; else -> "home"
+            }
+            appliedHome=true
+        }
+    }
     val notice = repo.message
     if (notice.isNotBlank()) {
         AlertDialog(onDismissRequest = repo::clearMessage,
@@ -121,6 +148,12 @@ private fun QuartinautApp(repo: QuartinautRepository) {
         "v50loans" -> "Ausleih-Kalender"
         "v50associations" -> "Anmeldungen"
         "search" -> "Suche"
+        "settings" -> "Einstellungen"
+        "admin" -> "Verwaltung"
+        "help" -> "Hilfe & Datenschutz"
+        "hub-detail" -> "Quartier+"
+        "request-detail" -> "Anliegen"
+        "create-request" -> "Anliegen erstellen"
         else -> "Quartinaut"
     }
     Scaffold(
@@ -139,6 +172,9 @@ private fun QuartinautApp(repo: QuartinautRepository) {
                         modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                     IconButton(onClick = { page = "search" }) {
                         Icon(Icons.Default.Search, "Suchen", tint = Color.White)
+                    }
+                    IconButton(onClick = { page = "settings" }) {
+                        Icon(Icons.Default.Settings, "Einstellungen", tint = Color.White)
                     }
                 }
             }
@@ -188,6 +224,9 @@ private fun QuartinautApp(repo: QuartinautRepository) {
                 "issue" -> HubItemsPage(repo, "issue", navTo, openHub)
                 "v50market", "v50loans", "v50associations" -> V50Page(repo, page)
                 "search" -> SearchPage(repo, navTo)
+                "settings" -> NativeSettingsScreen(repo,dark,updateDark,navTo)
+                "admin" -> NativeAdminScreen(repo,navTo)
+                "help" -> NativeHelpScreen()
                 else -> {
                     if(page.startsWith("hub-create:")) {
                         NativeCreateHubPage(repo,page.substringAfter(":")) { navTo("plus") }
@@ -586,6 +625,12 @@ private fun ProfilePage(repo: QuartinautRepository, go:(String)->Unit) = ScrollP
         "Rolle: " + DocString(repo.profile["role"]))
     Feature("Schweiz entdecken","Kantone und Gemeinden",
         { Icon(Icons.Default.Map,null,tint=Forest) }) { go("map") }
+    Feature("Einstellungen","Startseite, Themen und Design",
+        { Icon(Icons.Default.Settings,null,tint=Forest) }) { go("settings") }
+    Feature("Hilfe & Datenschutz","Funktionen und Sicherheit",
+        { Icon(Icons.Default.HelpOutline,null,tint=Forest) }) { go("help") }
+    if(repo.isAdmin()) Feature("Verwaltung","Quartier+-Freigaben",
+        { Icon(Icons.Default.AdminPanelSettings,null,tint=Forest) }) { go("admin") }
     OutlinedButton(onClick=repo::refreshUser,modifier=Modifier.fillMaxWidth()) { Text("Profil aktualisieren") }
     Button(onClick=repo::logout,modifier=Modifier.fillMaxWidth()) { Text("Abmelden") }
 }
