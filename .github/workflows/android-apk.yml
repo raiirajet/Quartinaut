@@ -36,6 +36,18 @@ jobs:
         run: bash scripts/sync-original-assets.sh
       - name: Assemble debug APK (native)
         run: gradle :app:assembleDebug --no-daemon --stacktrace
+      - name: Package native Android Studio sources and original images
+        run: |
+          zip -q -r Quartinaut_Native_Quellcode.zip \
+            README.md ANDROID_STATUS.md .gitignore \
+            settings.gradle.kts build.gradle.kts gradle.properties \
+            scripts app/build.gradle.kts app/src
+      - name: Upload native source ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: Quartinaut-Native-Quellcode
+          path: Quartinaut_Native_Quellcode.zip
+          retention-days: 30
       - name: Upload installable APK
         if: success()
         uses: actions/upload-artifact@v4
