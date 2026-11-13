@@ -35,6 +35,7 @@ class QuartinautRepository(context: Context) {
     private val db: FirebaseFirestore
     private val functions: FirebaseFunctions
     private val subscriptions = mutableListOf<ListenerRegistration>()
+    private var activeChatListener: ListenerRegistration? = null
     private val registrationPrefs = context.getSharedPreferences("quartinaut_native_pending", Context.MODE_PRIVATE)
     private var finishingRegistration = false
     var user by mutableStateOf<FirebaseUser?>(null)
@@ -96,6 +97,8 @@ class QuartinautRepository(context: Context) {
             if (user?.uid != next?.uid) {
                 subscriptions.forEach { sub -> sub.remove() }
                 subscriptions.clear()
+                activeChatListener?.remove()
+                activeChatListener = null
                 user = next
                 profile = emptyMap()
                 requests = emptyList(); alerts = emptyList(); notices = emptyList()
@@ -432,15 +435,33 @@ class QuartinautRepository(context: Context) {
         }.addOnFailureListener(::fail)
     }
     fun openChat(chat: DocumentSnapshot) {
+        activeChatListener?.remove()
+        activeChatListener = null
         chatId = chat.id
         messages = emptyList()
         val uid = user?.uid ?: return
-        observe(db.collection("chatMessages").whereEqualTo("chatId", chat.id)
-            .orderBy("createdAt", Query.Direction.ASCENDING)) { docs ->
-            messages = docs.filter { it.get("participants") is List<*> && (it.get("participants") as List<*>).contains(uid) }
-        }
+        val openedChatId = chat.id
+        activeChatListener = db.collection("chatMessages")
+            .whereEqualTo("chatId", openedChatId)
+            .orderBy("createdAt", Query.Direction.ASCENDING)
+            .limit(250)
+            .addSnapshotListener { snapshots, error ->
+                if(user?.uid != uid || chatId != openedChatId) return@addSnapshotListener
+                if(error != null) {
+                    message = error.localizedMessage ?: "Chatnachrichten konnten nicht geladen werden."
+                    return@addSnapshotListener
+                }
+                messages = (snapshots?.documents ?: emptyList()).filter {
+                    (it.get("participants") as? List<*>)?.contains(uid) == true
+                }
+            }
     }
-    fun closeChat() { chatId = ""; messages = emptyList() }
+    fun closeChat() {
+        activeChatListener?.remove()
+        activeChatListener = null
+        chatId = ""
+        messages = emptyList()
+    }
     fun sendChat(text: String, onSent: () -> Unit = {}) {
         val uid = user?.uid ?: return
         val chat = chats.find { it.id == chatId } ?: return
