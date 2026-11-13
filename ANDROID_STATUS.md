@@ -41,3 +41,13 @@ Keine WebView oder Website-Oberfläche. Keinerlei ungeprüfte Regeländerung an 
 **Achtung:** Der aktuelle Debug-Build benutzt die vorhandene Produktions-Firebase-Konfiguration für die Kommunikation; Testeinträge können echte Daten erzeugen. Die Einrichtung einer eigenen Android-App in der Firebase-Konsole ist **vor Veröffentlichung erforderlich**. Prüfungen des GitHub-Kotlin-Builds beweisen Kompilierbarkeit, nicht fehlerfreie Anwendung auf echten Geräten.
 
 Gemeindegrenzen: vereinfachter Stand 01.01.2025, Quelle `samkhavandi/Swiss_Geography_Look_Ups`; Namen/BFS: 05.11.2026. Bei Fusionen können Grenze und Gemeindeliste auseinanderfallen. Offizielle Kanton-/Gemeindewappen sind noch nicht als eigenständige Assets eingebunden.
+
+## Nachträge 5.4.1 Preview
+
+- Neuer nativer Dashboard-Hintergrund mit Bildauswahl, Vorschau und Löschbestätigung. **Server-Funktion vorbereitet, noch nicht deployed**, daher vorerst kein geräteübergreifender Produktivbetrieb.
+- Verifizierte Benutzer können nach Freigabe der Cloud Function nur den Hintergrund des eigenen Kontos speichern/lesen. Firestore-Metadaten werden nicht direkt an Android ausgeliefert.
+- Neue serverseitige Quoten, Bildformatvalidierung, Entfernung von Metadaten und eine feste private Storage-Objektstruktur.
+- Chats beenden alte Firestore-Abonnements beim Wechseln. Eingaben werden erst nach erfolgreichem Schreiben gelöscht.
+- Anliegenformular verlässt die Seite erst nach bestätigtem Speichern; Alarmanzeige schliesst fremde Kantone aus.
+- Web-Preview für kompatiblen Serverhintergrund ist separat verfügbar; lokal gespeicherte Fotos werden nicht automatisch in die Cloud migriert.
+- Weiterhin offen: vollständig validierter Firebase-Live-Stand, Registrierungs-/Admin-Ende-zu-Ende-Test, signiertes Produktionsrelease, FCM und alle Spezialfunktionen. Siehe Audit-Datei.
