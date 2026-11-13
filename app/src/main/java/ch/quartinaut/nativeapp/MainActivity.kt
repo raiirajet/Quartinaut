@@ -151,55 +151,106 @@ private fun QuartinautApp(repo: QuartinautRepository,
         "settings" -> "Einstellungen"
         "admin" -> "Verwaltung"
         "help" -> "Hilfe & Datenschutz"
+        "diagnostics" -> "Verbindungsdiagnose"
         "hub-detail" -> "Quartier+"
         "request-detail" -> "Anliegen"
         "create-request" -> "Anliegen erstellen"
         else -> "Quartinaut"
     }
     Scaffold(
-        topBar = {
-            Surface(shadowElevation = 3.dp, color = Forest) {
-                Row(Modifier.fillMaxWidth().height(60.dp).padding(horizontal = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically) {
-                    if (page !in listOf("home", "board", "plus", "chats", "profile"))
-                        IconButton(onClick = { page = "plus" }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Zurück", tint = Color.White)
+        // Android 15/16 enforce edge-to-edge. The previous build let the
+        // custom header draw behind the status bar, as seen in the screenshot.
+        // Reserve real system insets for BOTH header and bottom navigation.
+        modifier=Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing),
+        contentWindowInsets=WindowInsets(0,0,0,0),
+        containerColor=if(page=="home") Color(0xFF101F19) else MaterialTheme.colorScheme.background,
+        topBar={
+            Surface(color=Color(0xFF173E31),shadowElevation=2.dp) {
+                Row(Modifier.fillMaxWidth().height(70.dp).padding(horizontal=12.dp),
+                    verticalAlignment=Alignment.CenterVertically) {
+                    if(page !in listOf("home","plus","create","chats","profile")) {
+                        IconButton(onClick={page="home"},modifier=Modifier.size(34.dp)) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription="Zur Startseite",tint=Color.White)
                         }
-                    QuartinautLogo(modifier=Modifier.size(width=42.dp,height=44.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(if(page == "home") "Quartinaut" else title,
-                        color = Color.White, style = MaterialTheme.typography.titleLarge,
-                        modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    IconButton(onClick = { page = "search" }) {
-                        Icon(Icons.Default.Search, "Suchen", tint = Color.White)
+                        Spacer(Modifier.width(5.dp))
                     }
-                    IconButton(onClick = { page = "settings" }) {
-                        Icon(Icons.Default.Settings, "Einstellungen", tint = Color.White)
+                    QuartinautLogo(modifier=Modifier.size(52.dp))
+                    Spacer(Modifier.width(9.dp))
+                    Text(if(page=="home") "Quartinaut" else title,
+                        color=Color.White,style=MaterialTheme.typography.titleLarge,
+                        maxLines=1,overflow=TextOverflow.Ellipsis,
+                        modifier=Modifier.weight(1f))
+                    if(page=="home") {
+                        val context=LocalContext.current
+                        IconButton(onClick={
+                            context.startActivity(Intent(Intent.ACTION_VIEW,
+                                Uri.parse("https://quartinaut.web.app")))
+                        },modifier=Modifier.size(40.dp)) {
+                            Icon(Icons.Default.DesktopWindows,
+                                contentDescription="Website im Browser öffnen",
+                                tint=Color.White)
+                        }
+                        IconButton(onClick={page="official"},modifier=Modifier.size(40.dp)) {
+                            Icon(Icons.Default.NotificationsNone,
+                                contentDescription="Mitteilungen öffnen",tint=Color.White)
+                        }
+                    } else {
+                        IconButton(onClick={page="search"},modifier=Modifier.size(40.dp)) {
+                            Icon(Icons.Default.Search,contentDescription="Suche",tint=Color.White)
+                        }
+                    }
+                    IconButton(onClick={page="profile"},modifier=Modifier.size(40.dp)) {
+                        Icon(Icons.Default.PersonOutline,contentDescription="Profil öffnen",
+                            tint=Color.White)
                     }
                 }
             }
         },
-        bottomBar = {
-            NavigationBar(containerColor = Color.White, tonalElevation = 5.dp) {
-                listOf(
-                    Triple("home","Start","start"),
-                    Triple("plus","Quartier+","quartier"),
-                    Triple("create","Neu","neu"),
-                    Triple("chats","Chats","chats"),
-                    Triple("profile","Profil","profil")
-                ).forEach { (route,label,asset) ->
-                    NavigationBarItem(selected = page == route,
-                        onClick = { navTo(route) },
-                        icon = { OriginalNavigationIcon(asset,Modifier.size(37.dp)) },
-                        label = { Text(label, maxLines = 1) },
-                        alwaysShowLabel = true)
+        bottomBar={
+            val routes=listOf(
+                Triple("home","Start","start"),
+                Triple("plus","Quartier+","quartier"),
+                Triple("create","Neu","neu"),
+                Triple("chats","Chats","chats"),
+                Triple("profile","Profil","profil")
+            )
+            Box(Modifier.fillMaxWidth().background(
+                if(page=="home") Color(0xFF101F19) else MaterialTheme.colorScheme.background)
+                .padding(horizontal=11.dp,vertical=4.dp)) {
+                Row(Modifier.fillMaxWidth().height(78.dp)
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(Color(0xFF091D18))
+                    .border(1.dp,Color(0xFF517564),RoundedCornerShape(28.dp))
+                    .padding(horizontal=6.dp,vertical=4.dp),
+                    verticalAlignment=Alignment.CenterVertically) {
+                    routes.forEach { (route,label,asset) ->
+                        val active=page==route || (route=="plus" &&
+                            page in listOf("board","market","lend","group","calendar"))
+                        val selectedColor=if(active) Color(0xFF174A36) else Color.Transparent
+                        Column(Modifier.weight(1f).fillMaxHeight()
+                            .padding(horizontal=2.dp)
+                            .clip(RoundedCornerShape(22.dp))
+                            .background(selectedColor)
+                            .then(if(active) Modifier.border(1.dp,
+                                Color(0xFF68C78A),RoundedCornerShape(22.dp))
+                                else Modifier)
+                            .clickable { navTo(route) },
+                            verticalArrangement=Arrangement.Center,
+                            horizontalAlignment=Alignment.CenterHorizontally) {
+                            OriginalNavigationIcon(asset,Modifier.size(if(active)43.dp else 40.dp))
+                            Text(label,color=Color.White,
+                                style=MaterialTheme.typography.labelSmall,
+                                maxLines=1,overflow=TextOverflow.Ellipsis)
+                        }
+                    }
                 }
             }
         }
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
             when(page) {
-                "home" -> DashboardPage(repo, navTo)
+                "home" -> NativeOriginalHome(repo, navTo)
                 "board" -> BulletinPage(repo, navTo, openRequest)
                 "plus" -> HubPage(repo, navTo)
                 "chats" -> ChatsPage(repo)
@@ -229,10 +280,11 @@ private fun QuartinautApp(repo: QuartinautRepository,
                 "settings" -> NativeSettingsScreen(repo,dark,updateDark,navTo)
                 "admin" -> NativeAdminScreen(repo,navTo)
                 "help" -> NativeHelpScreen()
+                "diagnostics" -> NativeSyncDiagnostics(repo)
                 else -> {
                     if(page.startsWith("hub-create:")) {
                         NativeCreateHubPage(repo,page.substringAfter(":")) { navTo("plus") }
-                    } else DashboardPage(repo,navTo)
+                    } else NativeOriginalHome(repo,navTo)
                 }
             }
             if (repo.busy) LinearProgressIndicator(Modifier.fillMaxWidth().align(Alignment.TopCenter))
