@@ -5,7 +5,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.google.firebase.FirebaseApp
-import com.google.firebase.FirebaseOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.DocumentSnapshot
@@ -30,6 +29,7 @@ fun DocString(any: Any?): String = any?.toString() ?: ""
 fun isoNow(): String = Instant.now().toString()
 
 class QuartinautRepository(context: Context) {
+    private val appContext = context.applicationContext
     private val firebase: FirebaseApp
     val auth: FirebaseAuth
     private val db: FirebaseFirestore
@@ -106,16 +106,9 @@ class QuartinautRepository(context: Context) {
         private set
 
     init {
-        // The web config is a public Firebase project identifier, not a secret.
-        // Register a dedicated Android app in Firebase before production distribution.
-        val apps = FirebaseApp.getApps(context)
-        firebase = apps.firstOrNull { it.name == FirebaseApp.DEFAULT_APP_NAME }
-            ?: FirebaseApp.initializeApp(context, FirebaseOptions.Builder()
-                .setApplicationId("1:815175119171:web:bf5ffa78acafeee2e23ff6")
-                .setApiKey("AIzaSyCHjuUe-QYCMFrrHImL_XEaVo5ifDw9-DM")
-                .setProjectId("quartinaut")
-                .setStorageBucket("quartinaut.firebasestorage.app")
-                .setGcmSenderId("815175119171").build())
+        // QuartinautApplication initializes the dedicated Android Firebase app
+        // from app/google-services.json before repositories use any SDK.
+        firebase = FirebaseApp.getInstance()
         auth = FirebaseAuth.getInstance(firebase)
         db = FirebaseFirestore.getInstance(firebase)
         functions = FirebaseFunctions.getInstance(firebase, "europe-west6")
@@ -335,7 +328,20 @@ class QuartinautRepository(context: Context) {
             else message = it.exception?.localizedMessage ?: "Aktualisieren fehlgeschlagen."
         }
     }
-    fun logout() { auth.signOut() }
+    fun logout() {
+        PushTokenRegistrar.deactivate(appContext) { auth.signOut() }
+    }
+
+    fun enablePush() {
+        busy = true
+        PushTokenRegistrar.sync(appContext) { result ->
+            busy = false
+            message = result.fold(
+                onSuccess = { "Android-Pushmeldungen sind auf diesem Gerät aktiviert." },
+                onFailure = { it.localizedMessage ?: "Pushregistrierung fehlgeschlagen." }
+            )
+        }
+    }
     private fun loadProfile(uid: String) {
         subscriptions.add(db.collection("users").document(uid).addSnapshotListener { snapshot, err ->
             if (auth.currentUser?.uid != uid) return@addSnapshotListener
@@ -347,6 +353,7 @@ class QuartinautRepository(context: Context) {
             val wasEmpty = profile.isEmpty()
             profile = snapshot.data ?: emptyMap()
             if (wasEmpty && active()) {
+                PushTokenRegistrar.sync(appContext)
                 restorePublicCache(uid)
                 startListening(uid)
                 loadDashboardBackground()
@@ -360,242 +367,7 @@ class QuartinautRepository(context: Context) {
             if (e != null) {
                 syncIssues = syncIssues + (label to
                     (e.localizedMessage ?: "Zugriff verweigert."))
-                android.util.Log.w("QuartinautSync", "Firestore feed: " + label, e)
-                if (label == "Private Chats") {
-                    loadServerChats()
-                }
-                return@addSnapshotListener
-            }
-            if(label in syncIssues) syncIssues = syncIssues - label
-            if(label=="Private Chats") {
-                serverChatReady=false; serverChats=emptyList()
-            }
-            onData(snaps?.documents ?: emptyList())
-        })
-    }
-    private fun startListening(uid: String) {
-        feedSubscriptions.forEach { sub -> sub.remove() }
-        feedSubscriptions.clear()
-        val canton = canton(); val key = areaKey()
-        if (!active() || (canton.isBlank() && !isAdmin())) return
-        feedSubscriptions.add(db.collection("publicStats").document("cantonRegistrations")
-            .addSnapshotListener { snapshot, err ->
-                if(err != null) {
-                    syncIssues=syncIssues + ("Kantonsstatistik" to
-                        (err.localizedMessage ?: "Nicht verfügbar"))
-                } else if(snapshot != null) {
-                    syncIssues=syncIssues - "Kantonsstatistik"
-                    val counts = snapshot.get("cantonCounts") as? Map<*, *>
-                    cantonCounts = counts?.entries?.associate { (key,value) ->
-                        DocString(key).uppercase() to ((value as? Number)?.toInt() ?: 0)
-                    } ?: emptyMap()
-                }
-            })
-        val req = db.collection("requests")
-        if (isAdmin()) {
-            observe("Alle Anliegen (Admin)", req.orderBy("createdAt", Query.Direction.DESCENDING)) { requests = it }
-        } else {
-            observe("Öffentliche Anliegen", req.whereEqualTo("cantonCode", canton).whereEqualTo("status", "offen")
-                .orderBy("createdAt", Query.Direction.DESCENDING)) { publicItems ->
-                requests = (requests.filter { doc -> doc.str("uid") == uid } + publicItems).distinctBy { doc -> doc.id }
-            }
-            observe("Eigene Anliegen", req.whereEqualTo("uid", uid).orderBy("createdAt", Query.Direction.DESCENDING)) { own ->
-                requests = (requests.filter { doc -> doc.str("uid") != uid } + own).distinctBy { doc -> doc.id }
-            }
-        }
-        observe("Gemeinde-Alarme", db.collection("alerts").orderBy("createdAt", Query.Direction.DESCENDING)) { alerts = it }
-        if (isAdmin()) {
-            observe("Alle Mitteilungen (Admin)", db.collection("officialNotices").orderBy("createdAt", Query.Direction.DESCENDING)) { notices = it }
-        } else {
-            observe("Gemeindemitteilungen", db.collection("officialNotices").whereEqualTo("cantonCode", canton)
-                .whereEqualTo("status", "online").orderBy("createdAt", Query.Direction.DESCENDING)) { notices = it }
-        }
-        observe("Private Chats", db.collection("chats").whereArrayContains("participants", uid)
-            .orderBy("lastMessageAt", Query.Direction.DESCENDING)) { chats = it }
-        loadHub()
-    }
-    fun loadHub() {
-        if (user == null || !active()) return
-        functions.getHttpsCallable("quartinautHub").call(mapOf("action" to "list"))
-            .addOnSuccessListener { result ->
-                val raw = (result.data as? Map<*, *>)?.get("items") as? List<*> ?: emptyList<Any>()
-                hubItems = raw.mapNotNull { item ->
-                    (item as? Map<*, *>)?.entries?.associate { DocString(it.key) to it.value }
-                }
-                cachePublicHubItems()
-            }.addOnFailureListener { e ->
-                syncIssues = syncIssues + ("Quartier+" to
-                    (e.localizedMessage ?: "Quartier+ nicht erreichbar"))
-            }
-    }
-    fun loadV50(action: String) {
-        if (user == null || !active()) return
-        v50Items = emptyList()
-        functions.getHttpsCallable("quartinautV50").call(mapOf("action" to action))
-            .addOnSuccessListener { result ->
-                val raw = result.data as? Map<*, *>
-                val items = (raw?.get("entries") ?: raw?.get("items")) as? List<*> ?: emptyList<Any>()
-                v50Items = items.mapNotNull { (it as? Map<*, *>)?.entries?.associate { e ->
-                    DocString(e.key) to e.value
-                } }
-            }.addOnFailureListener(::fail)
-    }
-    fun v50Action(action: String, data: Map<String, Any?>) {
-        busy = true
-        functions.getHttpsCallable("quartinautV50").call(data + ("action" to action))
-            .addOnCompleteListener {
-                busy = false
-                if (!it.isSuccessful) message = it.exception?.localizedMessage ?: "Aktion fehlgeschlagen."
-                else { message = "Aktion gespeichert."; val kind = action.substringBefore(".")
-                    loadV50(when(kind) { "loan" -> "loan.list"; "market" -> "market.list"; "association" -> "association.list"; else -> "calendar.list" })
-                }
-            }
-    }
-    fun createRequest(title: String, description: String, category: String, kind: String,
-                      urgency: String, onCreated: () -> Unit = {},
-                      photoPaths: List<String> = emptyList()) {
-        val uid = user?.uid ?: return
-        if (title.trim().length < 4 || description.trim().length < 5) {
-            message = "Bitte Titel und Beschreibung ausfüllen."; return
-        }
-        val now = isoNow()
-        val hours = when (urgency) { "Heute" -> 24L; "Morgen" -> 48L; "Diese Woche" -> 168L; else -> 336L }
-        val id = "req_" + UUID.randomUUID().toString().replace("-", "")
-        val status = if (isAdmin()) "offen" else "wartet_freigabe"
-        val data = hashMapOf<String, Any>(
-            "id" to id, "tenantId" to "quartinaut", "uid" to uid,
-            "authorId" to uid, "type" to kind, "category" to category,
-            "title" to title.trim(), "text" to description.trim(),
-            "urgency" to urgency, "area" to area(), "areaKey" to areaKey(),
-            "cantonCode" to canton(), "authorName" to displayName(),
-            "author" to displayName().take(2).uppercase(),
-            "authorRole" to "resident", "authorVerified" to (profile["verified"] == true),
-            "authorAccountType" to DocString(profile["accountType"]).ifBlank { "resident" },
-            "status" to status, "anonymousOffer" to false, "radiusKm" to 15,
-            "createdAt" to now, "submittedAt" to now,
-            "expiresAt" to Instant.now().plusSeconds(hours * 3600).toString(),
-            "reports" to 0, "recurringMode" to "einmalig", "escalationLevel" to "keine",
-            "photoPaths" to photoPaths)
-        busy = true
-        db.collection("requests").document(id).set(data).addOnCompleteListener {
-            busy = false
-            if (it.isSuccessful) {
-                message = "Eintrag gespeichert – " + (if (status == "offen") "veröffentlicht." else "wartet auf Freigabe.")
-                onCreated()
-            } else {
-                message = it.exception?.localizedMessage ?: "Speichern fehlgeschlagen."
-            }
-        }
-    }
-    fun openRequestChat(request: DocumentSnapshot, onOpen: () -> Unit) {
-        if(serverChatReady) {
-            startServerRequestChat(request,onOpen)
-            return
-        }
-        val current = user?.uid ?: return
-        val owner = request.str("uid").ifBlank { request.str("authorId") }
-        if (owner.isBlank() || owner == current) {
-            message = "Für eigene Anliegen findest du Antworten unter deinen Chats."; return
-        }
-        val users = listOf(current, owner).sorted()
-        fun safe(value: String) = value.replace(Regex("[^a-zA-Z0-9_-]"),"").take(80).ifBlank { "x" }
-        val id = "chat_" + safe(request.id) + "_" + users.joinToString("_") { safe(it) }
-        val ref = db.collection("chats").document(id)
-        ref.get().addOnSuccessListener { existing ->
-            if (existing.exists()) {
-                openChat(existing);onOpen()
-            } else {
-                val now = isoNow()
-                val payload = mapOf<String, Any>(
-                    "id" to id, "requestId" to request.id, "requestTitle" to request.title(),
-                    "requestOwnerUid" to owner, "participants" to users,
-                    "participantLabels" to mapOf(current to displayName(), owner to
-                        request.str("authorName").ifBlank { "Quartiermitglied" }),
-                    "mutedBy" to emptyList<String>(), "readBy" to mapOf(current to now),
-                    "createdAt" to now, "lastMessageAt" to now,
-                    "lastMessagePreview" to "", "lastSenderUid" to ""
-                )
-                ref.set(payload).addOnSuccessListener {
-                    ref.get().addOnSuccessListener { chat ->
-                        openChat(chat); onOpen()
-                    }.addOnFailureListener(::fail)
-                }.addOnFailureListener(::fail)
-            }
-        }.addOnFailureListener(::fail)
-    }
-    fun openChat(chat: DocumentSnapshot) {
-        serverChatActive=false
-        activeChatListener?.remove()
-        activeChatListener = null
-        chatId = chat.id
-        messages = emptyList()
-        val uid = user?.uid ?: return
-        val openedChatId = chat.id
-        activeChatListener = db.collection("chatMessages")
-            .whereEqualTo("chatId", openedChatId)
-            .orderBy("createdAt", Query.Direction.ASCENDING)
-            .limit(250)
-            .addSnapshotListener { snapshots, error ->
-                if(user?.uid != uid || chatId != openedChatId) return@addSnapshotListener
-                if(error != null) {
-                    message = error.localizedMessage ?: "Chatnachrichten konnten nicht geladen werden."
-                    return@addSnapshotListener
-                }
-                messages = (snapshots?.documents ?: emptyList()).filter {
-                    (it.get("participants") as? List<*>)?.contains(uid) == true
-                }
-            }
-    }
-    fun closeChat() {
-        activeChatListener?.remove()
-        activeChatListener = null
-        chatId = ""
-        messages = emptyList()
-        serverMessages=emptyList()
-        serverChatActive=false
-    }
-    fun sendChat(text: String, onSent: () -> Unit = {}) {
-        val uid = user?.uid ?: return
-        val chat = chats.find { it.id == chatId } ?: return
-        if (text.isBlank()) return
-        val participants = (chat.get("participants") as? List<*>)?.map { DocString(it) } ?: return
-        val recipient = participants.firstOrNull { it != uid } ?: return
-        val id = "msg_" + UUID.randomUUID().toString().replace("-", "")
-        val now = isoNow()
-        val data = hashMapOf<String, Any>(
-            "id" to id, "chatId" to chat.id, "requestId" to chat.str("requestId"),
-            "requestTitle" to chat.str("requestTitle"), "requestOwnerUid" to chat.str("requestOwnerUid"),
-            "senderUid" to uid, "recipientUid" to recipient,
-            "participants" to participants, "participantLabels" to (chat.get("participantLabels") ?: emptyMap<String, String>()),
-            "text" to text.trim().take(500), "createdAt" to now, "readAt" to "", "deliveryStatus" to "sent")
-        db.collection("chatMessages").document(id).set(data).addOnCompleteListener {
-            if (!it.isSuccessful) message = it.exception?.localizedMessage ?: "Nachricht fehlgeschlagen."
-            else {
-                onSent()
-                db.collection("chats").document(chat.id).update(mapOf("lastMessageAt" to now,
-                    "lastMessagePreview" to text.take(120), "lastSenderUid" to uid,
-                    "readBy." + uid to now)).addOnFailureListener { e ->
-                    message = "Nachricht gesendet, aber Vorschau konnte nicht synchronisiert werden: " +
-                        (e.localizedMessage ?: "Netzwerkfehler")
-                }
-            }
-        }
-    }
-    /**
-     * Calls existing protected callable APIs. The Android client never writes
-     * to protected community Firestore collections directly.
-     */
-    fun communityAction(
-        action: String, values: Map<String, Any?> = emptyMap(),
-        refreshOnSuccess: Boolean = true,
-        success: ((Map<String, Any?>) -> Unit)? = null
-    ) {
-        if (user == null || !active()) return
-        busy = true
-        functions.getHttpsCallable("quartinautHub").call(values + ("action" to action))
-            .addOnCompleteListener { task ->
-                busy = false
-                if (!task.isSuccessful) {
+                android.util.Log.w("QuartinautSync", "Firestore fe…3170 tokens truncated…isSuccessful) {
                     message = task.exception?.localizedMessage ?: "Quartier+-Aktion fehlgeschlagen."
                 } else {
                     val result = task.result?.data as? Map<*, *> ?: emptyMap<String,Any?>()
@@ -1026,3 +798,4 @@ class QuartinautRepository(context: Context) {
     }
 
 }
+
