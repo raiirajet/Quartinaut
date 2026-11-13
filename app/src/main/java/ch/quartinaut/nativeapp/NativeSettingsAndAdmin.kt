@@ -52,6 +52,8 @@ fun NativeSettingsScreen(repo: QuartinautRepository,dark: Boolean,
             Switch(dark,onCheckedChange=updateDark)
         }
         HorizontalDivider()
+        NativeDashboardBackgroundSettings(repo)
+        HorizontalDivider()
         Text("Meine Startseite",style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
         HomeLabels.forEach { (key,label) ->
             Row(Modifier.fillMaxWidth().clickable {home=key},verticalAlignment=Alignment.CenterVertically) {
