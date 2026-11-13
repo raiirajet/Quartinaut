@@ -1,0 +1,1012 @@
+{
+  "capturedAt": "2026-11-13T15:25:00+01:00",
+  "projectId": "quartinaut",
+  "database": "(default)",
+  "privacy": "Only collection names, field names/types, sample sizes and aggregate role counts; no document IDs or field values.",
+  "collectionCount": 16,
+  "collections": {
+    "auditLog": {
+      "sampleDocuments": 4,
+      "hasMore": false,
+      "fields": {
+        "action": [
+          "string"
+        ],
+        "actorEmail": [
+          "string"
+        ],
+        "actorLabel": [
+          "string"
+        ],
+        "actorUid": [
+          "string"
+        ],
+        "area": [
+          "string"
+        ],
+        "createdAt": [
+          "string"
+        ],
+        "detail": [
+          "string"
+        ],
+        "id": [
+          "string"
+        ],
+        "targetEmail": [
+          "string"
+        ],
+        "targetId": [
+          "string"
+        ],
+        "targetLabel": [
+          "string"
+        ],
+        "targetUid": [
+          "string"
+        ]
+      }
+    },
+    "communityHubGroupPosts": {
+      "sampleDocuments": 1,
+      "hasMore": false,
+      "fields": {
+        "authorName": [
+          "string"
+        ],
+        "createdAt": [
+          "string"
+        ],
+        "groupId": [
+          "string"
+        ],
+        "message": [
+          "string"
+        ],
+        "uid": [
+          "string"
+        ]
+      }
+    },
+    "communityHubItems": {
+      "sampleDocuments": 1,
+      "hasMore": false,
+      "fields": {
+        "area": [
+          "string"
+        ],
+        "areaKey": [
+          "string"
+        ],
+        "availability": [
+          "string"
+        ],
+        "cantonCode": [
+          "string"
+        ],
+        "capacity": [
+          "integer"
+        ],
+        "category": [
+          "string"
+        ],
+        "createdAt": [
+          "string"
+        ],
+        "description": [
+          "string"
+        ],
+        "endsAt": [
+          "string"
+        ],
+        "kind": [
+          "string"
+        ],
+        "memberCount": [
+          "integer"
+        ],
+        "mode": [
+          "string"
+        ],
+        "ownerUid": [
+          "string"
+        ],
+        "priceChf": [
+          "null"
+        ],
+        "reservedBy": [
+          "null"
+        ],
+        "reviewedAt": [
+          "string"
+        ],
+        "reviewedBy": [
+          "string"
+        ],
+        "rsvpCount": [
+          "integer"
+        ],
+        "startsAt": [
+          "string"
+        ],
+        "status": [
+          "string"
+        ],
+        "title": [
+          "string"
+        ],
+        "updatedAt": [
+          "string"
+        ],
+        "venue": [
+          "string"
+        ]
+      }
+    },
+    "communityHubQuotas": {
+      "sampleDocuments": 2,
+      "hasMore": false,
+      "fields": {
+        "count": [
+          "integer"
+        ],
+        "day": [
+          "string"
+        ],
+        "kind": [
+          "string"
+        ],
+        "uid": [
+          "string"
+        ],
+        "updatedAt": [
+          "string"
+        ]
+      }
+    },
+    "communityIndexControl": {
+      "sampleDocuments": 1,
+      "hasMore": false,
+      "fields": {
+        "completedAt": [
+          "timestamp"
+        ],
+        "counts": [
+          "map"
+        ],
+        "counts.communityEvents": [
+          "integer"
+        ],
+        "counts.communityHubItems": [
+          "integer"
+        ],
+        "counts.officialNotices": [
+          "integer"
+        ],
+        "counts.requests": [
+          "integer"
+        ],
+        "sources": [
+          "array"
+        ],
+        "sources[]": [
+          "string"
+        ],
+        "startedAt": [
+          "timestamp"
+        ],
+        "status": [
+          "string"
+        ]
+      }
+    },
+    "communitySearchIndex": {
+      "sampleDocuments": 1,
+      "hasMore": false,
+      "fields": {
+        "area": [
+          "string"
+        ],
+        "cantonCode": [
+          "string"
+        ],
+        "category": [
+          "string"
+        ],
+        "indexedAt": [
+          "timestamp"
+        ],
+        "kind": [
+          "string"
+        ],
+        "schema": [
+          "integer"
+        ],
+        "sortAt": [
+          "timestamp"
+        ],
+        "sourceId": [
+          "string"
+        ],
+        "tokens": [
+          "array"
+        ],
+        "tokens[]": [
+          "string"
+        ]
+      }
+    },
+    "communitySocial": {
+      "sampleDocuments": 1,
+      "hasMore": false,
+      "fields": {
+        "id": [
+          "string"
+        ],
+        "kind": [
+          "string"
+        ],
+        "likes": [
+          "integer"
+        ],
+        "updatedAt": [
+          "string"
+        ]
+      }
+    },
+    "communityUserSettings": {
+      "sampleDocuments": 2,
+      "hasMore": false,
+      "fields": {
+        "digest": [
+          "string"
+        ],
+        "homeView": [
+          "string"
+        ],
+        "quietHours": [
+          "boolean"
+        ],
+        "topics": [
+          "array"
+        ],
+        "topics[]": [
+          "string"
+        ],
+        "updatedAt": [
+          "string"
+        ]
+      }
+    },
+    "deviceTokens": {
+      "sampleDocuments": 11,
+      "hasMore": false,
+      "fields": {
+        "active": [
+          "boolean"
+        ],
+        "area": [
+          "string"
+        ],
+        "areaKey": [
+          "string"
+        ],
+        "cantonCode": [
+          "string"
+        ],
+        "createdAt": [
+          "string"
+        ],
+        "displayName": [
+          "string"
+        ],
+        "email": [
+          "string"
+        ],
+        "id": [
+          "string"
+        ],
+        "token": [
+          "string"
+        ],
+        "uid": [
+          "string"
+        ],
+        "updatedAt": [
+          "string"
+        ]
+      }
+    },
+    "notificationPreferences": {
+      "sampleDocuments": 2,
+      "hasMore": false,
+      "fields": {
+        "alerts": [
+          "map"
+        ],
+        "alerts.enabled": [
+          "boolean"
+        ],
+        "alerts.severities": [
+          "array"
+        ],
+        "alerts.severities[]": [
+          "string"
+        ],
+        "area": [
+          "string"
+        ],
+        "areaKey": [
+          "string"
+        ],
+        "bulletin": [
+          "map"
+        ],
+        "bulletin.categories": [
+          "array"
+        ],
+        "bulletin.enabled": [
+          "boolean"
+        ],
+        "bulletin.types": [
+          "array"
+        ],
+        "cantonCode": [
+          "string"
+        ],
+        "chats": [
+          "map"
+        ],
+        "chats.enabled": [
+          "boolean"
+        ],
+        "createdAt": [
+          "string"
+        ],
+        "criticalAlerts": [
+          "boolean"
+        ],
+        "enabled": [
+          "boolean"
+        ],
+        "id": [
+          "string"
+        ],
+        "keywordRules": [
+          "array"
+        ],
+        "officialNotices": [
+          "map"
+        ],
+        "officialNotices.categories": [
+          "array"
+        ],
+        "officialNotices.enabled": [
+          "boolean"
+        ],
+        "officialNotices.priorities": [
+          "array"
+        ],
+        "officialNotices.priorities[]": [
+          "string"
+        ],
+        "quietHours": [
+          "map"
+        ],
+        "quietHours.enabled": [
+          "boolean"
+        ],
+        "quietHours.end": [
+          "string"
+        ],
+        "quietHours.start": [
+          "string"
+        ],
+        "quietHours.timezone": [
+          "string"
+        ],
+        "tenantId": [
+          "string"
+        ],
+        "uid": [
+          "string"
+        ],
+        "updatedAt": [
+          "string"
+        ]
+      }
+    },
+    "publicStats": {
+      "sampleDocuments": 1,
+      "hasMore": false,
+      "fields": {
+        "cantonCounts": [
+          "map"
+        ],
+        "cantonCounts.AG": [
+          "integer"
+        ],
+        "cantonCounts.AI": [
+          "integer"
+        ],
+        "cantonCounts.AR": [
+          "integer"
+        ],
+        "cantonCounts.BE": [
+          "integer"
+        ],
+        "cantonCounts.BL": [
+          "integer"
+        ],
+        "cantonCounts.BS": [
+          "integer"
+        ],
+        "cantonCounts.FR": [
+          "integer"
+        ],
+        "cantonCounts.GE": [
+          "integer"
+        ],
+        "cantonCounts.GL": [
+          "integer"
+        ],
+        "cantonCounts.GR": [
+          "integer"
+        ],
+        "cantonCounts.JU": [
+          "integer"
+        ],
+        "cantonCounts.LU": [
+          "integer"
+        ],
+        "cantonCounts.NE": [
+          "integer"
+        ],
+        "cantonCounts.NW": [
+          "integer"
+        ],
+        "cantonCounts.OW": [
+          "integer"
+        ],
+        "cantonCounts.SG": [
+          "integer"
+        ],
+        "cantonCounts.SH": [
+          "integer"
+        ],
+        "cantonCounts.SO": [
+          "integer"
+        ],
+        "cantonCounts.SZ": [
+          "integer"
+        ],
+        "cantonCounts.TG": [
+          "integer"
+        ],
+        "cantonCounts.TI": [
+          "integer"
+        ],
+        "cantonCounts.UR": [
+          "integer"
+        ],
+        "cantonCounts.VD": [
+          "integer"
+        ],
+        "cantonCounts.VS": [
+          "integer"
+        ],
+        "cantonCounts.ZG": [
+          "integer"
+        ],
+        "cantonCounts.ZH": [
+          "integer"
+        ],
+        "id": [
+          "string"
+        ],
+        "totalUsers": [
+          "integer"
+        ],
+        "updatedAt": [
+          "string"
+        ]
+      }
+    },
+    "pushDeliveries": {
+      "sampleDocuments": 1,
+      "hasMore": false,
+      "fields": {
+        "area": [
+          "string"
+        ],
+        "areaKey": [
+          "string"
+        ],
+        "attemptedAt": [
+          "string"
+        ],
+        "cantonCode": [
+          "string"
+        ],
+        "contentId": [
+          "string"
+        ],
+        "failureCount": [
+          "integer"
+        ],
+        "processingStartedAt": [
+          "string"
+        ],
+        "requested": [
+          "integer"
+        ],
+        "status": [
+          "string"
+        ],
+        "successCount": [
+          "integer"
+        ],
+        "type": [
+          "string"
+        ],
+        "updatedAt": [
+          "string"
+        ]
+      }
+    },
+    "pushTests": {
+      "sampleDocuments": 7,
+      "hasMore": false,
+      "fields": {
+        "area": [
+          "string"
+        ],
+        "areaKey": [
+          "string"
+        ],
+        "cantonCode": [
+          "string"
+        ],
+        "createdAt": [
+          "string"
+        ],
+        "displayName": [
+          "string"
+        ],
+        "email": [
+          "string"
+        ],
+        "id": [
+          "string"
+        ],
+        "status": [
+          "string"
+        ],
+        "tokenHint": [
+          "string"
+        ],
+        "uid": [
+          "string"
+        ],
+        "updatedAt": [
+          "string"
+        ]
+      }
+    },
+    "requests": {
+      "sampleDocuments": 1,
+      "hasMore": false,
+      "fields": {
+        "anonymousOffer": [
+          "boolean"
+        ],
+        "approvedAt": [
+          "string"
+        ],
+        "approvedBy": [
+          "string"
+        ],
+        "area": [
+          "string"
+        ],
+        "areaKey": [
+          "string"
+        ],
+        "author": [
+          "string"
+        ],
+        "authorAccountType": [
+          "string"
+        ],
+        "authorId": [
+          "string"
+        ],
+        "authorName": [
+          "string"
+        ],
+        "authorRole": [
+          "string"
+        ],
+        "authorVerificationLabel": [
+          "string"
+        ],
+        "authorVerificationStatus": [
+          "string"
+        ],
+        "authorVerified": [
+          "boolean"
+        ],
+        "cantonCode": [
+          "string"
+        ],
+        "category": [
+          "string"
+        ],
+        "companyName": [
+          "string"
+        ],
+        "companyPostType": [
+          "string"
+        ],
+        "companyStatus": [
+          "string"
+        ],
+        "createdAt": [
+          "string"
+        ],
+        "escalationLevel": [
+          "string"
+        ],
+        "expiresAt": [
+          "string"
+        ],
+        "geo": [
+          "null"
+        ],
+        "id": [
+          "string"
+        ],
+        "municipalityName": [
+          "string"
+        ],
+        "municipalityStatus": [
+          "string"
+        ],
+        "radiusKm": [
+          "integer"
+        ],
+        "recurringMode": [
+          "string"
+        ],
+        "rejectedAt": [
+          "string"
+        ],
+        "rejectedBy": [
+          "string"
+        ],
+        "rejectionReason": [
+          "string"
+        ],
+        "reports": [
+          "integer"
+        ],
+        "resubmittedAt": [
+          "string"
+        ],
+        "status": [
+          "string"
+        ],
+        "submittedAt": [
+          "string"
+        ],
+        "tenantId": [
+          "string"
+        ],
+        "text": [
+          "string"
+        ],
+        "title": [
+          "string"
+        ],
+        "type": [
+          "string"
+        ],
+        "uid": [
+          "string"
+        ],
+        "updatedAt": [
+          "string"
+        ],
+        "urgency": [
+          "string"
+        ]
+      }
+    },
+    "users": {
+      "sampleDocuments": 4,
+      "hasMore": false,
+      "fields": {
+        "accountStatus": [
+          "string"
+        ],
+        "accountType": [
+          "string"
+        ],
+        "adminScopeArea": [
+          "string"
+        ],
+        "area": [
+          "string"
+        ],
+        "areaKey": [
+          "string"
+        ],
+        "cantonCode": [
+          "string"
+        ],
+        "companyName": [
+          "string"
+        ],
+        "companyPurpose": [
+          "string"
+        ],
+        "companyStatus": [
+          "string"
+        ],
+        "createdAt": [
+          "string"
+        ],
+        "dashboard": [
+          "map"
+        ],
+        "dashboard.collapsed": [
+          "array"
+        ],
+        "dashboard.collapsed[]": [
+          "string"
+        ],
+        "dashboard.hidden": [
+          "array"
+        ],
+        "dashboard.order": [
+          "array"
+        ],
+        "dashboard.order[]": [
+          "string"
+        ],
+        "dashboard.priorityOrder": [
+          "array"
+        ],
+        "dashboard.priorityOrder[]": [
+          "string"
+        ],
+        "dashboard.quickLinks": [
+          "array"
+        ],
+        "dashboard.quickLinks[]": [
+          "string"
+        ],
+        "dashboard.version": [
+          "integer"
+        ],
+        "disabledAt": [
+          "string"
+        ],
+        "disabledBy": [
+          "string"
+        ],
+        "displayName": [
+          "string"
+        ],
+        "email": [
+          "string"
+        ],
+        "hasPushToken": [
+          "boolean"
+        ],
+        "initials": [
+          "string"
+        ],
+        "lastLoginAt": [
+          "string"
+        ],
+        "locale": [
+          "string"
+        ],
+        "location": [
+          "map"
+        ],
+        "location.cantonBfsCode": [
+          "string"
+        ],
+        "location.cantonCode": [
+          "string"
+        ],
+        "location.cantonName": [
+          "string"
+        ],
+        "location.municipalityBfsCode": [
+          "string"
+        ],
+        "location.municipalityName": [
+          "string"
+        ],
+        "municipalityDepartment": [
+          "string"
+        ],
+        "municipalityName": [
+          "string"
+        ],
+        "municipalityStatus": [
+          "string"
+        ],
+        "municipalityWebsite": [
+          "string"
+        ],
+        "notifications": [
+          "boolean"
+        ],
+        "onboarding": [
+          "map"
+        ],
+        "onboarding.checklist": [
+          "map"
+        ],
+        "onboarding.checklist.firstRequestHintSeen": [
+          "boolean"
+        ],
+        "onboarding.checklist.installHintSeen": [
+          "boolean"
+        ],
+        "onboarding.checklist.locationChecked": [
+          "boolean"
+        ],
+        "onboarding.checklist.notificationsChecked": [
+          "boolean"
+        ],
+        "onboarding.checklist.profileChecked": [
+          "boolean"
+        ],
+        "onboarding.checklist.verificationHintSeen": [
+          "boolean"
+        ],
+        "onboarding.completed": [
+          "boolean"
+        ],
+        "onboarding.completedAt": [
+          "string"
+        ],
+        "onboarding.skipped": [
+          "boolean"
+        ],
+        "onboarding.version": [
+          "integer"
+        ],
+        "passkeyReady": [
+          "boolean"
+        ],
+        "role": [
+          "string"
+        ],
+        "titleGrants": [
+          "array"
+        ],
+        "titleGrants[]": [
+          "string"
+        ],
+        "titlePreset": [
+          "string"
+        ],
+        "titleVisible": [
+          "boolean"
+        ],
+        "uid": [
+          "string"
+        ],
+        "updatedAt": [
+          "string"
+        ],
+        "verificationLabel": [
+          "string"
+        ],
+        "verificationStatus": [
+          "string"
+        ],
+        "verified": [
+          "boolean"
+        ]
+      }
+    },
+    "verificationRequests": {
+      "sampleDocuments": 2,
+      "hasMore": false,
+      "fields": {
+        "accountType": [
+          "string"
+        ],
+        "approvedTitleLabel": [
+          "string"
+        ],
+        "approvedTitlePreset": [
+          "string"
+        ],
+        "companyName": [
+          "string"
+        ],
+        "createdAt": [
+          "string"
+        ],
+        "decidedAt": [
+          "string"
+        ],
+        "decidedBy": [
+          "string"
+        ],
+        "displayName": [
+          "string"
+        ],
+        "email": [
+          "string"
+        ],
+        "id": [
+          "string"
+        ],
+        "idPhoto": [
+          "null"
+        ],
+        "method": [
+          "string"
+        ],
+        "note": [
+          "string"
+        ],
+        "photoCleanupPending": [
+          "boolean"
+        ],
+        "photoDeletedAt": [
+          "string"
+        ],
+        "proofType": [
+          "string"
+        ],
+        "registeredName": [
+          "string"
+        ],
+        "status": [
+          "string"
+        ],
+        "uid": [
+          "string"
+        ],
+        "updatedAt": [
+          "string"
+        ]
+      }
+    }
+  },
+  "roleSummary": {
+    "total": 4,
+    "role": {
+      "admin": 1,
+      "resident": 3
+    },
+    "accountType": {
+      "resident": 4
+    },
+    "accountStatus": {
+      "active": 3,
+      "disabled": 1
+    },
+    "verified": {
+      "false": 2,
+      "true": 2
+    },
+    "verificationStatus": {
+      "none": 2,
+      "verified": 2
+    },
+    "municipalityStatus": {
+      "none": 4
+    }
+  }
+}

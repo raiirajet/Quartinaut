@@ -1,0 +1,35 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && (
+          request.auth.token.admin == true
+          || request.auth.token.role in ['admin', 'area_admin']
+        );
+    }
+
+    match /verification-photos/{uid}/{photoFile} {
+      allow create, update: if isOwner(uid)
+        && request.resource != null
+        && request.resource.size < 900000
+        && request.resource.contentType.matches('image/.*')
+        && photoFile.matches('^[A-Za-z0-9_-]+\\.jpg$');
+      allow read: if isAdmin();
+      allow delete: if isAdmin() || isOwner(uid);
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
+

@@ -1,0 +1,427 @@
+{
+  "capturedAt": "2026-11-13T15:25:00+01:00",
+  "projectId": "quartinaut",
+  "projectNumber": "815175119171",
+  "databases": [
+    {
+      "name": "projects/quartinaut/databases/(default)",
+      "locationId": "nam5",
+      "databaseEdition": "STANDARD",
+      "concurrencyMode": "PESSIMISTIC",
+      "pointInTimeRecoveryEnablement": "POINT_IN_TIME_RECOVERY_DISABLED",
+      "deleteProtectionState": "DELETE_PROTECTION_DISABLED"
+    },
+    {
+      "name": "projects/quartinaut/databases/default",
+      "locationId": "eur3",
+      "databaseEdition": "ENTERPRISE",
+      "concurrencyMode": "OPTIMISTIC",
+      "pointInTimeRecoveryEnablement": "POINT_IN_TIME_RECOVERY_DISABLED",
+      "deleteProtectionState": "DELETE_PROTECTION_DISABLED"
+    }
+  ],
+  "apps": [
+    {
+      "platform": "WEB",
+      "displayName": "Quartinaut",
+      "appId": "1:815175119171:web:bf5ffa78acafeee2e23ff6",
+      "state": "ACTIVE"
+    }
+  ],
+  "functionCount": 37,
+  "functions": [
+    {
+      "id": "backfillAreaScopeFields",
+      "codebase": "default",
+      "trigger": "schedule",
+      "hash": "0a3508df1b4637975e56bb2e3fd29708546483de",
+      "state": "ACTIVE"
+    },
+    {
+      "id": "backfillRequestScopeOnWrite",
+      "codebase": "default",
+      "trigger": "event",
+      "hash": "0a3508df1b4637975e56bb2e3fd29708546483de",
+      "state": "ACTIVE"
+    },
+    {
+      "id": "backfillUserScopeOnWrite",
+      "codebase": "default",
+      "trigger": "event",
+      "hash": "0a3508df1b4637975e56bb2e3fd29708546483de",
+      "state": "ACTIVE"
+    },
+    {
+      "id": "bootstrapPrimaryAdminClaim",
+      "codebase": "default",
+      "trigger": "callable",
+      "hash": "0a3508df1b4637975e56bb2e3fd29708546483de",
+      "state": "ACTIVE"
+    },
+    {
+      "id": "cleanupExpiredChatTrash",
+      "codebase": "default",
+      "trigger": "schedule",
+      "hash": "0a3508df1b4637975e56bb2e3fd29708546483de",
+      "state": "ACTIVE"
+    },
+    {
+      "id": "cleanupVerificationPhotoFirestoreData",
+      "codebase": "default",
+      "trigger": "schedule",
+      "hash": "0a3508df1b4637975e56bb2e3fd29708546483de",
+      "state": "ACTIVE"
+    },
+    {
+      "id": "deleteOwnAccountData",
+      "codebase": "default",
+      "trigger": "callable",
+      "hash": "2c9fa23150cb65c9562eea1ee14959a71bef3219",
+      "state": "ACTIVE"
+    },
+    {
+      "id": "dispatchAlertPush",
+      "codebase": "default",
+      "trigger": "event",
+      "hash": "0a3508df1b4637975e56bb2e3fd29708546483de",
+      "state": "ACTIVE"
+    },
+    {
+      "id": "dispatchBulletinFilterPush",
+      "codebase": "default",
+      "trigger": "event",
+      "hash": "0a3508df1b4637975e56bb2e3fd29708546483de",
+      "state": "ACTIVE"
+    },
+    {
+      "id": "dispatchChatMessagePush",
+      "codebase": "default",
+      "trigger": "event",
+      "hash": "0a3508df1b4637975e56bb2e3fd29708546483de",
+      "state": "ACTIVE"
+    },
+    {
+      "id": "dispatchOfficialNoticePush",
+      "codebase": "default",
+      "trigger": "event",
+      "hash": "0a3508df1b4637975e56bb2e3fd29708546483de",
+      "state": "ACTIVE"
+    },
+    {
+      "id": "dispatchPushSelfTest",
+      "codebase": "default",
+      "trigger": "event",
+      "hash": "0a3508df1b4637975e56bb2e3fd29708546483de",
+      "state": "ACTIVE"
+    },
+    {
+      "id": "dispatchScheduledOfficialNoticePush",
+      "codebase": "default",
+      "trigger": "schedule",
+      "hash": "0a3508df1b4637975e56bb2e3fd29708546483de",
+      "state": "ACTIVE"
+    },
+    {
+      "id": "exportOwnData",
+      "codebase": "default",
+      "trigger": "callable",
+      "hash": "0a3508df1b4637975e56bb2e3fd29708546483de",
+      "state": "ACTIVE"
+    },
+    {
+      "id": "indexEvent",
+      "codebase": "quartinaut-v47",
+      "trigger": "event",
+      "hash": "7403371a5cb2e725558050cd1796655f49c19e44",
+      "state": "ACTIVE"
+    },
+    {
+      "id": "indexHub",
+      "codebase": "quartinaut-v47",
+      "trigger": "event",
+      "hash": "7403371a5cb2e725558050cd1796655f49c19e44",
+      "state": "ACTIVE"
+    },
+    {
+      "id": "indexNotice",
+      "codebase": "quartinaut-v47",
+      "trigger": "event",
+      "hash": "7403371a5cb2e725558050cd1796655f49c19e44",
+      "state": "ACTIVE"
+    },
+    {
+      "id": "indexRequest",
+      "codebase": "quartinaut-v47",
+      "trigger": "event",
+      "hash": "7403371a5cb2e725558050cd1796655f49c19e44",
+      "state": "ACTIVE"
+    },
+    {
+      "id": "quartinautAppearance",
+      "codebase": "quartinaut-appearance",
+      "trigger": "callable",
+      "hash": "637e6634e0488f478d64e09295fee334837e1d56",
+      "state": "ACTIVE"
+    },
+    {
+      "id": "quartinautEventPlus",
+      "codebase": "quartinaut-v3",
+      "trigger": "callable",
+      "hash": "81e9d349cba37e817c2ff679adf74b421d3dbcdd",
+      "state": "ACTIVE"
+    },
+    {
+      "id": "quartinautEvents",
+      "codebase": "quartinaut-v21",
+      "trigger": "callable",
+      "hash": "85bbe8a42cda843fda27b4e8d81f91149fbac3d8",
+      "state": "ACTIVE"
+    },
+    {
+      "id": "quartinautHub",
+      "codebase": "quartinaut-v3",
+      "trigger": "callable",
+      "hash": "a051c67623fe433d29200994a373da8ea290cae8",
+      "state": "ACTIVE"
+    },
+    {
+      "id": "quartinautPhoto",
+      "codebase": "quartinaut-v3",
+      "trigger": "callable",
+      "hash": "81e9d349cba37e817c2ff679adf74b421d3dbcdd",
+      "state": "ACTIVE"
+    },
+    {
+      "id": "quartinautPrivateChats",
+      "codebase": "quartinaut-native-chats",
+      "trigger": "callable",
+      "hash": "833d7b2af68b3f6c4d574277f034c6efa7a87056",
+      "state": "ACTIVE"
+    },
+    {
+      "id": "quartinautRegistration",
+      "codebase": "quartinaut-registration",
+      "trigger": "callable",
+      "hash": "26d4d7579eeba1ef5366653b9907f1dca44b4df8",
+      "state": "ACTIVE"
+    },
+    {
+      "id": "quartinautReviews",
+      "codebase": "quartinaut-v21",
+      "trigger": "callable",
+      "hash": "85bbe8a42cda843fda27b4e8d81f91149fbac3d8",
+      "state": "ACTIVE"
+    },
+    {
+      "id": "quartinautSearch",
+      "codebase": "quartinaut-v47",
+      "trigger": "callable",
+      "hash": "7403371a5cb2e725558050cd1796655f49c19e44",
+      "state": "ACTIVE"
+    },
+    {
+      "id": "quartinautSetRole",
+      "codebase": "quartinaut-v21",
+      "trigger": "callable",
+      "hash": "85bbe8a42cda843fda27b4e8d81f91149fbac3d8",
+      "state": "ACTIVE"
+    },
+    {
+      "id": "quartinautSocial",
+      "codebase": "quartinaut-v3",
+      "trigger": "callable",
+      "hash": "81e9d349cba37e817c2ff679adf74b421d3dbcdd",
+      "state": "ACTIVE"
+    },
+    {
+      "id": "quartinautTarget",
+      "codebase": "quartinaut-v47",
+      "trigger": "callable",
+      "hash": "7403371a5cb2e725558050cd1796655f49c19e44",
+      "state": "ACTIVE"
+    },
+    {
+      "id": "quartinautUserSync",
+      "codebase": "quartinaut-v47",
+      "trigger": "callable",
+      "hash": "7403371a5cb2e725558050cd1796655f49c19e44",
+      "state": "ACTIVE"
+    },
+    {
+      "id": "quartinautV50",
+      "codebase": "quartinaut-v50",
+      "trigger": "callable",
+      "hash": "441aa045100dadd8623f2f68bda89ef25acbab98",
+      "state": "ACTIVE"
+    },
+    {
+      "id": "quartinautV50ExpireHolds",
+      "codebase": "quartinaut-v50",
+      "trigger": "schedule",
+      "hash": "441aa045100dadd8623f2f68bda89ef25acbab98",
+      "state": "ACTIVE"
+    },
+    {
+      "id": "reviewMunicipalityAccount",
+      "codebase": "default",
+      "trigger": "callable",
+      "hash": "0a3508df1b4637975e56bb2e3fd29708546483de",
+      "state": "ACTIVE"
+    },
+    {
+      "id": "scrubVerificationPhotoFirestoreData",
+      "codebase": "default",
+      "trigger": "event",
+      "hash": "0a3508df1b4637975e56bb2e3fd29708546483de",
+      "state": "ACTIVE"
+    },
+    {
+      "id": "setUserRoleClaim",
+      "codebase": "default",
+      "trigger": "callable",
+      "hash": "0a3508df1b4637975e56bb2e3fd29708546483de",
+      "state": "ACTIVE"
+    },
+    {
+      "id": "syncUserRoleClaim",
+      "codebase": "default",
+      "trigger": "event",
+      "hash": "0a3508df1b4637975e56bb2e3fd29708546483de",
+      "state": "ACTIVE"
+    }
+  ],
+  "firestoreIndexCount": 14,
+  "firestoreIndexes": [
+    {
+      "collectionGroup": "alerts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        "areaKey:ASCENDING",
+        "createdAt:DESCENDING",
+        "__name__:DESCENDING"
+      ]
+    },
+    {
+      "collectionGroup": "alerts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        "cantonCode:ASCENDING",
+        "createdAt:DESCENDING",
+        "__name__:DESCENDING"
+      ]
+    },
+    {
+      "collectionGroup": "bulletinFilters",
+      "queryScope": "COLLECTION",
+      "fields": [
+        "uid:ASCENDING",
+        "updatedAt:DESCENDING",
+        "__name__:DESCENDING"
+      ]
+    },
+    {
+      "collectionGroup": "chatMessages",
+      "queryScope": "COLLECTION",
+      "fields": [
+        "chatId:ASCENDING",
+        "createdAt:DESCENDING",
+        "__name__:DESCENDING"
+      ]
+    },
+    {
+      "collectionGroup": "chats",
+      "queryScope": "COLLECTION",
+      "fields": [
+        "participants:CONTAINS",
+        "lastMessageAt:DESCENDING",
+        "__name__:DESCENDING"
+      ]
+    },
+    {
+      "collectionGroup": "chats",
+      "queryScope": "COLLECTION",
+      "fields": [
+        "requestOwnerUid:ASCENDING",
+        "lastMessageAt:DESCENDING",
+        "__name__:DESCENDING"
+      ]
+    },
+    {
+      "collectionGroup": "communitySearchIndex",
+      "queryScope": "COLLECTION",
+      "fields": [
+        "tokens:CONTAINS",
+        "sortAt:DESCENDING",
+        "__name__:DESCENDING"
+      ]
+    },
+    {
+      "collectionGroup": "officialNotices",
+      "queryScope": "COLLECTION",
+      "fields": [
+        "status:ASCENDING",
+        "areaKey:ASCENDING",
+        "createdAt:DESCENDING",
+        "__name__:DESCENDING"
+      ]
+    },
+    {
+      "collectionGroup": "officialNotices",
+      "queryScope": "COLLECTION",
+      "fields": [
+        "status:ASCENDING",
+        "cantonCode:ASCENDING",
+        "createdAt:DESCENDING",
+        "__name__:DESCENDING"
+      ]
+    },
+    {
+      "collectionGroup": "requests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        "areaKey:ASCENDING",
+        "createdAt:DESCENDING",
+        "__name__:DESCENDING"
+      ]
+    },
+    {
+      "collectionGroup": "requests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        "cantonCode:ASCENDING",
+        "createdAt:DESCENDING",
+        "__name__:DESCENDING"
+      ]
+    },
+    {
+      "collectionGroup": "requests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        "status:ASCENDING",
+        "areaKey:ASCENDING",
+        "createdAt:DESCENDING",
+        "__name__:DESCENDING"
+      ]
+    },
+    {
+      "collectionGroup": "requests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        "status:ASCENDING",
+        "cantonCode:ASCENDING",
+        "createdAt:DESCENDING",
+        "__name__:DESCENDING"
+      ]
+    },
+    {
+      "collectionGroup": "requests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        "uid:ASCENDING",
+        "createdAt:DESCENDING",
+        "__name__:DESCENDING"
+      ]
+    }
+  ],
+  "backupScheduleCount": 0
+}

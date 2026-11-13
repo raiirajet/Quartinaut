@@ -1,0 +1,468 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function userDocExists() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && (
+          request.auth.token.admin == true
+          || request.auth.token.role in ['admin', 'area_admin']
+        );
+    }
+
+    function activeUser() {
+      return userDocExists()
+        && userDoc().data.get('accountStatus', 'active') == 'active';
+    }
+
+    function signedInNotDisabled() {
+      return signedIn()
+        && (
+          !userDocExists()
+          || userDoc().data.get('accountStatus', 'active') != 'disabled'
+        );
+    }
+
+    function isChatParticipant(data) {
+      return activeUser()
+        && data.participants is list
+        && request.auth.uid in data.participants;
+    }
+
+    function ownsRequestBackedChat(data) {
+      return activeUser()
+        && data.get('requestOwnerUid', '') == request.auth.uid;
+    }
+
+    function isVerifiedMunicipality() {
+      return activeUser()
+        && userDoc().data.get('accountType', 'resident') == 'municipality'
+        && userDoc().data.get('municipalityStatus', 'none') == 'verified'
+        && userDoc().data.get('verified', false) == true;
+    }
+
+    function canManageOfficialNotice() {
+      return isAdmin() || isVerifiedMunicipality();
+    }
+
+    function isChatParticipantById(chatId) {
+      return activeUser()
+        && exists(/databases/$(database)/documents/chats/$(chatId))
+        && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+    }
+
+    function chatDocExists(chatId) {
+      return exists(/databases/$(database)/documents/chats/$(chatId));
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function userAreaKey() {
+      return userDoc().data.get('areaKey', '');
+    }
+
+    function userCantonCode() {
+      return userDoc().data.get('cantonCode', '');
+    }
+
+    function requestInUserScope(data) {
+      return isAdmin()
+        || (
+          activeUser()
+          && data.get('tenantId', 'quartinaut') == 'quartinaut'
+          && userCantonCode() != ''
+          && data.get('cantonCode', '') == userCantonCode()
+        )
+        || (
+          activeUser()
+          && userAreaKey() != ''
+          && data.get('areaKey', '') == userAreaKey()
+        );
+    }
+
+    function ownWriteScope(data) {
+      return data.get('tenantId', 'quartinaut') == 'quartinaut'
+        && data.get('areaKey', '') == userAreaKey()
+        && data.get('cantonCode', '') == userCantonCode();
+    }
+
+    function requestedTitlePreset() {
+      return request.resource.data.get('titlePreset', 'auto');
+    }
+
+    function hasTitleGrant(grant) {
+      return resource.data.get('titleGrants', []).hasAny([grant]);
+    }
+
+    function allowedTitlePreset() {
+      return requestedTitlePreset() in ['auto', 'resident', 'none']
+        || (requestedTitlePreset() == 'admin' && resource.data.get('role', 'resident') == 'admin')
+        || (requestedTitlePreset() == 'verified' && resource.data.get('verified', false) == true)
+        || (
+          requestedTitlePreset() == 'municipality'
+          && resource.data.get('accountType', 'resident') == 'municipality'
+          && resource.data.get('verified', false) == true
+        )
+        || (requestedTitlePreset() == 'registry' && hasTitleGrant('registry'))
+        || (requestedTitlePreset() == 'district' && hasTitleGrant('district'));
+    }
+
+    match /users/{uid} {
+      allow create: if isSelf(uid) && (
+        request.resource.data.role == 'resident'
+      )
+      && request.resource.data.get('accountType', 'resident') in ['resident', 'company', 'municipality']
+      && request.resource.data.get('adminScopeArea', '') == ''
+      && request.resource.data.get('verified', false) == false
+      && (
+        (
+          request.resource.data.get('accountType', 'resident') == 'municipality'
+          && request.resource.data.get('accountStatus', '') == 'pending_verification'
+          && request.resource.data.get('municipalityStatus', '') == 'pending'
+          && request.resource.data.get('verificationStatus', '') == 'pending'
+        )
+        || (
+          request.resource.data.get('accountType', 'resident') != 'municipality'
+          && request.resource.data.get('accountStatus', 'active') == 'active'
+          && request.resource.data.get('municipalityStatus', 'none') == 'none'
+        )
+      );
+      allow read: if isSelf(uid) || isAdmin();
+      allow update: if isAdmin() || (
+        isSelf(uid)
+        && request.resource.data.get('uid', '') == resource.data.get('uid', '')
+        && request.resource.data.get('displayName', '') == resource.data.get('displayName', '')
+        && request.resource.data.get('initials', '') == resource.data.get('initials', '')
+        && request.resource.data.get('location', null) == resource.data.get('location', null)
+        && request.resource.data.get('area', '') == resource.data.get('area', '')
+        && request.resource.data.get('areaKey', '') == resource.data.get('areaKey', '')
+        && request.resource.data.get('cantonCode', '') == resource.data.get('cantonCode', '')
+        && request.resource.data.get('accountType', 'resident') == resource.data.get('accountType', 'resident')
+        && request.resource.data.get('accountStatus', 'active') == resource.data.get('accountStatus', 'active')
+        && request.resource.data.get('companyName', '') == resource.data.get('companyName', '')
+        && request.resource.data.get('companyPurpose', '') == resource.data.get('companyPurpose', '')
+        && request.resource.data.get('companyStatus', 'none') == resource.data.get('companyStatus', 'none')
+        && request.resource.data.get('municipalityName', '') == resource.data.get('municipalityName', '')
+        && request.resource.data.get('municipalityDepartment', '') == resource.data.get('municipalityDepartment', '')
+        && request.resource.data.get('municipalityWebsite', '') == resource.data.get('municipalityWebsite', '')
+        && request.resource.data.get('municipalityStatus', 'none') == resource.data.get('municipalityStatus', 'none')
+        && request.resource.data.get('adminScopeArea', '') == resource.data.get('adminScopeArea', '')
+        && (
+          request.resource.data.get('role', 'resident') == resource.data.get('role', 'resident')
+        )
+        && request.resource.data.get('verified', false) == resource.data.get('verified', false)
+        && request.resource.data.get('verificationStatus', 'none') == resource.data.get('verificationStatus', 'none')
+        && request.resource.data.get('verificationLabel', '') == resource.data.get('verificationLabel', '')
+        && request.resource.data.get('titleGrants', []) == resource.data.get('titleGrants', [])
+        && request.resource.data.get('locale', 'de') in ['de', 'fr', 'it']
+        && request.resource.data.get('dashboard', {}) is map
+        && request.resource.data.get('onboarding', {}) is map
+        && allowedTitlePreset()
+      );
+      allow delete: if false;
+    }
+
+    match /requests/{requestId} {
+      allow read: if isAdmin()
+        || (
+          activeUser()
+          && resource.data.get('uid', '') == request.auth.uid
+        )
+        || (
+          requestInUserScope(resource.data)
+          && resource.data.get('status', 'offen') == 'offen'
+        );
+      allow create: if activeUser()
+        && request.resource.data.uid == request.auth.uid
+        && (
+          (isAdmin() && request.resource.data.status in ['offen', 'wartet_freigabe'])
+          || (!isAdmin() && request.resource.data.status == 'wartet_freigabe')
+        )
+        && ownWriteScope(request.resource.data)
+        && !request.resource.data.keys().hasAny(['replies']);
+      allow update: if activeUser()
+        && (
+          isAdmin()
+          || (
+            resource.data.uid == request.auth.uid
+            && request.resource.data.get('replies', []) == resource.data.get('replies', [])
+            && request.resource.data.get('tenantId', 'quartinaut') == resource.data.get('tenantId', 'quartinaut')
+            && request.resource.data.get('area', '') == resource.data.get('area', '')
+            && request.resource.data.get('areaKey', '') == resource.data.get('areaKey', '')
+            && request.resource.data.get('cantonCode', '') == resource.data.get('cantonCode', '')
+            && request.resource.data.get('uid', '') == resource.data.get('uid', '')
+            && request.resource.data.get('authorId', '') == resource.data.get('authorId', '')
+            && (
+              request.resource.data.get('status', 'offen') == resource.data.get('status', 'offen')
+              || request.resource.data.get('status', '') in ['wartet_freigabe', 'erledigt', 'archiviert', 'abgelaufen']
+            )
+          )
+        );
+      allow delete: if isAdmin();
+    }
+
+    match /officialNotices/{noticeId} {
+      allow read: if isAdmin()
+        || (
+          canManageOfficialNotice()
+          && resource.data.get('createdByUid', '') == request.auth.uid
+        )
+        || (
+          activeUser()
+          && requestInUserScope(resource.data)
+          && resource.data.get('status', 'online') == 'online'
+        );
+      allow create: if canManageOfficialNotice()
+        && request.resource.data.get('tenantId', 'quartinaut') == 'quartinaut'
+        && request.resource.data.get('status', 'entwurf') in ['entwurf', 'online', 'archiviert']
+        && request.resource.data.get('priority', 'info') in ['info', 'wichtig']
+        && request.resource.data.get('scopeLevel', 'municipality') in ['municipality', 'canton']
+        && (
+          isAdmin()
+          || ownWriteScope(request.resource.data)
+        );
+      allow update: if canManageOfficialNotice()
+        && request.resource.data.get('tenantId', 'quartinaut') == resource.data.get('tenantId', 'quartinaut')
+        && request.resource.data.get('areaKey', '') == resource.data.get('areaKey', '')
+        && request.resource.data.get('cantonCode', '') == resource.data.get('cantonCode', '')
+        && request.resource.data.get('status', 'entwurf') in ['entwurf', 'online', 'archiviert']
+        && request.resource.data.get('scopeLevel', 'municipality') in ['municipality', 'canton']
+        && (
+          isAdmin()
+          || ownWriteScope(resource.data)
+        );
+      allow delete: if isAdmin();
+    }
+
+    match /chats/{chatId} {
+      allow get: if signedInNotDisabled()
+        && (!chatDocExists(chatId) || isChatParticipant(resource.data) || ownsRequestBackedChat(resource.data));
+      allow list: if isChatParticipant(resource.data) || ownsRequestBackedChat(resource.data);
+      allow create: if activeUser()
+        && request.resource.data.participants is list
+        && request.resource.data.participants.size() == 2
+        && request.auth.uid in request.resource.data.participants
+        && request.resource.data.requestId is string
+        && request.resource.data.requestOwnerUid is string
+        && request.resource.data.requestOwnerUid in request.resource.data.participants
+        && request.resource.data.requestTitle is string;
+      allow update: if (isChatParticipant(resource.data) || ownsRequestBackedChat(resource.data))
+        && request.resource.data.participants == resource.data.participants
+        && request.resource.data.requestId == resource.data.requestId
+        && (
+          request.resource.data.get('requestOwnerUid', '') == resource.data.get('requestOwnerUid', '')
+          || (
+            !resource.data.keys().hasAny(['requestOwnerUid'])
+            && request.resource.data.get('requestOwnerUid', '') in request.resource.data.participants
+          )
+        )
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'id',
+          'requestTitle',
+          'requestOwnerUid',
+          'createdAt',
+          'participantLabels',
+          'lastMessageAt',
+          'lastMessagePreview',
+          'lastSenderUid',
+          'mutedBy',
+          'readBy',
+          'trashedBy',
+          'purgedBy',
+          'updatedAt'
+        ]);
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        allow read, write: if false;
+      }
+    }
+
+    match /chatMessages/{messageId} {
+      allow read: if isChatParticipant(resource.data) || ownsRequestBackedChat(resource.data);
+        allow create: if request.resource.data.chatId is string
+          && (activeUser() || isChatParticipantById(request.resource.data.chatId))
+          && request.resource.data.senderUid == request.auth.uid
+        && request.resource.data.participants is list
+        && request.resource.data.participants.size() == 2
+        && request.auth.uid in request.resource.data.participants
+        && request.resource.data.recipientUid in request.resource.data.participants
+        && request.resource.data.recipientUid != request.auth.uid
+          && request.resource.data.requestId is string
+          && request.resource.data.text is string
+          && request.resource.data.text.size() <= 500;
+      allow update: if (isChatParticipant(resource.data) || ownsRequestBackedChat(resource.data))
+        && request.resource.data.participants == resource.data.participants
+        && request.resource.data.senderUid == resource.data.senderUid
+        && (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readAt'])
+          || (
+            request.auth.uid == resource.data.recipientUid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readAt', 'appointment'])
+          )
+        );
+      allow delete: if false;
+    }
+
+    match /alerts/{alertId} {
+      allow read: if activeUser();
+      allow create, update: if isAdmin()
+        && request.resource.data.get('scopeLevel', 'municipality') in ['municipality', 'canton'];
+      allow delete: if isAdmin();
+    }
+
+    match /moderationCases/{caseId} {
+      allow read, update, delete: if isAdmin();
+      allow create: if isAdmin() || (
+        activeUser()
+        && request.resource.data.reporterUid == request.auth.uid
+        && request.resource.data.status == 'offen'
+        && request.resource.data.type in ['Meldung', 'Privater Chat']
+      );
+    }
+
+    match /inviteCodes/{inviteId} {
+      allow read, create, update, delete: if isAdmin();
+    }
+
+    match /locationChangeRequests/{changeId} {
+      allow create: if activeUser()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status == 'offen';
+      allow read: if isAdmin() || (activeUser() && resource.data.uid == request.auth.uid);
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /verificationRequests/{verificationId} {
+      allow create: if signedInNotDisabled()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status == 'offen'
+        && request.resource.data.keys().hasAll(['idPhoto'])
+        && request.resource.data.idPhoto is map
+        && request.resource.data.idPhoto.storageMode == 'storage'
+        && request.resource.data.idPhoto.storagePath == 'verification-photos/' + request.auth.uid + '/' + verificationId + '.jpg'
+        && !request.resource.data.idPhoto.keys().hasAny(['dataUrl', 'downloadUrl']);
+      allow read: if isAdmin() || (activeUser() && resource.data.uid == request.auth.uid);
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /changeRequests/{requestId} {
+      allow create: if activeUser()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status == 'offen';
+      allow read: if isAdmin() || (activeUser() && resource.data.uid == request.auth.uid);
+      allow update, delete: if isAdmin();
+    }
+
+    match /deviceTokens/{tokenId} {
+      allow create, update: if activeUser() && request.resource.data.uid == request.auth.uid;
+      allow read: if isAdmin() || (activeUser() && resource.data.uid == request.auth.uid);
+      allow delete: if isAdmin() || (activeUser() && resource.data.uid == request.auth.uid);
+    }
+
+    match /alertReads/{readId} {
+      allow create: if activeUser() && request.resource.data.uid == request.auth.uid;
+      allow read: if isAdmin() || (activeUser() && resource.data.uid == request.auth.uid);
+      allow update, delete: if isAdmin();
+    }
+
+    match /areaCategoryPriority/{priorityId} {
+      allow read: if activeUser();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /bulletinFilters/{filterId} {
+      allow create, update: if activeUser()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.get('tenantId', 'quartinaut') == 'quartinaut'
+        && request.resource.data.get('areaKey', '') == userAreaKey()
+        && request.resource.data.get('cantonCode', '') == userCantonCode();
+      allow read: if isAdmin() || (activeUser() && resource.data.uid == request.auth.uid);
+      allow delete: if isAdmin() || (activeUser() && resource.data.uid == request.auth.uid);
+    }
+
+    match /notificationPreferences/{preferenceId} {
+      allow read, delete: if activeUser() && preferenceId == request.auth.uid;
+      allow create, update: if activeUser()
+        && preferenceId == request.auth.uid
+        && request.resource.data.get('uid', '') == request.auth.uid
+        && request.resource.data.get('tenantId', 'quartinaut') == 'quartinaut'
+        && request.resource.data.get('areaKey', '') == userAreaKey()
+        && request.resource.data.get('cantonCode', '') == userCantonCode()
+        && request.resource.data.get('enabled', false) is bool
+        && request.resource.data.get('criticalAlerts', true) == true
+        && request.resource.data.get('alerts', {}) is map
+        && request.resource.data.get('officialNotices', {}) is map
+        && request.resource.data.get('bulletin', {}) is map
+        && request.resource.data.get('chats', {}) is map
+        && request.resource.data.get('quietHours', {}) is map
+        && request.resource.data.get('keywordRules', []) is list
+        && request.resource.data.get('keywordRules', []).size() <= 20;
+    }
+
+    match /pushDeliveries/{deliveryId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    match /pushTests/{testId} {
+      allow create: if activeUser()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status == 'requested';
+      allow read: if isAdmin() || (activeUser() && resource.data.uid == request.auth.uid);
+      allow update, delete: if isAdmin();
+    }
+
+    match /publicStats/{docId} {
+      allow read: if activeUser();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /auditLog/{auditId} {
+      allow read, create: if isAdmin();
+      allow update, delete: if false;
+    }
+    // Diese Regeln NUR nach Sichtung und Sicherung der LIVE-Regeln in den
+    // bestehenden match /databases/{database}/documents-Block integrieren.
+    // Nie ein vorhandenes Ruleset vollständig ersetzen.
+    match /communitySearchIndex/{indexId} {
+      allow read, write: if false;
+    }
+    match /communityUserSettings/{userId} {
+      allow read, write: if false;
+      match /favorites/{favoriteId} {
+        allow get, list: if request.auth != null && request.auth.uid == userId;
+        allow create, update, delete: if false;
+      }
+      match /reads/{markId} {
+        allow get, list: if request.auth != null && request.auth.uid == userId;
+        allow create, update, delete: if false;
+      }
+      match /operations/{operationId} {
+        allow read, write: if false;
+      }
+    }
+    // Wichtig: Eine bestehende globale allow-Regel könnte diese Sperren aushebeln.
+    // Deshalb vorher die gesamten aktiven Regeln auf überschneidende matches prüfen.
+
+
+  }
+}
+
+
