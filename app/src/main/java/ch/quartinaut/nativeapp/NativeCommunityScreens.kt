@@ -64,13 +64,13 @@ private fun ItemAction(label: String, description: String,
         colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),
         elevation=CardDefaults.cardElevation(2.dp)) {
         Row(Modifier.padding(15.dp),verticalAlignment=Alignment.CenterVertically) {
-            Icon(icon,null,tint=FieldGreen,modifier=Modifier.size(29.dp))
+            Icon(icon,null,tint=MaterialTheme.colorScheme.primary,modifier=Modifier.size(29.dp))
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Text(label,fontWeight=FontWeight.SemiBold)
                 Text(description,style=MaterialTheme.typography.bodySmall)
             }
-            Icon(Icons.Default.ChevronRight,null,tint=FieldGreen)
+            Icon(Icons.Default.ChevronRight,null,tint=MaterialTheme.colorScheme.primary)
         }
     }
 }
@@ -79,84 +79,218 @@ fun NativeCreateHubPage(
     repo: QuartinautRepository, initialKind: String,
     onCompleted: () -> Unit
 ) {
-    var kind by remember(initialKind) { mutableStateOf(
-        initialKind.takeIf { it in NativeKinds } ?: "market"
-    ) }
+    val green=Color(0xFFA6E4BC)
+    val bg=Color(0xFF172C23)
+    var step by remember { mutableIntStateOf(0) }
+    var kind by remember(initialKind) {
+        mutableStateOf(initialKind.takeIf{it in NativeKinds} ?: "market")
+    }
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var category by remember(kind) { mutableStateOf(NativeCategories[kind]?.firstOrNull().orEmpty()) }
-    var price by remember { mutableStateOf("") }
-    var capacity by remember { mutableStateOf("") }
+    var price by remember { mutableStateOf("0") }
+    var capacity by remember { mutableStateOf("0") }
     var venue by remember { mutableStateOf("") }
-    var date by remember { mutableStateOf("") }
+    var localDate by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
-    var confirmation by remember { mutableStateOf(false) }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-        verticalArrangement=Arrangement.spacedBy(12.dp)) {
-        Text("Quartier+-Eintrag",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold)
-        Text("Für deine Gemeinde: " + repo.area())
-        Box {
-            OutlinedButton(onClick={expanded=true}, modifier=Modifier.fillMaxWidth()) {
-                Text(NativeKinds[kind] ?: "Bereich wählen")
-            }
-            DropdownMenu(expanded=expanded,onDismissRequest={expanded=false}) {
-                NativeKinds.forEach { (key,label) ->
-                    DropdownMenuItem(text={Text(label)},onClick={kind=key;expanded=false})
+    var error by remember { mutableStateOf("") }
+    var confirmed by remember { mutableStateOf(false) }
+    // The same op ID is reused on every retry, preventing duplicate listings
+    // after a slow or interrupted connection.
+    val operationId=remember { "android_"+java.util.UUID.randomUUID().toString().replace("-","") }
+    val date=remember(localDate) {
+        if(localDate.isBlank()) "" else runCatching {
+            java.time.LocalDateTime.parse(
+                localDate.trim(),
+                java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"))
+                .atZone(java.time.ZoneId.of("Europe/Zurich")).toInstant().toString()
+        }.getOrDefault("")
+    }
+    val rawPrice=price.trim().replace(',','.')
+    val priceValue=rawPrice.toDoubleOrNull()
+    val priceValid=kind !in listOf("market","lend") ||
+        (rawPrice.matches(Regex("[0-9]+(\\\\.[0-9]{1,2})?")) &&
+         priceValue!=null && priceValue in 0.0..100000.0)
+    val count=capacity.toIntOrNull()
+    val capValid=kind !in listOf("group","project") ||
+        (count!=null && count in 0..300)
+    val eventDateValid=(kind !in listOf("calendar","project")) ||
+        (kind=="project"&&localDate.isBlank()) ||
+        (date.isNotBlank() && runCatching {
+            val v=java.time.Instant.parse(date)
+            v.isAfter(java.time.Instant.now()) &&
+                v.isBefore(java.time.Instant.now().plusSeconds(370L*86400))
+        }.getOrDefault(false))
+    val municipalityOnly=kind=="calendar" &&
+        (DocString(repo.profile["accountType"])!="municipality" ||
+        repo.profile["verified"]!=true)
+    val canAdvance=title.trim().length in 5..100 && category.isNotBlank() &&
+        description.trim().length in 12..1200 &&
+        priceValid && capValid && eventDateValid && !municipalityOnly
+    Column(Modifier.fillMaxSize().background(Color(0xFF111F19))
+        .verticalScroll(rememberScrollState()).padding(18.dp),
+        verticalArrangement=Arrangement.spacedBy(14.dp)) {
+        Text("QUARTIER+ · "+(NativeKinds[kind] ?: "Eintrag"),
+            style=MaterialTheme.typography.labelLarge,color=green)
+        Text("Beitrag erstellen",style=MaterialTheme.typography.headlineSmall,
+            color=Color.White,fontWeight=FontWeight.Bold)
+        Text("Schritt "+(step+1)+" von 3 · "+
+            when(step){0->"Bereich und Titel";1->"Beschreibung und Angaben";else->"Vorschau & Freigabe"},
+            color=Color(0xFFC5DBCA),style=MaterialTheme.typography.bodySmall)
+        LinearProgressIndicator(progress={ (step+1)/3f },
+            modifier=Modifier.fillMaxWidth(),color=green)
+        Surface(shape=RoundedCornerShape(22.dp),color=bg,
+            border=androidx.compose.foundation.BorderStroke(1.dp,Color(0xFF416C54)),
+            modifier=Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp),
+                verticalArrangement=Arrangement.spacedBy(13.dp)) {
+                if(step==0) {
+                    Text("Was möchtest du veröffentlichen?",
+                        color=Color.White,style=MaterialTheme.typography.titleMedium)
+                    Box {
+                        OutlinedButton(onClick={expanded=true},
+                            modifier=Modifier.fillMaxWidth()) {
+                            Text(NativeKinds[kind] ?: "Bereich wählen",
+                                modifier=Modifier.weight(1f))
+                            Icon(Icons.Default.ExpandMore,null)
+                        }
+                        DropdownMenu(expanded=expanded,onDismissRequest={expanded=false}) {
+                            NativeKinds.forEach { (key,label) ->
+                                DropdownMenuItem(text={Text(label)},onClick={
+                                    kind=key; expanded=false; confirmed=false
+                                })
+                            }
+                        }
+                    }
+                    if(municipalityOnly) {
+                        Text("Offizielle Gemeindetermine können nur durch bestätigte Gemeindekonten erstellt werden.",
+                            color=Color(0xFFFFC7A4),
+                            style=MaterialTheme.typography.bodySmall)
+                    }
+                    OutlinedTextField(title,{title=it.take(100);error=""},
+                        label={Text("Titel")},modifier=Modifier.fillMaxWidth(),
+                        singleLine=true,
+                        supportingText={Text(title.length.toString()+" / 100 Zeichen")})
+                    Text("Kategorie",fontWeight=FontWeight.SemiBold,color=Color.White)
+                    (NativeCategories[kind] ?: emptyList()).forEach { value ->
+                        Row(Modifier.fillMaxWidth().clickable{category=value},
+                            verticalAlignment=Alignment.CenterVertically) {
+                            RadioButton(selected=category==value,onClick={category=value})
+                            Text(value,color=Color.White)
+                        }
+                    }
+                } else if(step==1) {
+                    Text("Erzähle den Menschen in deiner Gemeinde mehr darüber",
+                        color=Color.White,style=MaterialTheme.typography.titleMedium)
+                    OutlinedTextField(description,{
+                        description=it.take(1200);error=""
+                    },label={Text("Beschreibung")},minLines=5,maxLines=12,
+                        modifier=Modifier.fillMaxWidth(),
+                        supportingText={Text(description.length.toString()+" / 1200 Zeichen")})
+                    if(kind in listOf("market","lend")) {
+                        OutlinedTextField(price,{price=it;error=""},
+                            modifier=Modifier.fillMaxWidth(),label={Text("Preis in CHF (0 = kostenlos)")},
+                            singleLine=true)
+                        if(!priceValid)Text("Bitte einen Betrag von 0 bis 100'000 CHF mit maximal zwei Nachkommastellen eingeben.",
+                            color=Color(0xFFFFB4AB),
+                            style=MaterialTheme.typography.bodySmall)
+                    }
+                    if(kind in listOf("group","project")) {
+                        OutlinedTextField(capacity,{capacity=it;error=""},
+                            modifier=Modifier.fillMaxWidth(),
+                            label={Text("Max. Teilnehmer (0 = unbegrenzt)")},singleLine=true)
+                        if(!capValid)Text("Zahl zwischen 0 und 300 eingeben.",
+                            color=Color(0xFFFFB4AB))
+                    }
+                    if(kind in listOf("project","calendar")) {
+                        OutlinedTextField(localDate,{localDate=it;error=""},
+                            modifier=Modifier.fillMaxWidth(),
+                            label={Text("Datum und Uhrzeit: TT.MM.JJJJ HH:MM")},singleLine=true)
+                        if(!eventDateValid)Text("Ein gültiger zukünftiger Termin ist erforderlich.",
+                            color=Color(0xFFFFB4AB),
+                            style=MaterialTheme.typography.bodySmall)
+                    }
+                    if(kind in listOf("calendar","project","group")) {
+                        OutlinedTextField(venue,{venue=it.take(120)},
+                            modifier=Modifier.fillMaxWidth(),
+                            label={Text("Ort oder Treffpunkt (optional)")},singleLine=true)
+                    }
+                    Text("Persönliche Kontaktdaten müssen nicht veröffentlicht werden. Für Rückfragen ist der Quartinaut-Kontakt vorgesehen.",
+                        color=Color(0xFFC5DBCA),style=MaterialTheme.typography.bodySmall)
+                } else {
+                    Text("Vorschau deines Beitrags",color=Color.White,
+                        style=MaterialTheme.typography.titleMedium)
+                    Text((NativeKinds[kind] ?: kind)+" · "+category,color=green)
+                    HorizontalDivider(color=Color(0xFF416C54))
+                    Text(title.trim(),color=Color.White,
+                        fontWeight=FontWeight.Bold,
+                        style=MaterialTheme.typography.titleLarge)
+                    Text(description.trim(),color=Color(0xFFE4F2E8))
+                    if(kind in listOf("market","lend"))
+                        Text("Preis: CHF "+price.trim(),color=green)
+                    if(date.isNotBlank())
+                        Text("Termin: "+localDate,color=Color.White)
+                    if(venue.isNotBlank())
+                        Text("Ort: "+venue,color=Color.White)
+                    Text("Gemeinde: "+repo.area()+" ("+repo.canton()+")",
+                        color=Color(0xFFC5DBCA))
+                    HorizontalDivider(color=Color(0xFF416C54))
+                    Text(when(kind){
+                        "issue" -> "Dein Mängelbericht wird der Prüfung zugeführt."
+                        "calendar" -> "Gemeindetermine werden gemäss deiner Rolle geprüft."
+                        else -> "Der Beitrag wird zur Freigabe eingereicht und zunächst als Entwurf zur Prüfung markiert."
+                    },color=Color(0xFFC5DBCA),
+                        style=MaterialTheme.typography.bodySmall)
                 }
             }
         }
-        OutlinedTextField(title,{title=it},label={Text("Titel (5–100 Zeichen)")},
-            modifier=Modifier.fillMaxWidth())
-        OutlinedTextField(description,{description=it},
-            label={Text("Beschreibung (12–1200 Zeichen)")},
-            modifier=Modifier.fillMaxWidth(),minLines=4,maxLines=10)
-        Text("Kategorie",fontWeight=FontWeight.SemiBold)
-        Column {
-            (NativeCategories[kind] ?: emptyList()).forEach { value ->
-                Row(verticalAlignment=Alignment.CenterVertically) {
-                    RadioButton(selected=category==value,onClick={category=value})
-                    Text(value)
-                }
+        if(error.isNotBlank()) Text(error,color=Color(0xFFFFB4AB))
+        if(step==2) Row(verticalAlignment=Alignment.CenterVertically,
+            modifier=Modifier.clickable{confirmed=!confirmed}) {
+            Checkbox(confirmed,onCheckedChange={confirmed=it})
+            Text("Alle Angaben stimmen; ich möchte den Beitrag einreichen.",
+                color=Color.White,style=MaterialTheme.typography.bodySmall)
+        }
+        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+            if(step>0) {
+                OutlinedButton(onClick={step--;error=""},
+                    modifier=Modifier.weight(1f),enabled=!repo.busy) {Text("Zurück")}
             }
+            Button(
+                onClick={
+                    error=""
+                    when(step) {
+                        0 -> {
+                            if(title.trim().length !in 5..100)error="Bitte einen Titel mit 5–100 Zeichen eingeben."
+                            else if(municipalityOnly)error="Für Gemeindetermine ist ein bestätigtes Gemeindekonto erforderlich."
+                            else step=1
+                        }
+                        1 -> {
+                            if(description.trim().length !in 12..1200)
+                                error="Bitte eine Beschreibung mit 12–1200 Zeichen eingeben."
+                            else if(!priceValid||!capValid||!eventDateValid)
+                                error="Bitte Preis, Teilnehmerzahl und Datum überprüfen."
+                            else step=2
+                        }
+                        else -> {
+                            if(!canAdvance||!confirmed) {
+                                error="Bitte die Angaben prüfen und bestätigen."
+                            } else {
+                                val data=mapOf<String,Any?>(
+                                    "kind" to kind,"title" to title.trim(),
+                                    "description" to description.trim(),"category" to category,
+                                    "priceChf" to (priceValue ?: 0.0),
+                                    "capacity" to (count ?: 0),
+                                    "venue" to venue.trim(),"startsAt" to date,
+                                    "photoPaths" to emptyList<String>())
+                                repo.createCommunityItem(data,onCompleted,operationId)
+                            }
+                        }
+                    }
+                },modifier=Modifier.weight(1f).height(49.dp),enabled=!repo.busy
+            ) { Text(when(step){0->"Weiter";1->"Vorschau";else->"Einreichen"}) }
         }
-        if(kind in listOf("market","lend")) {
-            OutlinedTextField(price,{price=it},modifier=Modifier.fillMaxWidth(),
-                label={Text("Preis in CHF (0 = kostenlos)")})
-        }
-        if(kind in listOf("group","project")) {
-            OutlinedTextField(capacity,{capacity=it},modifier=Modifier.fillMaxWidth(),
-                label={Text("Max. Teilnehmer (0 = unbegrenzt)")})
-        }
-        if(kind in listOf("project","calendar")) {
-            OutlinedTextField(date,{date=it},modifier=Modifier.fillMaxWidth(),
-                label={Text("Beginn (z. B. 2026-12-01T10:00:00Z)")})
-        }
-        if(kind in listOf("calendar","project","group")) {
-            OutlinedTextField(venue,{venue=it},modifier=Modifier.fillMaxWidth(),
-                label={Text("Ort / Treffpunkt")})
-        }
-        Text("Die Veröffentlichung und alle Berechtigungen werden vom Quartinaut-Backend geprüft.",
-            style=MaterialTheme.typography.bodySmall)
-        Row(verticalAlignment=Alignment.CenterVertically) {
-            Checkbox(confirmation,onCheckedChange={confirmation=it})
-            Text("Ich habe die Angaben geprüft.")
-        }
-        val priceValue=price.replace(',','.').toDoubleOrNull() ?: 0.0
-        val capValue=capacity.toIntOrNull() ?: 0
-        Button(onClick={
-            val data=mapOf<String,Any?>(
-                "kind" to kind, "title" to title.trim(),
-                "description" to description.trim(), "category" to category,
-                "priceChf" to priceValue, "capacity" to capValue,
-                "venue" to venue.trim(), "startsAt" to date.trim(),
-                "photoPaths" to emptyList<String>())
-            repo.createCommunityItem(data,onCompleted)
-        },modifier=Modifier.fillMaxWidth().height(50.dp),
-            enabled=confirmation && title.trim().length in 5..100 &&
-                description.trim().length in 12..1200 && !repo.busy
-                && (kind!="calendar" || date.isNotBlank())) {
-            Text("Eintrag zur Veröffentlichung einreichen")
-        }
+        Spacer(Modifier.height(16.dp))
     }
 }
 
@@ -195,7 +329,7 @@ fun NativeHubDetail(
             Column(Modifier.padding(17.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
                 Text(DocString(item["description"]))
                 if(item["priceChf"]!=null) Text("CHF " + DocString(item["priceChf"]),
-                    color=FieldGreen,fontWeight=FontWeight.Bold)
+                    color=MaterialTheme.colorScheme.primary,fontWeight=FontWeight.Bold)
                 if(DocString(item["venue"]).isNotBlank()) Text("Ort: "+DocString(item["venue"]))
                 if(DocString(item["startsAt"]).isNotBlank()) Text("Termin: "+DocString(item["startsAt"]))
                 if(kind in listOf("lend","market","lost")) Text("Verfügbarkeit: "+DocString(item["availability"]))
