@@ -10,8 +10,8 @@ android {
         applicationId = "ch.quartinaut.nativeapp"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "5.4.1-native-preview"
+        versionCode = 4
+        versionName = "5.4.2-native-preview"
     }
     buildTypes {
         release { isMinifyEnabled = false }
