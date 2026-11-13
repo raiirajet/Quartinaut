@@ -38,6 +38,10 @@ jobs:
         run: |
           node --check functions/appearance/index.js
           node --test functions/appearance/test/validation.test.js
+      - name: Verify private chat security and message validation
+        run: |
+          node --check functions/nativeChats/index.js
+          node --test functions/nativeChats/test/security.test.js
       - name: Assemble debug APK (native)
         run: gradle :app:assembleDebug --no-daemon --stacktrace
       - name: Package native Android Studio sources and original images
@@ -46,7 +50,7 @@ jobs:
             README.md ANDROID_STATUS.md AUDIT_NATIVE_54_2026-11-13.md .gitignore \
             settings.gradle.kts build.gradle.kts gradle.properties \
             scripts app/build.gradle.kts app/src \
-            functions/appearance firebase.appearance.json web-bridge
+            functions/appearance functions/nativeChats firebase.appearance.json firebase.chats.json web-bridge
       - name: Upload native source ZIP
         uses: actions/upload-artifact@v4
         with:
