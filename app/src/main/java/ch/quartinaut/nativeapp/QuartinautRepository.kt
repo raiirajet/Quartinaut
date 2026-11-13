@@ -587,9 +587,10 @@ class QuartinautRepository(context: Context) {
             }
     }
 
-    fun createCommunityItem(item: Map<String,Any?>, completed: () -> Unit) {
+    fun createCommunityItem(item: Map<String,Any?>, completed: () -> Unit,
+                            operationId: String = "android_" + UUID.randomUUID().toString().replace("-","")) {
         communityAction("create",mapOf("item" to item,
-            "opId" to "android_" + UUID.randomUUID().toString().replace("-","")),
+            "opId" to operationId),
             refreshOnSuccess=true) { response ->
             message = if(DocString(response["status"])=="published")
                 "Quartier+-Beitrag veröffentlicht."
