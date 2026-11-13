@@ -94,9 +94,18 @@ class QuartinautRepository(context: Context) {
         }
         Thread {
             try {
-                val conn = URL("https://quartinaut.web.app/assets/data/ch-locations-2026.json").openConnection() as HttpURLConnection
-                conn.connectTimeout = 8000; conn.readTimeout = 8000
-                val json = JSONObject(conn.inputStream.bufferedReader().use { it.readText() })
+                val text = try {
+                    // Packaged original BFS snapshot, usable without internet.
+                    context.assets.open("q-original/ch-locations-2026.json")
+                        .bufferedReader().use { it.readText() }
+                } catch (_: Exception) {
+                    val connection = URL("https://quartinaut.web.app/assets/data/ch-locations-2026.json")
+                        .openConnection() as HttpURLConnection
+                    connection.connectTimeout = 8000; connection.readTimeout = 8000
+                    try { connection.inputStream.bufferedReader().use { it.readText() } }
+                    finally { connection.disconnect() }
+                }
+                val json = JSONObject(text)
                 val arr = json.getJSONArray("cantons")
                 val r = mutableListOf<Region>()
                 for (i in 0 until arr.length()) {
@@ -109,7 +118,6 @@ class QuartinautRepository(context: Context) {
                     r.add(Region(c.optString("code"), c.optString("name"),c.optString("bfsCode"),municipalities))
                 }
                 android.os.Handler(android.os.Looper.getMainLooper()).post { regions = r }
-                conn.disconnect()
             } catch (e: Exception) {
                 android.os.Handler(android.os.Looper.getMainLooper()).post {
                     message = "Gemeindeverzeichnis derzeit nicht erreichbar: " + e.localizedMessage
