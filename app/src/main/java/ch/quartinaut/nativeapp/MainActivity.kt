@@ -396,18 +396,7 @@ private fun Feature(label: String, explanation: String, icon: @Composable () -> 
 private fun DashboardPage(repo: QuartinautRepository, go: (String) -> Unit) = ScrollPage {
     SectionTitle("Hoi, " + repo.displayName().substringBefore(" ") + "!",
         repo.area().ifBlank { "Deine Schweizer Nachbarschaft" })
-    Card(colors = CardDefaults.cardColors(containerColor = Forest), modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(20.dp)) {
-            Text("Dein Quartier auf einen Blick", color = Color.White,
-                style = MaterialTheme.typography.titleLarge)
-            Spacer(Modifier.height(16.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(22.dp)) {
-                Metric(repo.requests.count { it.str("status") == "offen" }.toString(),"Anliegen")
-                Metric(repo.hubItems.count { DocString(it["status"]) == "published" }.toString(),"Quartier+")
-                Metric(repo.chats.size.toString(),"Chats")
-            }
-        }
-    }
+    NativeDashboardHero(repo)
     Feature("Schwarzes Brett", "Hilfe suchen oder anbieten", { Icon(Icons.Default.ViewList, null,tint=Forest) }) { go("board") }
     Feature("Quartier+", "Marktplatz, Ausleihe, Vereine", { Icon(Icons.Default.GridView,null,tint=Forest) }) { go("plus") }
     Feature("Schweizkarte", "26 Kantone und alle Gemeinden", { Icon(Icons.Default.Map,null,tint=Forest) }) { go("map") }
