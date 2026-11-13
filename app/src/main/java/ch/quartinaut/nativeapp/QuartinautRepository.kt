@@ -120,7 +120,7 @@ class QuartinautRepository(context: Context) {
                     loadProfile(next.uid)
                     // Force a fresh JWT so newly assigned server-side role claims
                     // match the active Firestore security rules after login.
-                    next.getIdTokenResult(true).addOnSuccessListener { token ->
+                    next.getIdToken(true).addOnSuccessListener { token ->
                         if (user?.uid != next.uid) return@addOnSuccessListener
                         val claims=token.claims
                         val role=claims["role"] as? String ?: ""
@@ -730,7 +730,7 @@ class QuartinautRepository(context: Context) {
         val current=user ?: return
         if(profile.isEmpty() || !active())return
         syncIssues=emptyMap()
-        current.getIdTokenResult(true).addOnCompleteListener { task ->
+        current.getIdToken(true).addOnCompleteListener { task ->
             if(user?.uid!=current.uid)return@addOnCompleteListener
             if(task.isSuccessful) {
                 val claims=task.result.claims
