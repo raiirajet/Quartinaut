@@ -18,11 +18,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import java.util.Locale
 
-private val PlusBg=Color(0xFF101F19)
-private val PlusSurface=Color(0xFF203A2E)
-private val PlusAccent=Color(0xFFA6DCB7)
-private val PlusMuted=Color(0xFFC1D7C6)
-private val PlusBorder=Color(0xFF52725E)
+private val PlusBg: Color @Composable get() = MaterialTheme.colorScheme.background
+private val PlusSurface: Color @Composable get() = MaterialTheme.colorScheme.surface
+private val PlusAccent: Color @Composable get() = MaterialTheme.colorScheme.primary
+private val PlusMuted: Color @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant
+private val PlusBorder: Color @Composable get() = MaterialTheme.colorScheme.outlineVariant
 
 private data class PlusRoute(val key:String,val name:String,val detail:String,val emoji:String)
 private val allExtensions=listOf(
@@ -48,7 +48,7 @@ fun NativeExtrasDirectory(repo:QuartinautRepository,navigate:(String)->Unit) {
     Column(Modifier.fillMaxSize().background(PlusBg).verticalScroll(rememberScrollState())
         .padding(16.dp),verticalArrangement=Arrangement.spacedBy(11.dp)) {
         Text("QUARTINAUT · MEHR",color=PlusAccent,style=MaterialTheme.typography.labelLarge)
-        Text("Alles für dein Quartier",color=Color.White,
+        Text("Alles für dein Quartier",color=MaterialTheme.colorScheme.onSurface,
             style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold)
         Text("Entdecken, helfen, verkaufen, ausleihen und gemeinsam aktiv sein.",
             color=PlusMuted)
@@ -61,7 +61,7 @@ fun NativeExtrasDirectory(repo:QuartinautRepository,navigate:(String)->Unit) {
                     Text(option.emoji,style=MaterialTheme.typography.headlineSmall)
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(option.name,color=Color.White,
+                        Text(option.name,color=MaterialTheme.colorScheme.onSurface,
                             fontWeight=FontWeight.SemiBold)
                         Text(option.detail,color=PlusMuted,
                             style=MaterialTheme.typography.bodySmall)
@@ -76,7 +76,7 @@ fun NativeExtrasDirectory(repo:QuartinautRepository,navigate:(String)->Unit) {
 }
 @Composable
 private fun ExtraHeader(title:String,description:String) {
-    Text(title,color=Color.White,style=MaterialTheme.typography.headlineSmall,
+    Text(title,color=MaterialTheme.colorScheme.onSurface,style=MaterialTheme.typography.headlineSmall,
         fontWeight=FontWeight.Bold)
     Text(description,color=PlusMuted,style=MaterialTheme.typography.bodySmall)
 }
@@ -86,7 +86,7 @@ private fun ExtraItem(title:String,description:String,detail:String="",
     val shape=RoundedCornerShape(18.dp)
     val content:@Composable ()->Unit={
         Column(Modifier.padding(15.dp),verticalArrangement=Arrangement.spacedBy(7.dp)) {
-            Text(title,color=Color.White,fontWeight=FontWeight.SemiBold,
+            Text(title,color=MaterialTheme.colorScheme.onSurface,fontWeight=FontWeight.SemiBold,
                 maxLines=3,overflow=TextOverflow.Ellipsis)
             if(description.isNotBlank())Text(description,color=PlusMuted,
                 maxLines=4,overflow=TextOverflow.Ellipsis,
@@ -180,7 +180,7 @@ fun NativeMyPostsScreen(repo:QuartinautRepository) {
                 Surface(color=PlusSurface,shape=RoundedCornerShape(18.dp),
                     border=BorderStroke(1.dp,PlusBorder)) {
                     Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(7.dp)) {
-                        Text(DocString(row["title"]),fontWeight=FontWeight.SemiBold,color=Color.White)
+                        Text(DocString(row["title"]),fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.onSurface)
                         Text(DocString(row["description"]).take(180),color=PlusMuted)
                         Text("Status: "+DocString(row["status"])+" · "+
                             DocString(row["kind"]),color=PlusAccent,
@@ -328,19 +328,19 @@ fun NativeTrustScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
         }
         if(chosen!=null){
             HorizontalDivider(color=PlusBorder)
-            Text("Anbieterprofil",color=Color.White,
+            Text("Anbieterprofil",color=MaterialTheme.colorScheme.onSurface,
                 style=MaterialTheme.typography.titleLarge)
             Text(DocString(profile["displayName"]).ifBlank{"Wird geladen …"},color=PlusAccent)
             if(profile.isNotEmpty()){
                 Text(if(profile["verified"]==true)"✓ Verifiziert" else "Nicht verifiziert",
-                    color=Color.White)
+                    color=MaterialTheme.colorScheme.onSurface)
                 Text(DocString(profile["totalReviews"])+" Bewertungen · Ø "+
                     DocString(profile["averageRating"])+" / 5",color=PlusMuted)
             }
         }
         HorizontalDivider(color=PlusBorder)
         Text("Abgeschlossene Transaktion bewerten",
-            color=Color.White,style=MaterialTheme.typography.titleMedium)
+            color=MaterialTheme.colorScheme.onSurface,style=MaterialTheme.typography.titleMedium)
         Text("Nur wenn du eine bestätigte abgeschlossene Marktreservierung oder Ausleihe hast. Die Transaktions-ID findest du in deinen Buchungen.",
             color=PlusMuted,style=MaterialTheme.typography.bodySmall)
         Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {

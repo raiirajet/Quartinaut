@@ -28,18 +28,18 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.util.Calendar
 
-private val TBg=Color(0xFF111F19)
-private val TPanel=Color(0xFF203A2E)
-private val TMute=Color(0xFFC5DBCA)
-private val TGreen=Color(0xFF9CE2B5)
-private val TBorder=Color(0xFF52725E)
+private val TBg: Color @Composable get() = MaterialTheme.colorScheme.background
+private val TPanel: Color @Composable get() = MaterialTheme.colorScheme.surface
+private val TMute: Color @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant
+private val TGreen: Color @Composable get() = MaterialTheme.colorScheme.primary
+private val TBorder: Color @Composable get() = MaterialTheme.colorScheme.outlineVariant
 
 @Composable
 private fun ToolCard(title:String,subtitle:String,content:@Composable ColumnScope.()->Unit={}) {
     Surface(color=TPanel,shape=RoundedCornerShape(18.dp),
         border=BorderStroke(1.dp,TBorder),modifier=Modifier.fillMaxWidth()) {
         Column(Modifier.padding(15.dp),verticalArrangement=Arrangement.spacedBy(9.dp)) {
-            Text(title,color=Color.White,fontWeight=FontWeight.SemiBold,
+            Text(title,color=MaterialTheme.colorScheme.onSurface,fontWeight=FontWeight.SemiBold,
                 style=MaterialTheme.typography.titleMedium)
             if(subtitle.isNotBlank())Text(subtitle,color=TMute,
                 style=MaterialTheme.typography.bodySmall)
@@ -53,7 +53,7 @@ fun NativeLoanPlanner(repo:QuartinautRepository,navigate:(String)->Unit) {
     val rows=repo.v50Items.sortedBy{DocString(it["from"])}
     Column(Modifier.fillMaxSize().background(TBg).padding(15.dp),
         verticalArrangement=Arrangement.spacedBy(10.dp)) {
-        Text("Ausleih-Kalender",color=Color.White,
+        Text("Ausleih-Kalender",color=MaterialTheme.colorScheme.onSurface,
             style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold)
         Text("Anfragen, verfügbare Zeiträume und Rückgaben an einem Ort.",
             color=TMute)
@@ -117,7 +117,7 @@ fun NativeClubCenter(repo:QuartinautRepository,navigate:(String)->Unit) {
     var post by remember {mutableStateOf("")}
     Column(Modifier.fillMaxSize().background(TBg).padding(16.dp),
         verticalArrangement=Arrangement.spacedBy(12.dp)) {
-        Text("Vereinszentrale",color=Color.White,
+        Text("Vereinszentrale",color=MaterialTheme.colorScheme.onSurface,
             style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold)
         Text("Vereine entdecken, teilnehmen und eigene Anmeldungen verwalten.",
             color=TMute,style=MaterialTheme.typography.bodySmall)
@@ -169,7 +169,7 @@ fun NativeClubCenter(repo:QuartinautRepository,navigate:(String)->Unit) {
                     }
                     if(selected==DocString(row["id"])) {
                         groupPosts.take(12).forEach { entry ->
-                            Text(DocString(entry["message"]),color=Color.White,
+                            Text(DocString(entry["message"]),color=MaterialTheme.colorScheme.onSurface,
                                 style=MaterialTheme.typography.bodySmall)
                         }
                         OutlinedTextField(post,{post=it.take(500)},
@@ -195,7 +195,7 @@ fun NativeCalendarPlus(repo:QuartinautRepository) {
     var selected by remember {mutableStateOf("")}
     Column(Modifier.fillMaxSize().background(TBg).padding(16.dp),
         verticalArrangement=Arrangement.spacedBy(10.dp)) {
-        Text("Gemeindekalender+",color=Color.White,
+        Text("Gemeindekalender+",color=MaterialTheme.colorScheme.onSurface,
             style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold)
         Text("Termine, Entsorgung und Veranstaltungen aus offiziellen Quellen.",
             color=TMute)
@@ -271,7 +271,7 @@ fun NativeQRHandover(repo:QuartinautRepository) {
     }
     Column(Modifier.fillMaxSize().background(TBg).verticalScroll(rememberScrollState())
         .padding(17.dp),verticalArrangement=Arrangement.spacedBy(13.dp)) {
-        Text("QR-Übergabe",color=Color.White,
+        Text("QR-Übergabe",color=MaterialTheme.colorScheme.onSurface,
             style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold)
         Text("Einmaliger Code · 10 Minuten gültig · nur für bestätigte Ausleihen.",
             color=TMute)

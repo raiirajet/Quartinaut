@@ -112,10 +112,10 @@ class MainActivity : ComponentActivity() {
                     isAppearanceLightStatusBars=(mode=="light")
                     isAppearanceLightNavigationBars=(mode=="light")
                 }
-                window.decorView.setBackgroundColor(scheme.background.toArgb())
+                window.decorView.setBackgroundColor(bars.toArgb())
             }
             MaterialTheme(colorScheme = scheme) {
-                Box(Modifier.fillMaxSize().background(scheme.background)) {
+                Box(Modifier.fillMaxSize().background(bars)) {
                     QuartinautApp(repository,mode) { next ->
                         mode=next
                         prefs.edit().putString("theme_mode",next).apply()

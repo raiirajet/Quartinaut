@@ -22,10 +22,10 @@ private val CreateCategories=listOf("Alltagshilfe","Kinder","Werkzeug","Mobilit�
     "Tiere","Information","Notfall","Gesundheit","Seniorenhilfe","Digitalhilfe",
     "Wohnen","Bildung","Nachhaltigkeit","Firmen / Arbeit")
 private val UrgencyLabels=listOf("Heute","Morgen","Diese Woche","Nicht dringend")
-private val CreatePane=Color(0xFF1C342A)
-private val CreateBorder=Color(0xFF416B55)
-private val CreateText=Color(0xFFDBEBDD)
-private val CreateAccent=Color(0xFF9FE0B5)
+private val CreatePane: Color @Composable get() = MaterialTheme.colorScheme.surface
+private val CreateBorder: Color @Composable get() = MaterialTheme.colorScheme.outlineVariant
+private val CreateText: Color @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant
+private val CreateAccent: Color @Composable get() = MaterialTheme.colorScheme.primary
 
 @Composable
 fun NativeRequestComposer(
@@ -47,11 +47,11 @@ fun NativeRequestComposer(
     }
     val photoPaths=remember { mutableStateListOf<String>() }
     BackHandler(enabled=step>0) { step-=1; error="" }
-    Column(Modifier.fillMaxSize().background(Color(0xFF111F19))
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
         .verticalScroll(rememberScrollState()).padding(horizontal=18.dp,vertical=16.dp),
         verticalArrangement=Arrangement.spacedBy(16.dp)) {
         Text("NACHBARSCHAFT",color=CreateAccent,style=MaterialTheme.typography.labelMedium)
-        Text("Anliegen erstellen",color=Color.White,
+        Text("Anliegen erstellen",color=MaterialTheme.colorScheme.onSurface,
             style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold)
         Text("Schritt "+(step+1)+" von 3 · "+
             when(step){0->"Art & Kategorie";1->"Deine Beschreibung";else->"Prüfen & senden"},
@@ -61,7 +61,7 @@ fun NativeRequestComposer(
             trackColor=CreateBorder)
         if(step==0) {
             ComposerCard {
-                Text("Was möchtest du machen?",color=Color.White,
+                Text("Was möchtest du machen?",color=MaterialTheme.colorScheme.onSurface,
                     style=MaterialTheme.typography.titleMedium)
                 Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                     listOf("Suche","Biete").forEach { value ->
@@ -92,7 +92,7 @@ fun NativeRequestComposer(
                     Row(Modifier.fillMaxWidth().clickable {urgency=value},
                         verticalAlignment=Alignment.CenterVertically) {
                         RadioButton(selected=urgency==value,onClick={urgency=value})
-                        Text(value,color=Color.White)
+                        Text(value,color=MaterialTheme.colorScheme.onSurface)
                     }
                 }
                 Text("Gültig in deiner Gemeinde: "+repo.area()+" ("+repo.canton()+")",
@@ -104,7 +104,7 @@ fun NativeRequestComposer(
             }
         } else if(step==1) {
             ComposerCard {
-                Text("Beschreibe dein Anliegen",color=Color.White,
+                Text("Beschreibe dein Anliegen",color=MaterialTheme.colorScheme.onSurface,
                     style=MaterialTheme.typography.titleMedium)
                 Text("Ein klarer Titel hilft deinen Nachbarn, deinen Beitrag sofort zu verstehen.",
                     color=CreateText,style=MaterialTheme.typography.bodySmall)
@@ -143,12 +143,12 @@ fun NativeRequestComposer(
             }
         } else {
             ComposerCard {
-                Text("So wird dein Beitrag angezeigt",color=Color.White,
+                Text("So wird dein Beitrag angezeigt",color=MaterialTheme.colorScheme.onSurface,
                     style=MaterialTheme.typography.titleMedium)
                 Text(kind+" · "+category+" · "+urgency,
                     color=CreateAccent,style=MaterialTheme.typography.labelLarge)
                 HorizontalDivider(color=CreateBorder)
-                Text(title.trim(),color=Color.White,fontWeight=FontWeight.Bold,
+                Text(title.trim(),color=MaterialTheme.colorScheme.onSurface,fontWeight=FontWeight.Bold,
                     style=MaterialTheme.typography.titleLarge)
                 Text(details.trim(),color=CreateText,
                     style=MaterialTheme.typography.bodyMedium)
@@ -165,7 +165,7 @@ fun NativeRequestComposer(
                 modifier=Modifier.clickable {confirmed=!confirmed}) {
                 Checkbox(checked=confirmed,onCheckedChange={confirmed=it})
                 Text("Ich habe die Angaben geprüft und möchte den Beitrag einreichen.",
-                    color=Color.White,style=MaterialTheme.typography.bodySmall)
+                    color=MaterialTheme.colorScheme.onSurface,style=MaterialTheme.typography.bodySmall)
             }
             Row(horizontalArrangement=Arrangement.spacedBy(10.dp)) {
                 OutlinedButton(onClick={step=1},modifier=Modifier.weight(1f),

@@ -1,5 +1,7 @@
 package ch.quartinaut.nativeapp
 
+import androidx.activity.compose.BackHandler
+
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -80,9 +82,10 @@ fun NativeCreateHubPage(
     repo: QuartinautRepository, initialKind: String,
     onCompleted: () -> Unit
 ) {
-    val green=Color(0xFFA6E4BC)
-    val bg=Color(0xFF172C23)
+    val green=MaterialTheme.colorScheme.primary
+    val bg=MaterialTheme.colorScheme.surface
     var step by remember { mutableIntStateOf(0) }
+    BackHandler(enabled=step>0) { step-- }
     var kind by remember(initialKind) {
         mutableStateOf(initialKind.takeIf{it in NativeKinds} ?: "market")
     }
@@ -138,26 +141,26 @@ fun NativeCreateHubPage(
     val canAdvance=title.trim().length in 5..100 && category.isNotBlank() &&
         description.trim().length in 12..1200 &&
         priceValid && capValid && eventDateValid && !municipalityOnly
-    Column(Modifier.fillMaxSize().background(Color(0xFF111F19))
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
         .verticalScroll(rememberScrollState()).padding(18.dp),
         verticalArrangement=Arrangement.spacedBy(14.dp)) {
         Text("QUARTIER+ · "+(NativeKinds[kind] ?: "Eintrag"),
             style=MaterialTheme.typography.labelLarge,color=green)
         Text("Beitrag erstellen",style=MaterialTheme.typography.headlineSmall,
-            color=Color.White,fontWeight=FontWeight.Bold)
+            color=MaterialTheme.colorScheme.onSurface,fontWeight=FontWeight.Bold)
         Text("Schritt "+(step+1)+" von 3 · "+
             when(step){0->"Bereich und Titel";1->"Beschreibung und Angaben";else->"Vorschau & Freigabe"},
-            color=Color(0xFFC5DBCA),style=MaterialTheme.typography.bodySmall)
+            color=MaterialTheme.colorScheme.onSurfaceVariant,style=MaterialTheme.typography.bodySmall)
         LinearProgressIndicator(progress={ (step+1)/3f },
             modifier=Modifier.fillMaxWidth(),color=green)
         Surface(shape=RoundedCornerShape(22.dp),color=bg,
-            border=androidx.compose.foundation.BorderStroke(1.dp,Color(0xFF416C54)),
+            border=androidx.compose.foundation.BorderStroke(1.dp,MaterialTheme.colorScheme.outlineVariant),
             modifier=Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp),
                 verticalArrangement=Arrangement.spacedBy(13.dp)) {
                 if(step==0) {
                     Text("Was möchtest du veröffentlichen?",
-                        color=Color.White,style=MaterialTheme.typography.titleMedium)
+                        color=MaterialTheme.colorScheme.onSurface,style=MaterialTheme.typography.titleMedium)
                     Box {
                         OutlinedButton(onClick={expanded=true},
                             modifier=Modifier.fillMaxWidth()) {
@@ -182,17 +185,17 @@ fun NativeCreateHubPage(
                         label={Text("Titel")},modifier=Modifier.fillMaxWidth(),
                         singleLine=true,
                         supportingText={Text(title.length.toString()+" / 100 Zeichen")})
-                    Text("Kategorie",fontWeight=FontWeight.SemiBold,color=Color.White)
+                    Text("Kategorie",fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.onSurface)
                     (NativeCategories[kind] ?: emptyList()).forEach { value ->
                         Row(Modifier.fillMaxWidth().clickable{category=value},
                             verticalAlignment=Alignment.CenterVertically) {
                             RadioButton(selected=category==value,onClick={category=value})
-                            Text(value,color=Color.White)
+                            Text(value,color=MaterialTheme.colorScheme.onSurface)
                         }
                     }
                 } else if(step==1) {
                     Text("Erzähle den Menschen in deiner Gemeinde mehr darüber",
-                        color=Color.White,style=MaterialTheme.typography.titleMedium)
+                        color=MaterialTheme.colorScheme.onSurface,style=MaterialTheme.typography.titleMedium)
                     OutlinedTextField(description,{
                         description=it.take(1200);error=""
                     },label={Text("Beschreibung")},minLines=5,maxLines=12,
@@ -231,30 +234,30 @@ fun NativeCreateHubPage(
                         photoPaths.clear();photoPaths.addAll(updated)
                     }
                     Text("Persönliche Kontaktdaten müssen nicht veröffentlicht werden. Für Rückfragen ist der Quartinaut-Kontakt vorgesehen.",
-                        color=Color(0xFFC5DBCA),style=MaterialTheme.typography.bodySmall)
+                        color=MaterialTheme.colorScheme.onSurfaceVariant,style=MaterialTheme.typography.bodySmall)
                 } else {
-                    Text("Vorschau deines Beitrags",color=Color.White,
+                    Text("Vorschau deines Beitrags",color=MaterialTheme.colorScheme.onSurface,
                         style=MaterialTheme.typography.titleMedium)
                     Text((NativeKinds[kind] ?: kind)+" · "+category,color=green)
-                    HorizontalDivider(color=Color(0xFF416C54))
-                    Text(title.trim(),color=Color.White,
+                    HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
+                    Text(title.trim(),color=MaterialTheme.colorScheme.onSurface,
                         fontWeight=FontWeight.Bold,
                         style=MaterialTheme.typography.titleLarge)
-                    Text(description.trim(),color=Color(0xFFE4F2E8))
+                    Text(description.trim(),color=MaterialTheme.colorScheme.onSurface)
                     if(kind in listOf("market","lend"))
                         Text("Preis: CHF "+price.trim(),color=green)
                     if(date.isNotBlank())
-                        Text("Termin: "+localDate,color=Color.White)
+                        Text("Termin: "+localDate,color=MaterialTheme.colorScheme.onSurface)
                     if(venue.isNotBlank())
-                        Text("Ort: "+venue,color=Color.White)
+                        Text("Ort: "+venue,color=MaterialTheme.colorScheme.onSurface)
                     Text("Gemeinde: "+repo.area()+" ("+repo.canton()+")",
-                        color=Color(0xFFC5DBCA))
-                    HorizontalDivider(color=Color(0xFF416C54))
+                        color=MaterialTheme.colorScheme.onSurfaceVariant)
+                    HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
                     Text(when(kind){
                         "issue" -> "Dein Mängelbericht wird der Prüfung zugeführt."
                         "calendar" -> "Gemeindetermine werden gemäss deiner Rolle geprüft."
                         else -> "Der Beitrag wird zur Freigabe eingereicht und zunächst als Entwurf zur Prüfung markiert."
-                    },color=Color(0xFFC5DBCA),
+                    },color=MaterialTheme.colorScheme.onSurfaceVariant,
                         style=MaterialTheme.typography.bodySmall)
                 }
             }
@@ -264,7 +267,7 @@ fun NativeCreateHubPage(
             modifier=Modifier.clickable{confirmed=!confirmed}) {
             Checkbox(confirmed,onCheckedChange={confirmed=it})
             Text("Alle Angaben stimmen; ich möchte den Beitrag einreichen.",
-                color=Color.White,style=MaterialTheme.typography.bodySmall)
+                color=MaterialTheme.colorScheme.onSurface,style=MaterialTheme.typography.bodySmall)
         }
         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)) {
             if(step>0) {
