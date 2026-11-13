@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -85,7 +86,15 @@ fun NativeCreateHubPage(
     var kind by remember(initialKind) {
         mutableStateOf(initialKind.takeIf{it in NativeKinds} ?: "market")
     }
-    var title by remember { mutableStateOf("") }
+    val draftContext=LocalContext.current
+    var title by remember(initialKind,repo.user?.uid) {
+        val prefs=draftContext.getSharedPreferences("quartinaut_smart_drafts",
+            android.content.Context.MODE_PRIVATE)
+        val key="title_"+repo.user?.uid+"_"+initialKind
+        val preset=prefs.getString(key,"").orEmpty()
+        prefs.edit().remove(key).apply()
+        mutableStateOf(preset.take(100))
+    }
     var description by remember { mutableStateOf("") }
     var category by remember(kind) { mutableStateOf(NativeCategories[kind]?.firstOrNull().orEmpty()) }
     var price by remember { mutableStateOf("0") }
