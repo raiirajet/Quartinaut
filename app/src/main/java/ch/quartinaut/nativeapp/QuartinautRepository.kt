@@ -35,6 +35,8 @@ class QuartinautRepository(context: Context) {
     private val db: FirebaseFirestore
     private val functions: FirebaseFunctions
     private val subscriptions = mutableListOf<ListenerRegistration>()
+    private val registrationPrefs = context.getSharedPreferences("quartinaut_native_pending", Context.MODE_PRIVATE)
+    private var finishingRegistration = false
     var user by mutableStateOf<FirebaseUser?>(null)
         private set
     var profile by mutableStateOf<Map<String, Any?>>(emptyMap())
@@ -123,6 +125,83 @@ class QuartinautRepository(context: Context) {
     fun isAdmin(): Boolean = DocString(profile["role"]) == "admin"
     fun active(): Boolean = DocString(profile["accountStatus"]).ifBlank { "active" } == "active"
     private fun fail(e: Exception) { busy = false; message = e.localizedMessage ?: "Ein Fehler ist aufgetreten." }
+    fun registerResident(name: String, email: String, password: String,
+                         passwordRepeat: String, region: Region?, municipality: Municipality?) {
+        val display = name.trim()
+        val address = email.trim().lowercase()
+        if (display.length < 2 || !address.contains("@")) { message = "Bitte Name und gültige E-Mail eingeben."; return }
+        if (password.length < 10 || password != passwordRepeat) {
+            message = "Passwort mindestens 10 Zeichen und zweimal identisch eingeben."; return
+        }
+        if (region == null || municipality == null || municipality !in region.municipalities) {
+            message = "Bitte Kanton und Gemeinde auswählen."; return
+        }
+        val record = JSONObject().put("name",display).put("email",address)
+            .put("cantonCode",region.code).put("cantonBfs",region.bfs)
+            .put("cantonName",region.name).put("municipalityBfs",municipality.bfs)
+            .put("municipality",municipality.name).put("createdAt",System.currentTimeMillis())
+        registrationPrefs.edit().putString("pending",record.toString()).apply()
+        busy = true
+        auth.createUserWithEmailAndPassword(address,password).addOnCompleteListener {
+            busy = false
+            if (it.isSuccessful) {
+                it.result?.user?.sendEmailVerification()?.addOnCompleteListener { sent ->
+                    message = if (sent.isSuccessful) "Bestätigungs-E-Mail verschickt."
+                        else sent.exception?.localizedMessage ?: "Bestätigungslink konnte nicht gesendet werden."
+                }
+            } else {
+                registrationPrefs.edit().remove("pending").apply()
+                message = it.exception?.localizedMessage ?: "Registrierung fehlgeschlagen."
+            }
+        }
+    }
+    private fun finishPendingRegistration(uid: String) {
+        if (finishingRegistration) return
+        val pending = registrationPrefs.getString("pending",null) ?: return
+        val record = try { JSONObject(pending) } catch (_: Exception) { return }
+        if (record.optString("email") != auth.currentUser?.email?.lowercase()) return
+        if (System.currentTimeMillis() - record.optLong("createdAt") > 12L * 3600 * 1000) return
+        if (auth.currentUser?.isEmailVerified != true) return
+        finishingRegistration = true
+        val code = record.optString("cantonCode")
+        val municipality = record.optString("municipality")
+        val area = municipality + " (" + code + ")"
+        val now = isoNow()
+        val display = record.optString("name")
+        val initials = display.split(" ").filter { it.isNotBlank() }.take(2)
+            .joinToString("") { it.take(1).uppercase() }
+        val location = mapOf(
+            "cantonCode" to code, "cantonName" to record.optString("cantonName"),
+            "cantonBfsCode" to record.optString("cantonBfs"),
+            "municipalityBfsCode" to record.optString("municipalityBfs"),
+            "municipalityName" to municipality)
+        val data = mapOf<String,Any>(
+            "uid" to uid, "email" to record.optString("email"),
+            "displayName" to display, "initials" to initials,
+            "area" to area, "areaKey" to area.trim().lowercase(),
+            "cantonCode" to code, "location" to location,
+            "role" to "resident", "accountType" to "resident", "accountStatus" to "active",
+            "companyName" to "", "companyPurpose" to "", "companyStatus" to "none",
+            "municipalityName" to "", "municipalityDepartment" to "", "municipalityWebsite" to "",
+            "municipalityStatus" to "none", "adminScopeArea" to "",
+            "verified" to false, "verificationStatus" to "none", "verificationLabel" to "",
+            "titleVisible" to true, "titlePreset" to "auto",
+            "titleGrants" to emptyList<String>(),
+            "dashboard" to mapOf("version" to 2,"order" to emptyList<String>(),
+                "hidden" to emptyList<String>(),"collapsed" to emptyList<String>()),
+            "onboarding" to mapOf("version" to 0,"completed" to false,"skipped" to false,
+                "checklist" to emptyMap<String,String>()),
+            "locale" to "de", "notifications" to false, "passkeyReady" to false,
+            "createdAt" to now, "updatedAt" to now, "lastLoginAt" to now
+        )
+        db.collection("users").document(uid).set(data).addOnCompleteListener {
+            finishingRegistration = false
+            if (it.isSuccessful) {
+                registrationPrefs.edit().remove("pending").apply()
+                message = "Dein Quartinaut-Konto ist eingerichtet."
+            } else message = it.exception?.localizedMessage ?: "Profil konnte nicht erstellt werden."
+        }
+    }
     fun login(email: String, password: String) {
         if (email.isBlank() || password.isBlank()) { message = "E-Mail und Passwort eingeben."; return }
         busy = true
@@ -147,7 +226,9 @@ class QuartinautRepository(context: Context) {
     }
     fun refreshUser() {
         auth.currentUser?.reload()?.addOnCompleteListener {
-            if (it.isSuccessful) auth.currentUser?.uid?.let(::loadProfile)
+            if (it.isSuccessful) auth.currentUser?.uid?.let { uid ->
+                if (auth.currentUser?.isEmailVerified == true) finishPendingRegistration(uid)
+            }
             else message = it.exception?.localizedMessage ?: "Aktualisieren fehlgeschlagen."
         }
     }
@@ -157,7 +238,7 @@ class QuartinautRepository(context: Context) {
             if (auth.currentUser?.uid != uid) return@addSnapshotListener
             if (err != null) { message = "Profil: " + err.localizedMessage; return@addSnapshotListener }
             if (snapshot == null || !snapshot.exists()) {
-                message = "Ein vollständig registriertes Profil fehlt. Bitte schliesse die Registrierung in Quartinaut Web ab."
+                if (auth.currentUser?.isEmailVerified == true) finishPendingRegistration(uid)
                 return@addSnapshotListener
             }
             val wasEmpty = profile.isEmpty()
