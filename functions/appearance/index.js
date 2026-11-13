@@ -24,6 +24,9 @@ function error(code, detail) { throw new HttpsError(code, detail); }
 async function authorize(request) {
   if (!request.auth?.uid) error('unauthenticated','Bitte anmelden.');
   const uid = safeUid(request.auth.uid);
+  if (request.auth.token.email_verified !== true) {
+    error('permission-denied','Bitte zuerst deine E-Mail-Adresse bestätigen.');
+  }
   // Never trust the caller-supplied uid or "admin" role. The function only
   // operates on the Firebase-authenticated caller's private background.
   const snap = await db.collection('users').doc(uid).get();
@@ -66,6 +69,26 @@ async function sanitizedJpeg(raw) {
   }
 }
 
+// Prevent a single authenticated account from incurring excessive image writes.
+// A daily limit of 24 image writes and a 10 second minimum spacing protect costs;
+// reads are still private and only return a 480 KB maximum JPEG.
+async function checkWriteQuota(uid) {
+  const today=new Date().toISOString().slice(0,10);
+  const ref=db.collection('dashboardBackgroundQuotas').doc(uid+'_'+today);
+  const now=Date.now();
+  await db.runTransaction(async tx => {
+    const snap=await tx.get(ref);
+    const used=Number(snap.data()?.count||0);
+    const last=Number(snap.data()?.lastWriteMillis||0);
+    if(used>=24)error('resource-exhausted','Tageslimit für Hintergrundänderungen erreicht.');
+    if(now-last<10000)error('resource-exhausted','Bitte zwischen zwei Bildänderungen kurz warten.');
+    tx.set(ref,{
+      ownerUid:uid,day:today,count:used+1,lastWriteMillis:now,
+      updatedAt:FieldValue.serverTimestamp()
+    },{merge:true});
+  });
+}
+
 exports.quartinautAppearance = onCall(OPTIONS,async request => {
   const uid = await authorize(request);
   const data = request.data || {};
@@ -97,6 +120,7 @@ exports.quartinautAppearance = onCall(OPTIONS,async request => {
   }
   if (action === 'save') {
     const image = await sanitizedJpeg(data.base64);
+    await checkWriteQuota(uid);
     await file.save(image.buffer,{
       resumable:false,
       validation:'crc32c',
@@ -114,6 +138,7 @@ exports.quartinautAppearance = onCall(OPTIONS,async request => {
     return {ok:true,hasImage:true,size:image.buffer.length};
   }
   // Remove is safe to call repeatedly. Storage rules deny client reads.
+  await checkWriteQuota(uid);
   try { await file.delete({ignoreNotFound:true}); }
   catch(e) { error('unavailable','Hintergrundbild konnte nicht gelöscht werden.'); }
   await doc.delete();
