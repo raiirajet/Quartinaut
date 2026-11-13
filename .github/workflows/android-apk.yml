@@ -34,6 +34,10 @@ jobs:
           gradle-version: '8.9'
       - name: Restore original Quartinaut 5.4 artwork and location snapshot
         run: bash scripts/sync-original-assets.sh
+      - name: Verify private image-service code and validation tests
+        run: |
+          node --check functions/appearance/index.js
+          node --test functions/appearance/test/validation.test.js
       - name: Assemble debug APK (native)
         run: gradle :app:assembleDebug --no-daemon --stacktrace
       - name: Package native Android Studio sources and original images
