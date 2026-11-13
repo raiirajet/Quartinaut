@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.vector.PathParser
@@ -63,7 +64,12 @@ fun NativeCantonMap(selected: String, onSelect: (String) -> Unit) {
                     val dx = (size.width - MAP_WIDTH * factor) / 2
                     val dy = (size.height - MAP_HEIGHT * factor) / 2
                     val point = Offset((tap.x - dx)/factor, (tap.y - dy)/factor)
-                    shapes.entries.firstOrNull { (_, path) -> path.contains(point) }?.key?.let(onSelect)
+                    shapes.entries.firstOrNull { (_, path) ->
+                        val region = android.graphics.Region()
+                        region.setPath(path.asAndroidPath(), android.graphics.Region(
+                            0, 0, MAP_WIDTH.toInt() + 2, MAP_HEIGHT.toInt() + 2))
+                        region.contains(point.x.toInt(), point.y.toInt())
+                    }?.key?.let(onSelect)
                 }
             }
     ) {
