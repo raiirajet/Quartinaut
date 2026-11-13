@@ -26,6 +26,7 @@ android {
 }
 dependencies {
     implementation(platform("androidx.compose:compose-bom:2024.10.01"))
+    implementation("androidx.compose.runtime:runtime-saveable")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.foundation:foundation")
