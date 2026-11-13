@@ -31,7 +31,6 @@ import kotlin.math.min
 private const val MAP_WIDTH = 1052.361f
 private const val MAP_HEIGHT = 744.094f
 
-@Composable
 val SwissCapitals = mapOf("ZH" to "Zürich","BE" to "Bern","LU" to "Luzern",
     "UR" to "Altdorf","SZ" to "Schwyz","OW" to "Sarnen","NW" to "Stans",
     "GL" to "Glarus","ZG" to "Zug","FR" to "Freiburg / Fribourg",
@@ -113,7 +112,7 @@ fun NativeCantonMap(selected: String, counts: Map<String,Int> = emptyMap(),
                     .coerceIn(12f,36f)
                 val paint=android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                     textAlign=android.graphics.Paint.Align.CENTER
-                    color=if(code==selected || (counts[code] ?: 0) > ((counts.values.maxOrNull() ?: 0)/2))
+                    this.color=if(code==selected || (counts[code] ?: 0) > ((counts.values.maxOrNull() ?: 0)/2))
                         android.graphics.Color.WHITE else android.graphics.Color.rgb(20,72,53)
                     textSize=labelSize
                     typeface=android.graphics.Typeface.DEFAULT_BOLD
