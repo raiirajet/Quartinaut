@@ -182,6 +182,11 @@ private fun QuartinautApp(repo: QuartinautRepository) {
 
 @Composable
 private fun LoginPage(repo: QuartinautRepository) {
+    var creating by remember { mutableStateOf(false) }
+    if (creating) {
+        RegistrationPage(repo) { creating = false }
+        return
+    }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     val ctx = LocalContext.current
@@ -216,11 +221,75 @@ private fun LoginPage(repo: QuartinautRepository) {
         }
         Spacer(Modifier.height(18.dp))
         Text("Neues Konto?", fontWeight = FontWeight.SemiBold)
-        OutlinedButton(onClick = {
+        OutlinedButton(onClick = { creating = true }) { Text("Privatkonto nativ registrieren") }
+        TextButton(onClick = {
             ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://quartinaut.web.app/")))
-        }) { Text("Registrierung im Browser abschliessen") }
-        Text("Die Android-Oberfläche ist vollständig nativ. Die bestehende Web-Registrierung wird vorläufig beibehalten.",
-            style = MaterialTheme.typography.bodySmall, color = Color.DarkGray)
+        }) { Text("Firmen- oder Gemeindekonto: Web-Registrierung") }
+    }
+}
+
+
+@Composable
+private fun RegistrationPage(repo: QuartinautRepository, onBack: () -> Unit) {
+    var name by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var repeated by remember { mutableStateOf("") }
+    var canton by remember { mutableStateOf<Region?>(null) }
+    var municipality by remember { mutableStateOf<Municipality?>(null) }
+    var cantonMenu by remember { mutableStateOf(false) }
+    var muniMenu by remember { mutableStateOf(false) }
+    var muniSearch by remember { mutableStateOf("") }
+    ScrollPage {
+        TextButton(onClick = onBack) { Text("← Zurück zur Anmeldung") }
+        SectionTitle("Privatkonto erstellen", "Mit deiner Schweizer Gemeinde verbinden")
+        OutlinedTextField(name,{name=it},modifier=Modifier.fillMaxWidth(),label={Text("Vor- und Nachname")})
+        OutlinedTextField(email,{email=it},modifier=Modifier.fillMaxWidth(),
+            label={Text("E-Mail")},keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Email))
+        OutlinedTextField(password,{password=it},modifier=Modifier.fillMaxWidth(),
+            label={Text("Passwort (mindestens 10 Zeichen)")},
+            visualTransformation=PasswordVisualTransformation())
+        OutlinedTextField(repeated,{repeated=it},modifier=Modifier.fillMaxWidth(),
+            label={Text("Passwort wiederholen")},visualTransformation=PasswordVisualTransformation())
+        Text("Kanton",fontWeight=FontWeight.Bold)
+        Box {
+            OutlinedButton(onClick={cantonMenu=true},modifier=Modifier.fillMaxWidth()) {
+                Text(canton?.name ?: "Kanton auswählen")
+            }
+            DropdownMenu(expanded=cantonMenu,onDismissRequest={cantonMenu=false}) {
+                repo.regions.forEach { region ->
+                    DropdownMenuItem(text={Text(region.name+" ("+region.code+")")},onClick={
+                        canton=region;municipality=null;muniSearch="";cantonMenu=false
+                    })
+                }
+            }
+        }
+        if(canton != null) {
+            Text("Gemeinde",fontWeight=FontWeight.Bold)
+            OutlinedTextField(muniSearch,{muniSearch=it;muniMenu=true},
+                modifier=Modifier.fillMaxWidth(),label={Text("Gemeinde suchen")})
+            Box {
+                OutlinedButton(onClick={muniMenu=true},modifier=Modifier.fillMaxWidth()) {
+                    Text(municipality?.name ?: "Gemeinde auswählen")
+                }
+                DropdownMenu(expanded=muniMenu,onDismissRequest={muniMenu=false}) {
+                    (canton?.municipalities ?: emptyList()).filter {
+                        it.name.contains(muniSearch,ignoreCase=true)
+                    }.take(60).forEach { choice ->
+                        DropdownMenuItem(text={Text(choice.name)},onClick={
+                            municipality=choice;muniSearch=choice.name;muniMenu=false
+                        })
+                    }
+                }
+            }
+        }
+        Text("Mit der Registrierung bestätigst du, dass du die geltenden Quartinaut-Regeln akzeptierst.",
+            style=MaterialTheme.typography.bodySmall)
+        Button(onClick={repo.registerResident(name,email,password,repeated,canton,municipality)},
+            modifier=Modifier.fillMaxWidth(),enabled=!repo.busy && repo.regions.isNotEmpty()) {
+            Text("Konto erstellen & E-Mail bestätigen")
+        }
+        if(repo.regions.isEmpty()) Text("Das Gemeindeverzeichnis wird geladen. Für die Registrierung wird eine Internetverbindung benötigt.")
     }
 }
 
