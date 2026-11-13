@@ -468,7 +468,7 @@ class QuartinautRepository(context: Context) {
 
     fun readProtectedPhoto(path: String, onResult: (android.graphics.Bitmap?) -> Unit) {
         if (user == null || path.isBlank() ||
-            !path.matches(Regex("^post-photos/(requests|community|groups)/[^/]+/[^/]+/[0-2]\\\\.jpg$"))) {
+            !path.matches(Regex("^post-photos/(requests|community|groups)/[^/]+/[^/]+/[0-2]\\.jpg$"))) {
             onResult(null)
             return
         }
