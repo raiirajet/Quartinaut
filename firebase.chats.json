@@ -1,0 +1,13 @@
+{
+  "functions": [
+    {
+      "source": "functions/nativeChats",
+      "codebase": "quartinaut-native-chats",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log"
+      ]
+    }
+  ]
+}
