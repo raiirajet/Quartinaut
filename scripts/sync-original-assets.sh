@@ -20,6 +20,8 @@ for item in start quartier neu chats profil; do
   get "icons/navigation/$item.png" "$DEST/navigation/$item.png"
 done
 get "data/ch-locations-2026.json" "$DEST/ch-locations-2026.json"
+# Fail closed if public hosting no longer matches the user's archived 5.4 artwork.
+(cd "$DEST" && sha256sum --check "$ROOT/scripts/assets-5.4.sha256")
 python3 - "$DEST/ch-locations-2026.json" <<'PY'
 import json,sys
 data=json.load(open(sys.argv[1],encoding="utf-8"))
