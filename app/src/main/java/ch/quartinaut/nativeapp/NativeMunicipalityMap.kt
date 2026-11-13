@@ -161,6 +161,7 @@ fun NativeMunicipalityMap(
     val context=LocalContext.current
     val imageLoader=remember(context) { wappenLoader(context) }
     var wappenLoading by remember(canton.code) { mutableStateOf(false) }
+    var zoom by remember(canton.code) { mutableFloatStateOf(1f) }
     val coats by produceState<Map<String,Bitmap>>(initialValue=emptyMap(),canton.code) {
         wappenLoading=true
         val urls=withContext(Dispatchers.IO) { queryCantonWappen(canton) }
@@ -201,6 +202,15 @@ fun NativeMunicipalityMap(
         else -> {
             val features=regions!!
             val index=remember(canton.code) { canton.municipalities.associateBy { it.bfs } }
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(9.dp),
+                verticalAlignment=Alignment.CenterVertically) {
+                Text("Kartenzoom",modifier=Modifier.weight(1f),
+                    style=MaterialTheme.typography.labelMedium)
+                listOf(1f,1.6f,2.5f).forEach {factor->
+                    FilterChip(selected=zoom==factor,onClick={zoom=factor},
+                        label={Text(when(factor){1f->"1×";1.6f->"1,6×";else->"2,5×"})})
+                }
+            }
             Canvas(
                 Modifier.fillMaxWidth().height(260.dp)
                     .background(MaterialTheme.colorScheme.surfaceVariant,RoundedCornerShape(14.dp))
@@ -209,8 +219,10 @@ fun NativeMunicipalityMap(
                             val scale=min(size.width/VW,size.height/VH)
                             val left=(size.width-VW*scale)/2
                             val top=(size.height-VH*scale)/2
-                            val px=((tap.x-left)/scale).toInt()
-                            val py=((tap.y-top)/scale).toInt()
+                            val scaledX=(tap.x-size.width/2f)/zoom+size.width/2f
+                            val scaledY=(tap.y-size.height/2f)/zoom+size.height/2f
+                            val px=((scaledX-left)/scale).toInt()
+                            val py=((scaledY-top)/scale).toInt()
                             features.firstOrNull { feature ->
                                 val reg=AndroidRegion()
                                 reg.setPath(feature.path.asAndroidPath(),
@@ -223,7 +235,13 @@ fun NativeMunicipalityMap(
                 val scale=min(size.width/VW,size.height/VH)
                 val left=(size.width-VW*scale)/2
                 val top=(size.height-VH*scale)/2
-                withTransform({ translate(left,top); scale(scale,scale,pivot=Offset.Zero) }) {
+                withTransform({
+                    translate(size.width/2f,size.height/2f)
+                    scale(zoom,zoom,pivot=Offset.Zero)
+                    translate(-size.width/2f,-size.height/2f)
+                    translate(left,top)
+                    scale(scale,scale,pivot=Offset.Zero)
+                }) {
                     features.forEach { feature ->
                         val active=feature.bfs==selected?.bfs
                         drawPath(feature.path,if(active)Color(0xFFDBAA39) else Color(0xFF95C7A7))

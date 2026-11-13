@@ -37,9 +37,12 @@ internal data class MunicipalityFacts(
     val population: Long? = null,
     val populationYear: String? = null,
     val area: Double? = null,
+    val altitude: Double? = null,
+    val postalCode: String? = null,
     val website: String? = null
 )
 
+private val municipalityFactCache=java.util.concurrent.ConcurrentHashMap<String,MunicipalityFacts>()
 private fun bfsLiteral(bfs: String): String = bfs.toIntOrNull()?.toString() ?: ""
 
 private fun readWikidataQuery(query: String): JSONObject? {
@@ -71,11 +74,14 @@ internal fun safeWappenUrl(input: String?): String? {
 internal fun queryMunicipalityFacts(bfs: String): MunicipalityFacts? {
     val code=bfsLiteral(bfs)
     if(code.isEmpty())return null
+    municipalityFactCache[code]?.let { return it }
     val query="""
-        SELECT ?coat ?population ?date ?area ?website WHERE {
+        SELECT ?coat ?population ?date ?area ?altitude ?postcode ?website WHERE {
           ?municipality wdt:P771 "$code" .
           OPTIONAL { ?municipality wdt:P94 ?coat. }
           OPTIONAL { ?municipality wdt:P2046 ?area. }
+          OPTIONAL { ?municipality wdt:P2044 ?altitude. }
+          OPTIONAL { ?municipality wdt:P281 ?postcode. }
           OPTIONAL { ?municipality wdt:P856 ?website. }
           OPTIONAL {
             ?municipality p:P1082 ?statement.
@@ -87,13 +93,17 @@ internal fun queryMunicipalityFacts(bfs: String): MunicipalityFacts? {
     val rows=readWikidataQuery(query)?.optJSONObject("results")
         ?.optJSONArray("bindings") ?: return null
     val row=rows.optJSONObject(0) ?: return null
-    return MunicipalityFacts(
+    val fact=MunicipalityFacts(
         coat=safeWappenUrl(binding(row,"coat")),
         population=binding(row,"population")?.toDoubleOrNull()?.toLong(),
         populationYear=binding(row,"date")?.take(4),
         area=binding(row,"area")?.toDoubleOrNull(),
+        altitude=binding(row,"altitude")?.toDoubleOrNull(),
+        postalCode=binding(row,"postcode")?.takeIf {it.length in 4..12},
         website=binding(row,"website")?.takeIf { it.startsWith("https://") }
     )
+    municipalityFactCache[code]=fact
+    return fact
 }
 
 /** One SPARQL request per canton; failures leave the normal map functional. */
@@ -168,8 +178,20 @@ internal fun NativeMunicipalityFactCard(municipality: Municipality, canton: Regi
                     facts?.area?.let { area ->
                         Text("Fläche: ${"%.2f".format(Locale.GERMAN,area)} km²")
                     }
+                    facts?.altitude?.let {altitude ->
+                        Text("Höhenlage: "+altitude.toInt()+" m ü. M. (Wikidata)")
+                    }
+                    facts?.postalCode?.let {postal ->
+                        Text("Postleitzahl: "+postal+" (Wikidata)")
+                    }
                     facts?.website?.let { website ->
-                        Text("Gemeindewebsite: $website",style=MaterialTheme.typography.bodySmall)
+                        val context=LocalContext.current
+                        TextButton(onClick={
+                            runCatching {
+                                context.startActivity(android.content.Intent(
+                                    android.content.Intent.ACTION_VIEW,Uri.parse(website)))
+                            }
+                        }) {Text("Gemeindewebsite öffnen")}
                     }
                     if(facts?.population==null)Text("Keine zuverlässig zuordenbare Einwohnerzahl verfügbar.",
                         style=MaterialTheme.typography.bodySmall)

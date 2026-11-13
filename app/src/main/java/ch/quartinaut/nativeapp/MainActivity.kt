@@ -425,7 +425,8 @@ private fun QuartinautApp(repo: QuartinautRepository,
                 }
                 "hub-detail" -> NativeHubDetail(repo,selectedHubItem,goBack)
                 "map" -> RegionPage(repo,mapCanton,mapMunicipality,
-                    {mapCanton=it;mapMunicipality=""},{mapMunicipality=it})
+                    {mapCanton=it;mapMunicipality=""},{mapMunicipality=it},
+                    {navTo("municipal-compare")})
                 "alerts" -> DocumentsPage(repo, "Alarme", repo.alerts.filter {
                     it.str("cantonCode") == repo.canton() &&
                         (it.str("scopeLevel") == "canton" ||
@@ -473,7 +474,7 @@ private fun LoginPage(repo: QuartinautRepository) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     val ctx = LocalContext.current
-    Column(Modifier.fillMaxSize().background(SoftGreen).verticalScroll(rememberScrollState())
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState())
         .padding(horizontal = 24.dp, vertical = 32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Spacer(Modifier.height(26.dp))
         QuartinautLogo(modifier = Modifier.size(118.dp))
@@ -876,10 +877,15 @@ private fun ProfilePage(repo: QuartinautRepository, go:(String)->Unit) = ScrollP
 }
 @Composable
 private fun RegionPage(repo: QuartinautRepository, selectedCode: String,selectedBfs: String,
-    selectCanton: (String)->Unit, selectMunicipality: (String)->Unit) {
+    selectCanton: (String)->Unit, selectMunicipality: (String)->Unit,
+    navigateComparison: ()->Unit) {
     var search by remember(selectedCode) { mutableStateOf("") }
     val canton=repo.regions.firstOrNull { it.code==selectedCode }
     val selected=canton?.municipalities?.firstOrNull { it.bfs==selectedBfs }
+    val ownCanton=repo.regions.firstOrNull {it.code==repo.canton()}
+    val ownMunicipality=ownCanton?.municipalities?.firstOrNull {
+        it.name.equals(repo.area().substringBefore("(").trim(),ignoreCase=true)
+    }
     val filteredCantons=repo.regions.filter { region ->
         (region.name+" "+region.code).contains(search,ignoreCase=true)
             || region.municipalities.any { it.name.contains(search,ignoreCase=true) }
@@ -893,6 +899,20 @@ private fun RegionPage(repo: QuartinautRepository, selectedCode: String,selected
             SectionTitle(if(canton==null) "Schweiz entdecken" else canton.name,
                 if(canton==null) "26 Kantone · 2'110 Gemeinden"
                 else "${canton.code} · ${canton.municipalities.size} Gemeinden")
+        }
+        item {
+            Row(horizontalArrangement=Arrangement.spacedBy(7.dp)) {
+                OutlinedButton(onClick={
+                    if(ownCanton!=null && ownMunicipality!=null) {
+                        selectCanton(ownCanton.code)
+                        selectMunicipality(ownMunicipality.bfs)
+                    }
+                },enabled=ownCanton!=null&&ownMunicipality!=null) {
+                    Text("Meine Gemeinde")
+                }
+                OutlinedButton(onClick={selectCanton("")}) {Text("Schweiz")}
+            }
+            OutlinedButton(onClick=navigateComparison) {Text("Gemeinden vergleichen")}
         }
         if(canton!=null) {
             item {

@@ -142,11 +142,40 @@ fun NativeSettingsScreen(repo: QuartinautRepository,mode: String,
 }
 @Composable
 fun NativeAdminScreen(repo: QuartinautRepository, navigate: (String) -> Unit) {
+    if(!repo.isAdmin()) {
+        Text("Dieser Bereich ist nur für freigeschaltete Administrationskonten zugänglich.",
+            modifier=Modifier.padding(24.dp))
+        return
+    }
     val queue=repo.hubItems.filter { DocString(it["status"])=="pending" }
+    val published=repo.hubItems.count {DocString(it["status"])=="published"}
+    val requestsOpen=repo.requests.count {it.str("status")=="offen"}
+    val alertsLoaded=repo.alerts.size
     Column(Modifier.fillMaxSize().padding(16.dp),
         verticalArrangement=Arrangement.spacedBy(10.dp)) {
         Text("Verwaltung",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold)
         Text("Sensible Aktionen werden serverseitig auf deine Administrationsrechte geprüft.")
+        Text("Status der geladenen Daten",style=MaterialTheme.typography.titleMedium,
+            fontWeight=FontWeight.SemiBold)
+        Row(horizontalArrangement=Arrangement.spacedBy(7.dp)) {
+            listOf("Zu prüfen" to queue.size,"Veröffentlicht" to published,
+                "Anliegen" to requestsOpen).forEach { (label,amount)->
+                Card(Modifier.weight(1f),colors=CardDefaults.cardColors(
+                    containerColor=MaterialTheme.colorScheme.surfaceVariant)) {
+                    Column(Modifier.padding(8.dp)) {
+                        Text(amount.toString(),style=MaterialTheme.typography.titleLarge)
+                        Text(label,style=MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
+        }
+        Text("Geladene Warnungen: "+alertsLoaded+" · Verbindungsprobleme: "+
+            repo.syncIssues.size,style=MaterialTheme.typography.bodySmall)
+        if(repo.syncIssues.isNotEmpty()) OutlinedButton(onClick={navigate("diagnostics")}) {
+            Text("Verbindungsdiagnose öffnen")
+        }
+        Text("Die Zahlen zeigen ausschliesslich Datensätze, die dein Gerät bereits laden durfte – keine globale Benutzer- oder Moderationsstatistik.",
+            style=MaterialTheme.typography.bodySmall)
         Row(horizontalArrangement=Arrangement.spacedBy(9.dp)) {
             AssistChip(onClick=repo::loadHub,label={Text("Quartier+-Warteschlange")})
             AssistChip(onClick={navigate("official")},label={Text("Mitteilungen")})
