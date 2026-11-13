@@ -63,6 +63,8 @@ class QuartinautRepository(context: Context) {
         private set
     var regions by mutableStateOf<List<Region>>(emptyList())
         private set
+    var cantonCounts by mutableStateOf<Map<String,Int>>(emptyMap())
+        private set
     var chatId by mutableStateOf("")
         private set
 
@@ -283,6 +285,15 @@ class QuartinautRepository(context: Context) {
     private fun startListening(uid: String) {
         val canton = canton(); val key = areaKey()
         if (!active() || (canton.isBlank() && !isAdmin())) return
+        subscriptions.add(db.collection("publicStats").document("cantonRegistrations")
+            .addSnapshotListener { snapshot, err ->
+                if(err == null && snapshot != null) {
+                    val counts = snapshot.get("cantonCounts") as? Map<*, *>
+                    cantonCounts = counts?.entries?.associate { (key,value) ->
+                        DocString(key).uppercase() to ((value as? Number)?.toInt() ?: 0)
+                    } ?: emptyMap()
+                }
+            })
         val req = db.collection("requests")
         if (isAdmin()) {
             observe(req.orderBy("createdAt", Query.Direction.DESCENDING)) { requests = it }
