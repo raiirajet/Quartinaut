@@ -91,7 +91,7 @@ class MainActivity : ComponentActivity() {
             }
             var mode by remember { mutableStateOf(prefs.getString("theme_mode",null)
                 ?: if(prefs.getBoolean("dark",false)) "dark" else "light") }
-            val displayMode=if(displayMode=="system") { if(isSystemInDarkTheme()) "dark" else "light" } else mode
+            val displayMode=if(mode=="system") { if(isSystemInDarkTheme()) "dark" else "light" } else mode
             val scheme=when(displayMode) {
                 "green" -> SwissGreenScheme
                 "dark" -> SwissBlackScheme
