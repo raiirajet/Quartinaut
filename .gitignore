@@ -13,3 +13,8 @@ local.properties
 # Original public static assets are reconstructed by the sync script at build time
 app/src/main/assets/q-original/
 app/src/main/res/mipmap-nodpi/ic_launcher.png
+
+# New private appearance Cloud Function dependencies / build output
+functions/appearance/node_modules/
+functions/appearance/.env*
+firebase-debug.log
