@@ -12,6 +12,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asAndroidPath
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.vector.PathParser
@@ -91,6 +92,18 @@ fun NativeCantonMap(selected: String, onSelect: (String) -> Unit) {
                 val color = if (code == selected) Color(0xFF1D6B4C) else Color(0xFF9ACDB0)
                 drawPath(path, color)
                 drawPath(path, Color.White, style = Stroke(1.6f))
+                val bounds=path.getBounds()
+                val labelSize = (kotlin.math.min(bounds.width,bounds.height)*0.33f)
+                    .coerceIn(12f,36f)
+                val paint=android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                    textAlign=android.graphics.Paint.Align.CENTER
+                    color=if(code==selected) android.graphics.Color.WHITE
+                        else android.graphics.Color.rgb(20,72,53)
+                    textSize=labelSize
+                    typeface=android.graphics.Typeface.DEFAULT_BOLD
+                }
+                drawContext.canvas.nativeCanvas.drawText(
+                    code,bounds.center.x,bounds.center.y+labelSize*0.35f,paint)
             }
         }
     }
