@@ -77,7 +77,7 @@ class QuartinautRepository(context: Context) {
                 .setGcmSenderId("815175119171").build())
         auth = FirebaseAuth.getInstance(firebase)
         db = FirebaseFirestore.getInstance(firebase)
-        functions = FirebaseFunctions.getInstance(firebase, "us-central1")
+        functions = FirebaseFunctions.getInstance(firebase, "europe-west6")
         auth.addAuthStateListener {
             val next = it.currentUser
             if (user?.uid != next?.uid) {
