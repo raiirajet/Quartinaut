@@ -128,7 +128,10 @@ private fun QuartinautApp(repo: QuartinautRepository) {
                         IconButton(onClick = { page = "plus" }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, "Zurück", tint = Color.White)
                         }
-                    Text(title, color = Color.White, style = MaterialTheme.typography.titleLarge,
+                    QuartinautLogo(modifier=Modifier.size(width=42.dp,height=44.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(if(page == "home") "Quartinaut" else title,
+                        color = Color.White, style = MaterialTheme.typography.titleLarge,
                         modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                     IconButton(onClick = { page = "search" }) {
                         Icon(Icons.Default.Search, "Suchen", tint = Color.White)
@@ -139,15 +142,15 @@ private fun QuartinautApp(repo: QuartinautRepository) {
         bottomBar = {
             NavigationBar(containerColor = Color.White, tonalElevation = 5.dp) {
                 listOf(
-                    Triple("home","Start", Icons.Default.Home),
-                    Triple("board","Brett", Icons.Default.ViewList),
-                    Triple("plus","Quartier+", Icons.Default.GridView),
-                    Triple("chats","Chats", Icons.AutoMirrored.Filled.Chat),
-                    Triple("profile","Profil", Icons.Default.Person)
-                ).forEach { (route,label,icon) ->
+                    Triple("home","Start","start"),
+                    Triple("plus","Quartier+","quartier"),
+                    Triple("create","Neu","neu"),
+                    Triple("chats","Chats","chats"),
+                    Triple("profile","Profil","profil")
+                ).forEach { (route,label,asset) ->
                     NavigationBarItem(selected = page == route,
                         onClick = { navTo(route) },
-                        icon = { Icon(icon, label) },
+                        icon = { OriginalNavigationIcon(asset,Modifier.size(37.dp)) },
                         label = { Text(label, maxLines = 1) },
                         alwaysShowLabel = true)
                 }
@@ -193,7 +196,7 @@ private fun LoginPage(repo: QuartinautRepository) {
     Column(Modifier.fillMaxSize().background(SoftGreen).verticalScroll(rememberScrollState())
         .padding(horizontal = 24.dp, vertical = 32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Spacer(Modifier.height(26.dp))
-        Icon(Icons.Default.LocationCity, null, modifier = Modifier.size(66.dp), tint = Forest)
+        QuartinautLogo(modifier = Modifier.size(118.dp))
         Spacer(Modifier.height(14.dp))
         Text("Quartinaut", style = MaterialTheme.typography.headlineLarge, color = Forest,
             fontWeight = FontWeight.Bold)
@@ -573,7 +576,11 @@ private fun RegionPage(repo: QuartinautRepository) {
     Column(Modifier.fillMaxSize().padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
         SectionTitle(if(canton==null) "Schweiz entdecken" else canton.name,
             if(canton==null) "26 Kantone · 2'110 Gemeinden" else "Kanton " + canton.code + " · " + canton.municipalities.size + " Gemeinden")
-        NativeCantonMap(selectedCode) { selectedCode=it;selectedMunicipality=null;search="" }
+        if (canton == null) {
+            NativeCantonMap(selectedCode) { selectedCode=it;selectedMunicipality=null;search="" }
+        } else {
+            NativeMunicipalityMap(canton,selectedMunicipality) { selectedMunicipality=it }
+        }
         if(canton != null) {
             TextButton(onClick={selectedCode="";selectedMunicipality=null;search=""}) { Text("← Alle Kantone") }
             selectedMunicipality?.let { m ->
