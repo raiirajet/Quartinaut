@@ -268,11 +268,11 @@ private fun QuartinautApp(repo: QuartinautRepository,
                 "home" -> NativeOriginalHome(repo, navTo)
                 "board" -> BulletinPage(repo, navTo, openRequest)
                 "plus" -> HubPage(repo, navTo)
-                "chats" -> ChatsPage(repo)
+                "chats" -> NativePrivateChatsPage(repo)
                 "profile" -> ProfilePage(repo, navTo)
                 "create" -> NativeNewChooser(navTo)
-                "create-request" -> CreateRequestPage(repo, navTo, initialKind="Suche")
-                "create-offer" -> CreateRequestPage(repo, navTo, initialKind="Biete")
+                "create-request" -> NativeRequestComposer(repo,initialKind="Suche") { navTo("board") }
+                "create-offer" -> NativeRequestComposer(repo,initialKind="Biete") { navTo("board") }
                 "request-detail" -> selectedRequest?.let { doc ->
                     NativeRequestDetail(repo,doc,{page="board"},{repo.openRequestChat(doc){page="chats"}})
                 }
