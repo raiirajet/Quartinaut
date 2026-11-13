@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.google.firebase.firestore.DocumentSnapshot
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
@@ -284,6 +285,76 @@ fun NativeHubDetail(
                     }
                 },enabled=commentInput.trim().length in 2..400) { Text("Kommentar senden") }
             }
+        }
+    }
+}
+
+
+@Composable
+fun NativeRequestDetail(
+    repo: QuartinautRepository, doc: DocumentSnapshot,
+    onClose: () -> Unit, onChat: () -> Unit
+) {
+    val paths=(doc.get("photoPaths") as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+    val id=doc.id
+    var comments by remember(id) { mutableStateOf<List<Map<String,Any?>>>(emptyList()) }
+    var showComments by remember(id) { mutableStateOf(false) }
+    var text by remember(id) { mutableStateOf("") }
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+        verticalArrangement=Arrangement.spacedBy(12.dp)) {
+        TextButton(onClick=onClose) { Text("← Schwarzes Brett") }
+        Text(doc.title(),style=MaterialTheme.typography.headlineSmall,
+            fontWeight=FontWeight.Bold)
+        Text(doc.str("category") + " · " + doc.str("area"),
+            style=MaterialTheme.typography.bodySmall)
+        NativeProtectedGallery(repo,paths)
+        Card(colors=CardDefaults.cardColors(containerColor=Color.White)) {
+            Text(doc.str("text").ifBlank{doc.str("description")},
+                modifier=Modifier.padding(16.dp))
+        }
+        Text("Art: "+doc.str("type") + " · Dringlichkeit: "+doc.str("urgency"),
+            style=MaterialTheme.typography.bodySmall)
+        if(doc.str("uid") != repo.user?.uid && doc.str("status")=="offen") {
+            Button(onClick=onChat,modifier=Modifier.fillMaxWidth()) {
+                Icon(Icons.Default.MailOutline,null)
+                Spacer(Modifier.width(6.dp))
+                Text("Privaten Chat starten")
+            }
+        }
+        OutlinedButton(onClick={
+            repo.reactionAction("like.toggle","request",id){ }
+        }) { Text("♡ Gefällt mir") }
+        TextButton(onClick={
+            showComments=!showComments
+            if(showComments) repo.reactionAction("comments.list","request",id){ result ->
+                val rows=result["comments"] as? List<*> ?: emptyList<Any>()
+                comments=rows.mapNotNull { r ->
+                    (r as? Map<*, *>)?.entries?.associate { DocString(it.key) to it.value }
+                }
+            }
+        }) { Text(if(showComments) "Kommentare ausblenden" else "Kommentare anzeigen") }
+        if(showComments) {
+            comments.forEach { entry ->
+                Card(colors=CardDefaults.cardColors(containerColor=Color.White)) {
+                    Column(Modifier.fillMaxWidth().padding(12.dp)) {
+                        Text(DocString(entry["authorName"]),fontWeight=FontWeight.Bold)
+                        Text(DocString(entry["text"]))
+                    }
+                }
+            }
+            OutlinedTextField(text,{text=it.take(400)},label={Text("Kommentar")},
+                modifier=Modifier.fillMaxWidth(),minLines=2)
+            Button(onClick={
+                repo.reactionAction("comment.create","request",id,mapOf("text" to text.trim())) {
+                    text=""
+                    repo.reactionAction("comments.list","request",id){ data ->
+                        val rows=data["comments"] as? List<*> ?: emptyList<Any>()
+                        comments=rows.mapNotNull { r ->
+                            (r as? Map<*, *>)?.entries?.associate { DocString(it.key) to it.value }
+                        }
+                    }
+                }
+            },enabled=text.trim().length in 2..400) { Text("Kommentar senden") }
         }
     }
 }
