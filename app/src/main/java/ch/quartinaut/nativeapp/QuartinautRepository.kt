@@ -35,6 +35,10 @@ class QuartinautRepository(context: Context) {
     private val db: FirebaseFirestore
     private val functions: FirebaseFunctions
     private val subscriptions = mutableListOf<ListenerRegistration>()
+    private val feedSubscriptions = mutableListOf<ListenerRegistration>()
+    private var verifiedAdminClaim by mutableStateOf(false)
+    var syncIssues by mutableStateOf<Map<String,String>>(emptyMap())
+        private set
     private var activeChatListener: ListenerRegistration? = null
     private val registrationPrefs = context.getSharedPreferences("quartinaut_native_pending", Context.MODE_PRIVATE)
     private var finishingRegistration = false
@@ -97,6 +101,10 @@ class QuartinautRepository(context: Context) {
             if (user?.uid != next?.uid) {
                 subscriptions.forEach { sub -> sub.remove() }
                 subscriptions.clear()
+                feedSubscriptions.forEach { sub -> sub.remove() }
+                feedSubscriptions.clear()
+                verifiedAdminClaim = false
+                syncIssues = emptyMap()
                 activeChatListener?.remove()
                 activeChatListener = null
                 user = next
@@ -108,7 +116,25 @@ class QuartinautRepository(context: Context) {
                 dashboardBackground = null
                 dashboardBackgroundStatus = "checking"
                 backgroundBusy = false
-                if (next != null) loadProfile(next.uid)
+                if (next != null) {
+                    loadProfile(next.uid)
+                    next.getIdTokenResult(false).addOnSuccessListener { token ->
+                        if (user?.uid != next.uid) return@addOnSuccessListener
+                        val claims=token.claims
+                        val role=claims["role"] as? String ?: ""
+                        val allowed=role!="area_admin" &&
+                            (role=="admin" || claims["admin"] == true)
+                        if (verifiedAdminClaim != allowed) {
+                            verifiedAdminClaim=allowed
+                            if(profile.isNotEmpty() && active()) startListening(next.uid)
+                        }
+                    }.addOnFailureListener { err ->
+                        if(user?.uid==next.uid) {
+                            syncIssues = syncIssues + ("Administratorrechte" to
+                                (err.localizedMessage ?: "Token konnte nicht geprüft werden."))
+                        }
+                    }
+                }
             }
         }
         Thread {
@@ -149,7 +175,8 @@ class QuartinautRepository(context: Context) {
     fun area(): String = DocString(profile["area"])
     fun canton(): String = DocString(profile["cantonCode"])
     fun areaKey(): String = DocString(profile["areaKey"])
-    fun isAdmin(): Boolean = DocString(profile["role"]) == "admin"
+    // Security rules require Firebase Auth custom claims, not a self-reported profile role.
+    fun isAdmin(): Boolean = verifiedAdminClaim
     fun active(): Boolean = DocString(profile["accountStatus"]).ifBlank { "active" } == "active"
     private fun fail(e: Exception) { busy = false; message = e.localizedMessage ?: "Ein Fehler ist aufgetreten." }
     fun registerResident(name: String, email: String, password: String,
@@ -294,18 +321,32 @@ class QuartinautRepository(context: Context) {
             }
         })
     }
-    private fun observe(query: Query, onData: (List<DocumentSnapshot>) -> Unit) {
-        subscriptions.add(query.limit(250).addSnapshotListener { snaps, e ->
-            if (e != null) { message = e.localizedMessage ?: "Datenabfrage fehlgeschlagen."; return@addSnapshotListener }
+    private fun observe(label: String, query: Query, onData: (List<DocumentSnapshot>) -> Unit) {
+        feedSubscriptions.add(query.limit(250).addSnapshotListener { snaps, e ->
+            // An inaccessible optional feed must not block the whole dashboard
+            // with a generic PERMISSION_DENIED dialog.
+            if (e != null) {
+                syncIssues = syncIssues + (label to
+                    (e.localizedMessage ?: "Zugriff verweigert."))
+                android.util.Log.w("QuartinautSync", "Firestore feed: " + label, e)
+                return@addSnapshotListener
+            }
+            if(label in syncIssues) syncIssues = syncIssues - label
             onData(snaps?.documents ?: emptyList())
         })
     }
     private fun startListening(uid: String) {
+        feedSubscriptions.forEach { sub -> sub.remove() }
+        feedSubscriptions.clear()
         val canton = canton(); val key = areaKey()
         if (!active() || (canton.isBlank() && !isAdmin())) return
-        subscriptions.add(db.collection("publicStats").document("cantonRegistrations")
+        feedSubscriptions.add(db.collection("publicStats").document("cantonRegistrations")
             .addSnapshotListener { snapshot, err ->
-                if(err == null && snapshot != null) {
+                if(err != null) {
+                    syncIssues=syncIssues + ("Kantonsstatistik" to
+                        (err.localizedMessage ?: "Nicht verfügbar"))
+                } else if(snapshot != null) {
+                    syncIssues=syncIssues - "Kantonsstatistik"
                     val counts = snapshot.get("cantonCounts") as? Map<*, *>
                     cantonCounts = counts?.entries?.associate { (key,value) ->
                         DocString(key).uppercase() to ((value as? Number)?.toInt() ?: 0)
@@ -314,24 +355,24 @@ class QuartinautRepository(context: Context) {
             })
         val req = db.collection("requests")
         if (isAdmin()) {
-            observe(req.orderBy("createdAt", Query.Direction.DESCENDING)) { requests = it }
+            observe("Alle Anliegen (Admin)", req.orderBy("createdAt", Query.Direction.DESCENDING)) { requests = it }
         } else {
-            observe(req.whereEqualTo("cantonCode", canton).whereEqualTo("status", "offen")
+            observe("Öffentliche Anliegen", req.whereEqualTo("cantonCode", canton).whereEqualTo("status", "offen")
                 .orderBy("createdAt", Query.Direction.DESCENDING)) { publicItems ->
                 requests = (requests.filter { doc -> doc.str("uid") == uid } + publicItems).distinctBy { doc -> doc.id }
             }
-            observe(req.whereEqualTo("uid", uid).orderBy("createdAt", Query.Direction.DESCENDING)) { own ->
+            observe("Eigene Anliegen", req.whereEqualTo("uid", uid).orderBy("createdAt", Query.Direction.DESCENDING)) { own ->
                 requests = (requests.filter { doc -> doc.str("uid") != uid } + own).distinctBy { doc -> doc.id }
             }
         }
-        observe(db.collection("alerts").orderBy("createdAt", Query.Direction.DESCENDING)) { alerts = it }
+        observe("Gemeinde-Alarme", db.collection("alerts").orderBy("createdAt", Query.Direction.DESCENDING)) { alerts = it }
         if (isAdmin()) {
-            observe(db.collection("officialNotices").orderBy("createdAt", Query.Direction.DESCENDING)) { notices = it }
+            observe("Alle Mitteilungen (Admin)", db.collection("officialNotices").orderBy("createdAt", Query.Direction.DESCENDING)) { notices = it }
         } else {
-            observe(db.collection("officialNotices").whereEqualTo("cantonCode", canton)
+            observe("Gemeindemitteilungen", db.collection("officialNotices").whereEqualTo("cantonCode", canton)
                 .whereEqualTo("status", "online").orderBy("createdAt", Query.Direction.DESCENDING)) { notices = it }
         }
-        observe(db.collection("chats").whereArrayContains("participants", uid)
+        observe("Private Chats", db.collection("chats").whereArrayContains("participants", uid)
             .orderBy("lastMessageAt", Query.Direction.DESCENDING)) { chats = it }
         loadHub()
     }
@@ -343,7 +384,10 @@ class QuartinautRepository(context: Context) {
                 hubItems = raw.mapNotNull { item ->
                     (item as? Map<*, *>)?.entries?.associate { DocString(it.key) to it.value }
                 }
-            }.addOnFailureListener(::fail)
+            }.addOnFailureListener { e ->
+                syncIssues = syncIssues + ("Quartier+" to
+                    (e.localizedMessage ?: "Quartier+ nicht erreichbar"))
+            }
     }
     fun loadV50(action: String) {
         if (user == null || !active()) return
@@ -573,7 +617,10 @@ class QuartinautRepository(context: Context) {
             .addOnSuccessListener { result ->
                 val data=(result.data as? Map<*, *>)?.get("settings") as? Map<*, *>
                 communitySettings=data?.entries?.associate { DocString(it.key) to it.value } ?: emptyMap()
-            }.addOnFailureListener(::fail)
+            }.addOnFailureListener { e ->
+                syncIssues = syncIssues + ("Startseiteneinstellungen" to
+                    (e.localizedMessage ?: "Einstellungen nicht verfügbar"))
+            }
     }
     fun saveCommunitySettings(preferences: Map<String,Any?>) {
         communityAction("settings.save",mapOf("settings" to preferences),false) {
