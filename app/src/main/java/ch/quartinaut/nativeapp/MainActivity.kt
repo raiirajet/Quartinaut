@@ -541,10 +541,15 @@ private fun HubPage(repo: QuartinautRepository, go:(String)->Unit) = ScrollPage 
 @Composable
 private fun HubItemsPage(repo:QuartinautRepository,kind:String,go:(String)->Unit,
     openItem:(Map<String,Any?>)->Unit) {
-    val labels = mapOf("market" to "Marktplatz","lend" to "Leihbörse","group" to "Vereine & Gruppen","calendar" to "Gemeindekalender")
+    val labels = mapOf("market" to "Marktplatz","lend" to "Leihbörse",
+        "group" to "Vereine & Gruppen","calendar" to "Gemeindekalender",
+        "lost" to "Verloren & Gefunden","project" to "Quartieraktionen","issue" to "Mängel melden")
     var query by remember(kind) { mutableStateOf("") }
-    val rows=repo.hubItems.filter { DocString(it["kind"]) == kind && DocString(it["status"]) == "published"
-        && (DocString(it["title"]) + DocString(it["description"])).contains(query,ignoreCase=true)}
+    val rows=repo.hubItems.filter {
+        DocString(it["kind"]) == kind &&
+            (DocString(it["status"]) == "published" || it["isMine"] == true || it["isModerator"] == true) &&
+            (DocString(it["title"]) + DocString(it["description"])).contains(query,ignoreCase=true)
+    }
     Column(Modifier.padding(16.dp), verticalArrangement=Arrangement.spacedBy(10.dp)) {
         SectionTitle(labels[kind] ?: "Quartier+", "Veröffentlichte Einträge aus dem Quartinaut-Backend")
         OutlinedTextField(query,{query=it},label={Text("Suchen")},singleLine=true,modifier=Modifier.fillMaxWidth())
