@@ -142,8 +142,7 @@ fun NativeSmartListing(repo:QuartinautRepository,navigate:(String)->Unit) {
             }
         }
         Button(onClick={
-            val clip=context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            clip.setPrimaryClip(ClipData.newPlainText("Quartinaut Titel",input.trim()))
+            // Transfer the title directly without touching the system clipboard.
             // One-time per-account handoff to the native listing form.
             val prefs=context.getSharedPreferences("quartinaut_smart_drafts",Context.MODE_PRIVATE)
             prefs.edit().putString("title_"+repo.user?.uid+"_"+kind,input.trim())
