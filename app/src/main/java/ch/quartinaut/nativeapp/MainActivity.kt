@@ -594,7 +594,7 @@ private fun CreateRequestPage(repo: QuartinautRepository, go: (String) -> Unit,
             Text(option)
         }
     }
-    Button(onClick={repo.createRequest(title,body,category,kind,urgency) { go("board") }},
+    Button(onClick={repo.createRequest(title,body,category,kind,urgency, onCreated={ go("board") })},
         modifier=Modifier.fillMaxWidth(),enabled=!repo.busy) { Text("Anliegen einreichen") }
 }
 
