@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.xmlpull.v1.XmlPullParser
@@ -30,13 +31,19 @@ private const val MAP_HEIGHT = 744.094f
 
 @Composable
 fun NativeCantonMap(selected: String, onSelect: (String) -> Unit) {
+    val context = LocalContext.current
     val shapes by produceState<Map<String, Path>>(initialValue = emptyMap()) {
         value = withContext(Dispatchers.IO) {
             try {
-                val conn = URL("https://quartinaut.web.app/assets/icons/quartinaut-logo.svg").openConnection() as HttpURLConnection
-                conn.connectTimeout = 9000; conn.readTimeout = 9000
+                val input = try {
+                    context.assets.open("q-original/quartinaut-logo.svg")
+                } catch (_: Exception) {
+                    val conn = URL("https://quartinaut.web.app/assets/icons/quartinaut-logo.svg").openConnection() as HttpURLConnection
+                    conn.connectTimeout = 9000; conn.readTimeout = 9000
+                    conn.inputStream
+                }
                 val parser = XmlPullParserFactory.newInstance().newPullParser()
-                parser.setInput(conn.inputStream, "UTF-8")
+                parser.setInput(input, "UTF-8")
                 val paths = mutableMapOf<String, Path>()
                 var event = parser.eventType
                 while (event != XmlPullParser.END_DOCUMENT) {
@@ -50,7 +57,7 @@ fun NativeCantonMap(selected: String, onSelect: (String) -> Unit) {
                     }
                     event = parser.next()
                 }
-                conn.disconnect()
+                input.close()
                 paths
             } catch (_: Exception) { emptyMap() }
         }
