@@ -208,6 +208,24 @@ class QuartinautRepository(context: Context) {
             finishingRegistration = false
             if (it.isSuccessful) {
                 registrationPrefs.edit().remove("pending").apply()
+                val prefs = mapOf<String,Any>(
+                    "uid" to uid, "tenantId" to "quartinaut", "enabled" to false,
+                    "area" to area,"areaKey" to area.lowercase().replace(Regex("\\s+")," "),
+                    "cantonCode" to code,"criticalAlerts" to true,
+                    "alerts" to mapOf("enabled" to true,"severities" to listOf("warn","info")),
+                    "officialNotices" to mapOf("enabled" to true,"priorities" to listOf("wichtig"),
+                        "categories" to emptyList<String>()),
+                    "bulletin" to mapOf("enabled" to false,"types" to emptyList<String>(),
+                        "categories" to emptyList<String>()),
+                    "chats" to mapOf("enabled" to true),"keywordRules" to emptyList<String>(),
+                    "quietHours" to mapOf("enabled" to false,"start" to "22:00",
+                        "end" to "07:00","timezone" to "Europe/Zurich"),
+                    "createdAt" to now,"updatedAt" to now
+                )
+                db.collection("notificationPreferences").document(uid).set(prefs)
+                    .addOnFailureListener { e ->
+                        message = "Profil erstellt; Benachrichtigungseinstellungen: " + e.localizedMessage
+                    }
                 message = "Dein Quartinaut-Konto ist eingerichtet."
             } else message = it.exception?.localizedMessage ?: "Profil konnte nicht erstellt werden."
         }
