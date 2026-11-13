@@ -35,3 +35,14 @@ Benutzt bestehende Firestore-/Firebase-Auth-/Functions-Schnittstellen im Projekt
 ## Vollständigkeit
 
 **Noch keine vollständige 1:1-Funktionsparität.** Siehe `ANDROID_STATUS.md` mit dem detaillierten Stand. Kein Firebase-Deployment, keine geänderten Backend-Regeln, keine Konten-/Datenmigration.
+
+## 5.4.1 – geschützter Dashboard-Hintergrund (Vorbereitung)
+- Kotlin-Bildauswahl und private Vorschau über `NativeDashboardBackground.kt`.
+- Bildbytes werden **nicht** durch Firestore-Dokumente oder öffentliche Storage-URLs geteilt.
+- Separater Cloud Functions Codebase `functions/appearance` mit schmalem `firebase.appearance.json`.
+- Backend-Writes sind authentifiziert, auf den eigenen UID beschränkt, mit verifizierter E-Mail, JPEG-Rekodierung, Entfernen von EXIF und einem Limit für Bildänderungen.
+- Ohne veröffentlichten Backend-Dienst ist die Einstellung als nicht verfügbar markiert; **nicht** als erfolgreich gespeichert.
+- Optionales Web-Preview zur geräteübergreifenden Ansicht aus v5.4 liegt separat vor (siehe `web-bridge/README.md`).
+- Vollständige Audit-Matrix und Release-Gates in `AUDIT_NATIVE_54_2026-11-13.md`.
+
+Keine produktive Firebase-Funktion, Hosting-Datei oder Rules wurden verändert.
