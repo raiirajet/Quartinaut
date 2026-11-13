@@ -331,13 +331,7 @@ fun NativeHubDetail(
                 color=MaterialTheme.colorScheme.error)
         }
         NativeProtectedGallery(repo,paths)
-        if(doc.str("status")=="offen" && doc.str("uid")!=repo.user?.uid) {
-            OutlinedButton(onClick={
-                repo.enhancement("favorite.toggle",mapOf(
-                    "collection" to "requests","id" to doc.id
-                )) { repo.showMessage("Favoriten wurden aktualisiert.") }
-            }) {Text("Anliegen merken")}
-        }
+
         if(published&&!owner) {
             OutlinedButton(onClick={
                 repo.enhancement("favorite.toggle",mapOf(
