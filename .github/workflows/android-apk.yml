@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
@@ -20,11 +20,13 @@ jobs:
           java-version: '17'
       - name: SDK 35
         run: |
-          export ANDROID_HOME=/usr/local/lib/android/sdk
-          export ANDROID_SDK_ROOT="$ANDROID_HOME"
-          echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
-          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
-          "$ANDROID_HOME/cmdline-tools/16.0/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0"
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          BIN="$(find "$SDK" -type f -name sdkmanager -print -quit 2>/dev/null)"
+          echo "SDK=$SDK / sdkmanager=$BIN"
+          if [ -z "$BIN" ]; then echo "::error::Android SDK commandline tools not available"; exit 1; fi
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
+          yes | "$BIN" --sdk_root="$SDK" "platforms;android-35" "build-tools;35.0.0" || test "${PIPESTATUS[1]}" -eq 0
       - name: Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
