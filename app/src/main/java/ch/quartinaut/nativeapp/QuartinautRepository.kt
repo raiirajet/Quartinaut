@@ -340,6 +340,38 @@ class QuartinautRepository(context: Context) {
                 else it.exception?.localizedMessage ?: "Speichern fehlgeschlagen."
         }
     }
+    fun openRequestChat(request: DocumentSnapshot, onOpen: () -> Unit) {
+        val current = user?.uid ?: return
+        val owner = request.str("uid").ifBlank { request.str("authorId") }
+        if (owner.isBlank() || owner == current) {
+            message = "Für eigene Anliegen findest du Antworten unter deinen Chats."; return
+        }
+        val users = listOf(current, owner).sorted()
+        fun safe(value: String) = value.replace(Regex("[^a-zA-Z0-9_-]"),"").take(80).ifBlank { "x" }
+        val id = "chat_" + safe(request.id) + "_" + users.joinToString("_") { safe(it) }
+        val ref = db.collection("chats").document(id)
+        ref.get().addOnSuccessListener { existing ->
+            if (existing.exists()) {
+                openChat(existing);onOpen()
+            } else {
+                val now = isoNow()
+                val payload = mapOf<String, Any>(
+                    "id" to id, "requestId" to request.id, "requestTitle" to request.title(),
+                    "requestOwnerUid" to owner, "participants" to users,
+                    "participantLabels" to mapOf(current to displayName(), owner to
+                        request.str("authorName").ifBlank { "Quartiermitglied" }),
+                    "mutedBy" to emptyList<String>(), "readBy" to mapOf(current to now),
+                    "createdAt" to now, "lastMessageAt" to now,
+                    "lastMessagePreview" to "", "lastSenderUid" to ""
+                )
+                ref.set(payload).addOnSuccessListener {
+                    ref.get().addOnSuccessListener { chat ->
+                        openChat(chat); onOpen()
+                    }.addOnFailureListener(::fail)
+                }.addOnFailureListener(::fail)
+            }
+        }.addOnFailureListener(::fail)
+    }
     fun openChat(chat: DocumentSnapshot) {
         chatId = chat.id
         messages = emptyList()
