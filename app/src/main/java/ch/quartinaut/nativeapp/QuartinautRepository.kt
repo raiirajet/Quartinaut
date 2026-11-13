@@ -118,7 +118,9 @@ class QuartinautRepository(context: Context) {
                 backgroundBusy = false
                 if (next != null) {
                     loadProfile(next.uid)
-                    next.getIdTokenResult(false).addOnSuccessListener { token ->
+                    // Force a fresh JWT so newly assigned server-side role claims
+                    // match the active Firestore security rules after login.
+                    next.getIdTokenResult(true).addOnSuccessListener { token ->
                         if (user?.uid != next.uid) return@addOnSuccessListener
                         val claims=token.claims
                         val role=claims["role"] as? String ?: ""
@@ -725,11 +727,25 @@ class QuartinautRepository(context: Context) {
     }
 
     fun retryFeeds() {
-        val uid=user?.uid ?: return
-        if(profile.isNotEmpty()&&active()) {
-            syncIssues=emptyMap()
-            startListening(uid)
-            loadCommunitySettings()
+        val current=user ?: return
+        if(profile.isEmpty() || !active())return
+        syncIssues=emptyMap()
+        current.getIdTokenResult(true).addOnCompleteListener { task ->
+            if(user?.uid!=current.uid)return@addOnCompleteListener
+            if(task.isSuccessful) {
+                val claims=task.result.claims
+                val role=claims["role"] as? String ?: ""
+                verifiedAdminClaim=role!="area_admin" &&
+                    (role=="admin" || claims["admin"]==true)
+                startListening(current.uid)
+                loadCommunitySettings()
+            } else {
+                syncIssues=syncIssues + ("Administratorrechte" to
+                    (task.exception?.localizedMessage ?: "Token konnte nicht aktualisiert werden"))
+                // Public, non-admin feeds can still be retried.
+                verifiedAdminClaim=false
+                startListening(current.uid)
+            }
         }
     }
 
