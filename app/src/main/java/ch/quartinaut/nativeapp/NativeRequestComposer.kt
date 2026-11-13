@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -33,12 +34,20 @@ fun NativeRequestComposer(
     initialKind:String="Suche",
     onDone:()->Unit
 ) {
-    var step by rememberSaveable { mutableIntStateOf(0) }
-    var title by rememberSaveable { mutableStateOf("") }
-    var details by rememberSaveable { mutableStateOf("") }
-    var kind by rememberSaveable(initialKind) { mutableStateOf(initialKind) }
-    var category by rememberSaveable { mutableStateOf("Alltagshilfe") }
-    var urgency by rememberSaveable { mutableStateOf("Diese Woche") }
+    val context=LocalContext.current
+    val uid=repo.user?.uid.orEmpty()
+    val draftPrefs=remember(context) { context.getSharedPreferences(
+        "quartinaut_request_drafts",android.content.Context.MODE_PRIVATE) }
+    val draftKey="request_"+uid+"_"+initialKind
+    val readDraft: (String,String)->String = {field,default ->
+        if(uid.isBlank()) default else draftPrefs.getString(draftKey+"_"+field,default) ?: default
+    }
+    var step by rememberSaveable(uid,initialKind) { mutableIntStateOf(0) }
+    var title by rememberSaveable(uid,initialKind) { mutableStateOf(readDraft("title","")) }
+    var details by rememberSaveable(uid,initialKind) { mutableStateOf(readDraft("details","")) }
+    var kind by rememberSaveable(uid,initialKind) { mutableStateOf(readDraft("kind",initialKind)) }
+    var category by rememberSaveable(uid,initialKind) { mutableStateOf(readDraft("category","Alltagshilfe")) }
+    var urgency by rememberSaveable(uid,initialKind) { mutableStateOf(readDraft("urgency","Diese Woche")) }
     var categoriesOpen by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
     var confirmed by remember { mutableStateOf(false) }
@@ -46,6 +55,23 @@ fun NativeRequestComposer(
         java.util.UUID.randomUUID().toString().replace("-","")
     }
     val photoPaths=remember { mutableStateListOf<String>() }
+    LaunchedEffect(uid,initialKind,title,details,kind,category,urgency) {
+        if(uid.isNotBlank()) {
+            kotlinx.coroutines.delay(550)
+            draftPrefs.edit()
+                .putString(draftKey+"_title",title)
+                .putString(draftKey+"_details",details)
+                .putString(draftKey+"_kind",kind)
+                .putString(draftKey+"_category",category)
+                .putString(draftKey+"_urgency",urgency)
+                .apply()
+        }
+    }
+    val clearDraft: ()->Unit = {
+        draftPrefs.edit().remove(draftKey+"_title").remove(draftKey+"_details")
+            .remove(draftKey+"_kind").remove(draftKey+"_category")
+            .remove(draftKey+"_urgency").apply()
+    }
     BackHandler(enabled=step>0) { step-=1; error="" }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
         .verticalScroll(rememberScrollState()).padding(horizontal=18.dp,vertical=16.dp),
@@ -56,6 +82,16 @@ fun NativeRequestComposer(
         Text("Schritt "+(step+1)+" von 3 · "+
             when(step){0->"Art & Kategorie";1->"Deine Beschreibung";else->"Prüfen & senden"},
             color=CreateText,style=MaterialTheme.typography.bodyMedium)
+        if(title.isNotBlank() || details.isNotBlank()) {
+            Row(verticalAlignment=Alignment.CenterVertically) {
+                Text("Entwurf wird auf diesem Gerät gespeichert",modifier=Modifier.weight(1f),
+                    style=MaterialTheme.typography.bodySmall,color=CreateText)
+                TextButton(onClick={clearDraft();title="";details="";kind=initialKind;
+                    category="Alltagshilfe";urgency="Diese Woche";step=0}) {
+                    Text("Entwurf löschen")
+                }
+            }
+        }
         LinearProgressIndicator(progress={ (step+1)/3f },
             modifier=Modifier.fillMaxWidth().height(5.dp),color=CreateAccent,
             trackColor=CreateBorder)
@@ -127,6 +163,8 @@ fun NativeRequestComposer(
                     photoPaths.toList()) { updated ->
                     photoPaths.clear();photoPaths.addAll(updated)
                 }
+                Text("Der Entwurf speichert Text und Auswahl lokal, aber keine Fotos. Beim Wechsel des Geräts wird er nicht übertragen.",
+                    color=CreateText,style=MaterialTheme.typography.bodySmall)
                 Text("Tipp: Beschreibe Ort, Zeitraum und was du genau suchst oder anbietest. Veröffentliche keine privaten Kontaktdaten.",
                     color=CreateText,style=MaterialTheme.typography.bodySmall)
             }
@@ -172,7 +210,7 @@ fun NativeRequestComposer(
                     enabled=!repo.busy) {Text("Bearbeiten")}
                 Button(onClick={
                     repo.createRequest(title.trim(),details.trim(),category,kind,urgency,
-                        onCreated=onDone,photoPaths=photoPaths.toList())
+                        onCreated={ clearDraft();onDone() },photoPaths=photoPaths.toList())
                 },modifier=Modifier.weight(1f),
                     enabled=confirmed&&!repo.busy) {
                     if(repo.busy) CircularProgressIndicator(Modifier.size(18.dp),
