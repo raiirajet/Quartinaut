@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.nativeCanvas
@@ -31,7 +32,19 @@ private const val MAP_WIDTH = 1052.361f
 private const val MAP_HEIGHT = 744.094f
 
 @Composable
-fun NativeCantonMap(selected: String, onSelect: (String) -> Unit) {
+val SwissCapitals = mapOf("ZH" to "Zürich","BE" to "Bern","LU" to "Luzern",
+    "UR" to "Altdorf","SZ" to "Schwyz","OW" to "Sarnen","NW" to "Stans",
+    "GL" to "Glarus","ZG" to "Zug","FR" to "Freiburg / Fribourg",
+    "SO" to "Solothurn","BS" to "Basel","BL" to "Liestal",
+    "SH" to "Schaffhausen","AR" to "Herisau","AI" to "Appenzell",
+    "SG" to "St. Gallen","GR" to "Chur","AG" to "Aarau",
+    "TG" to "Frauenfeld","TI" to "Bellinzona","VD" to "Lausanne",
+    "VS" to "Sitten / Sion","NE" to "Neuenburg / Neuchâtel",
+    "GE" to "Genf / Genève","JU" to "Delsberg / Delémont")
+
+@Composable
+fun NativeCantonMap(selected: String, counts: Map<String,Int> = emptyMap(),
+                    onSelect: (String) -> Unit) {
     val context = LocalContext.current
     val shapes by produceState<Map<String, Path>>(initialValue = emptyMap()) {
         value = withContext(Dispatchers.IO) {
@@ -89,7 +102,10 @@ fun NativeCantonMap(selected: String, onSelect: (String) -> Unit) {
             scale(factor,factor, pivot = Offset.Zero)
         }) {
             shapes.forEach { (code,path) ->
-                val color = if (code == selected) Color(0xFF1D6B4C) else Color(0xFF9ACDB0)
+                val maxCount=(counts.values.maxOrNull() ?: 0).coerceAtLeast(1)
+                val strength=((counts[code] ?: 0).toFloat()/maxCount.toFloat()).coerceIn(0f,1f)
+                val color = if (code == selected) Color(0xFF18583F)
+                    else lerp(Color(0xFFAAD9BA),Color(0xFF1D6849),strength)
                 drawPath(path, color)
                 drawPath(path, Color.White, style = Stroke(1.6f))
                 val bounds=path.getBounds()
@@ -97,8 +113,8 @@ fun NativeCantonMap(selected: String, onSelect: (String) -> Unit) {
                     .coerceIn(12f,36f)
                 val paint=android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                     textAlign=android.graphics.Paint.Align.CENTER
-                    color=if(code==selected) android.graphics.Color.WHITE
-                        else android.graphics.Color.rgb(20,72,53)
+                    color=if(code==selected || (counts[code] ?: 0) > ((counts.values.maxOrNull() ?: 0)/2))
+                        android.graphics.Color.WHITE else android.graphics.Color.rgb(20,72,53)
                     textSize=labelSize
                     typeface=android.graphics.Typeface.DEFAULT_BOLD
                 }
