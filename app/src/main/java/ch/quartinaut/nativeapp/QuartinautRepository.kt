@@ -41,6 +41,11 @@ class QuartinautRepository(context: Context) {
         private set
     private var activeChatListener: ListenerRegistration? = null
     private val registrationPrefs = context.getSharedPreferences("quartinaut_native_pending", Context.MODE_PRIVATE)
+    private val offlinePrefs=context.getSharedPreferences("quartinaut_public_cache",Context.MODE_PRIVATE)
+    var offlineHubItems by mutableStateOf<List<Map<String,Any?>>>(emptyList())
+        private set
+    var offlineCacheDate by mutableStateOf("")
+        private set
     private var finishingRegistration = false
     var user by mutableStateOf<FirebaseUser?>(null)
         private set
@@ -132,6 +137,7 @@ class QuartinautRepository(context: Context) {
                 serverChats = emptyList(); serverMessages = emptyList()
                 serverChatReady = false; serverChatLoading = false; serverChatActive = false
                 hubItems = emptyList(); v50Items = emptyList()
+                offlineHubItems=emptyList();offlineCacheDate=""
                 enhancedItems=emptyList();enhancementLoading=false;enhancementError=""
                 chatId = ""
                 dashboardBackground = null
@@ -339,6 +345,7 @@ class QuartinautRepository(context: Context) {
             val wasEmpty = profile.isEmpty()
             profile = snapshot.data ?: emptyMap()
             if (wasEmpty && active()) {
+                restorePublicCache(uid)
                 startListening(uid)
                 loadDashboardBackground()
             }
@@ -413,6 +420,7 @@ class QuartinautRepository(context: Context) {
                 hubItems = raw.mapNotNull { item ->
                     (item as? Map<*, *>)?.entries?.associate { DocString(it.key) to it.value }
                 }
+                cachePublicHubItems()
             }.addOnFailureListener { e ->
                 syncIssues = syncIssues + ("Quartier+" to
                     (e.localizedMessage ?: "Quartier+ nicht erreichbar"))
@@ -951,6 +959,68 @@ class QuartinautRepository(context: Context) {
             val path=DocString(response["path"])
             if(path.isNotBlank())completed(path)
         }
+    }
+
+    /**
+     * Public-only offline snapshot: no UIDs, chats, owner data, media paths or
+     * reservations. Scoped to logged-in UID+canton; expires after 72 hours.
+     */
+    private fun cachePublicHubItems() {
+        val uid=user?.uid ?: return
+        val canton=canton()
+        if(canton.isBlank())return
+        val safe=hubItems.filter {
+            it["status"]=="published" && DocString(it["cantonCode"])==canton &&
+                it["kind"]!="issue"
+        }.take(100).map{ item ->
+            mapOf(
+                "id" to DocString(item["id"]).take(150),
+                "title" to DocString(item["title"]).take(100),
+                "description" to DocString(item["description"]).take(220),
+                "kind" to DocString(item["kind"]).take(20),
+                "category" to DocString(item["category"]).take(60),
+                "area" to DocString(item["area"]).take(140),
+                "cantonCode" to canton,
+                "status" to "published"
+            )
+        }
+        val arr=org.json.JSONArray()
+        safe.forEach { arr.put(org.json.JSONObject(it)) }
+        val key="cache_"+uid+"_"+canton
+        offlinePrefs.edit()
+            .putString(key,arr.toString())
+            .putLong("saved_"+uid+"_"+canton,System.currentTimeMillis())
+            .apply()
+        offlineHubItems=safe
+        offlineCacheDate=java.time.Instant.now().toString()
+    }
+    private fun restorePublicCache(uid:String) {
+        val canton=canton()
+        val saved=offlinePrefs.getLong("saved_"+uid+"_"+canton,0L)
+        if(saved==0L || System.currentTimeMillis()-saved>72L*3600L*1000L) {
+            offlineHubItems=emptyList();offlineCacheDate="";return
+        }
+        val json=offlinePrefs.getString("cache_"+uid+"_"+canton,"[]") ?: "[]"
+        val arr=runCatching {org.json.JSONArray(json)}.getOrNull()
+        val output=mutableListOf<Map<String,Any?>>()
+        if(arr!=null){
+            for(i in 0 until minOf(arr.length(),100)) {
+                val obj=arr.optJSONObject(i) ?:continue
+                if(obj.optString("cantonCode")!=canton)continue
+                output.add(mapOf(
+                    "id" to obj.optString("id"),
+                    "title" to obj.optString("title"),
+                    "description" to obj.optString("description"),
+                    "kind" to obj.optString("kind"),
+                    "category" to obj.optString("category"),
+                    "area" to obj.optString("area"),
+                    "cantonCode" to canton,
+                    "status" to "published"
+                ))
+            }
+        }
+        offlineHubItems=output
+        offlineCacheDate=java.time.Instant.ofEpochMilli(saved).toString()
     }
 
 }
