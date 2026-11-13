@@ -9,3 +9,7 @@ local.properties
 *.keystore
 *.aab
 *.apk
+
+# Original public static assets are reconstructed by the sync script at build time
+app/src/main/assets/q-original/
+app/src/main/res/mipmap-nodpi/ic_launcher.png
