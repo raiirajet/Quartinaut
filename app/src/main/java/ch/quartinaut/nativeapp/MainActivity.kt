@@ -88,19 +88,20 @@ class MainActivity : ComponentActivity() {
             }
             var mode by remember { mutableStateOf(prefs.getString("theme_mode",null)
                 ?: if(prefs.getBoolean("dark",false)) "dark" else "light") }
-            val scheme=when(mode) {
+            val displayMode=if(displayMode=="system") { if(isSystemInDarkTheme()) "dark" else "light" } else mode
+            val scheme=when(displayMode) {
                 "green" -> SwissGreenScheme
                 "dark" -> SwissBlackScheme
                 "red" -> SwissRedScheme
                 else -> SwissScheme
             }
-            val header=when(mode) {
+            val header=when(displayMode) {
                 "light" -> Color.White
                 "red" -> Color(0xFFD52B1E)
                 "dark" -> Color(0xFF030504)
                 else -> Color(0xFF173E31)
             }
-            val bars=when(mode) {
+            val bars=when(displayMode) {
                 "light" -> Color.White
                 "red" -> Color(0xFFD52B1E)
                 "dark" -> Color(0xFF030504)
@@ -110,14 +111,14 @@ class MainActivity : ComponentActivity() {
                 window.statusBarColor=header.toArgb()
                 window.navigationBarColor=bars.toArgb()
                 WindowCompat.getInsetsController(window,window.decorView).apply {
-                    isAppearanceLightStatusBars=(mode=="light")
-                    isAppearanceLightNavigationBars=(mode=="light")
+                    isAppearanceLightStatusBars=(displayMode=="light")
+                    isAppearanceLightNavigationBars=(displayMode=="light")
                 }
                 window.decorView.setBackgroundColor(bars.toArgb())
             }
             MaterialTheme(colorScheme = scheme) {
                 Box(Modifier.fillMaxSize().background(bars)) {
-                    QuartinautApp(repository,mode) { next ->
+                    QuartinautApp(repository,mode,displayMode) { next ->
                         mode=next
                         prefs.edit().putString("theme_mode",next).apply()
                     }
@@ -129,7 +130,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun QuartinautApp(repo: QuartinautRepository,
-    mode: String, updateMode: (String) -> Unit) {
+    mode: String, displayMode: String, updateMode: (String) -> Unit) {
     var page by remember { mutableStateOf("home") }
     val history=remember { mutableStateListOf<String>() }
     var mapCanton by remember { mutableStateOf("") }
@@ -197,6 +198,7 @@ private fun QuartinautApp(repo: QuartinautRepository,
         }
         return
     }
+    val navContext=LocalContext.current
     val navTo: (String) -> Unit = { target ->
         if(target!=page) {
             if(target=="home") history.clear() else history.add(page)
@@ -205,6 +207,7 @@ private fun QuartinautApp(repo: QuartinautRepository,
             page=target
         }
         if(target=="plus")repo.loadHub()
+        recordRecentlyVisited(navContext,repo.user?.uid.orEmpty(),target)
     }
     val goBack: () -> Unit = {
         when {
@@ -220,21 +223,21 @@ private fun QuartinautApp(repo: QuartinautRepository,
     val backAction: () -> Unit = { if(dispatcher!=null) dispatcher.onBackPressed() else goBack() }
     val openHub: (Map<String,Any?>) -> Unit = { selectedHubItem=it;navTo("hub-detail") }
     val openRequest: (DocumentSnapshot) -> Unit = { selectedRequest=it;navTo("request-detail") }
-    val toolbarBackground=when(mode) {
+    val toolbarBackground=when(displayMode) {
         "light" -> Color.White
         "red" -> Color(0xFFD52B1E)
         "dark" -> Color(0xFF030504)
         else -> Color(0xFF173E31)
     }
-    val toolbarForeground=if(mode=="light") Forest else Color.White
-    val bottomBackground=when(mode) {
+    val toolbarForeground=if(displayMode=="light") Forest else Color.White
+    val bottomBackground=when(displayMode) {
         "light" -> Color.White
         "red" -> Color(0xFFD52B1E)
         "dark" -> Color(0xFF030504)
         else -> Color(0xFF123525)
     }
-    val bottomLabel=if(mode=="light") Forest else Color.White
-    val bottomActive=when(mode) {
+    val bottomLabel=if(displayMode=="light") Forest else Color.White
+    val bottomActive=when(displayMode) {
         "light" -> Color(0xFFE5F4EB)
         "red" -> Color(0xFFFBE8E6)
         "dark" -> Color(0xFF10231A)
@@ -242,6 +245,11 @@ private fun QuartinautApp(repo: QuartinautRepository,
     }
     val title = when(page) {
         "home" -> "Mein Quartier"
+        "personal-center" -> "Mein Quartinaut"
+        "community-pulse" -> "Gemeinde aktuell"
+        "municipal-compare" -> "Gemeinden vergleichen"
+        "calendar-planner" -> "Meine Termine"
+        "safety-center" -> "Vertrauen & Sicherheit"
         "board" -> "Schwarzes Brett"
         "plus" -> "Quartier+"
         "chats" -> "Private Chats"
@@ -343,12 +351,15 @@ private fun QuartinautApp(repo: QuartinautRepository,
                 Row(Modifier.fillMaxWidth().height(78.dp)
                     .clip(RoundedCornerShape(28.dp))
                     .background(bottomBackground)
-                    .border(1.dp,if(mode=="light") Color(0xFFDAE9DD) else Color(0xFF537564),RoundedCornerShape(28.dp))
+                    .border(1.dp,if(displayMode=="light") Color(0xFFDAE9DD) else Color(0xFF537564),RoundedCornerShape(28.dp))
                     .padding(horizontal=6.dp,vertical=4.dp),
                     verticalAlignment=Alignment.CenterVertically) {
                     routes.forEach { (route,label,asset) ->
                         val active=page==route || (route=="plus" &&
-                            page in listOf("board","market","lend","group","calendar"))
+                            page in listOf("board","market","lend","group","calendar",
+                                "enhancements","enh-radar","enh-posts","enh-assist","enh-loans",
+                                "enh-clubs","enh-trust","enh-calendar","enh-qr","enh-map",
+                                "enh-offline","enh-favorites","community-pulse","municipal-compare"))
                         val selectedColor=if(active) bottomActive else Color.Transparent
                         Column(Modifier.weight(1f).fillMaxHeight()
                             .padding(horizontal=2.dp)
@@ -361,11 +372,11 @@ private fun QuartinautApp(repo: QuartinautRepository,
                             verticalArrangement=Arrangement.Center,
                             horizontalAlignment=Alignment.CenterHorizontally) {
                             Box(Modifier.size(45.dp).clip(RoundedCornerShape(15.dp))
-                                .background(if(mode=="dark") Color(0xFF10281B)
+                                .background(if(displayMode=="dark") Color(0xFF10281B)
                                     else Color(0xFFF5FBF7)),contentAlignment=Alignment.Center) {
                                 OriginalNavigationIcon(asset,Modifier.size(if(active)42.dp else 39.dp))
                             }
-                            Text(label,color=if(active && mode=="red") Forest else bottomLabel,
+                            Text(label,color=if(active && displayMode=="red") Forest else bottomLabel,
                                 style=MaterialTheme.typography.labelSmall,
                                 maxLines=1,overflow=TextOverflow.Ellipsis)
                         }
@@ -389,7 +400,7 @@ private fun QuartinautApp(repo: QuartinautRepository,
             )
         }) {
             when(page) {
-                "home" -> NativeOriginalHome(repo, navTo)
+                "home" -> NativeOriginalHome(repo, navTo,openRequest)
                 "board" -> BulletinPage(repo, navTo, openRequest)
                 "plus" -> HubPage(repo, navTo)
                 "chats" -> NativePrivateChatsPage(repo)
@@ -429,7 +440,14 @@ private fun QuartinautApp(repo: QuartinautRepository,
                 "project" -> HubItemsPage(repo, "project", navTo, openHub)
                 "issue" -> HubItemsPage(repo, "issue", navTo, openHub)
                 "v50market", "v50loans", "v50associations" -> V50Page(repo, page)
-                "search" -> SearchPage(repo, navTo)
+                "search" -> NativeUnifiedSearch(repo,navTo,openRequest,openHub) {code,bfs ->
+                    navTo("map");mapCanton=code;mapMunicipality=bfs
+                }
+                "personal-center" -> NativePersonalCenter(repo,navTo)
+                "community-pulse" -> NativeCommunityPulse(repo,navTo,openRequest)
+                "municipal-compare" -> NativeMunicipalityComparison(repo,navTo)
+                "calendar-planner" -> NativeCalendarPlanner(repo,navTo)
+                "safety-center" -> NativeSafetyCenter(repo,navTo)
                 "settings" -> NativeSettingsScreen(repo,mode,updateMode,navTo)
                 "admin" -> NativeAdminScreen(repo,navTo)
                 "help" -> NativeHelpScreen()
@@ -437,7 +455,7 @@ private fun QuartinautApp(repo: QuartinautRepository,
                 else -> {
                     if(page.startsWith("hub-create:")) {
                         NativeCreateHubPage(repo,page.substringAfter(":")) { navTo("plus") }
-                    } else NativeOriginalHome(repo,navTo)
+                    } else NativeOriginalHome(repo,navTo,openRequest)
                 }
             }
             if (repo.busy) LinearProgressIndicator(Modifier.fillMaxWidth().align(Alignment.TopCenter))

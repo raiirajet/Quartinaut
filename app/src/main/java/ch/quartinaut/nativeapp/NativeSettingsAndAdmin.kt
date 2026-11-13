@@ -60,6 +60,7 @@ fun NativeSettingsScreen(repo: QuartinautRepository,mode: String,
         Text("Vier vollständige Farbdesigns · inklusive Status- und Navigationsleiste",
             style=MaterialTheme.typography.bodySmall)
         listOf(
+            Triple("system","Automatisch · System","Android folgt automatisch Hell oder Dunkel"),
             Triple("light","Hell · Weiss","Helle Flächen, dunkle Schrift"),
             Triple("green","Grün · Quartinaut","Grüne Flächen und natürliche Akzente"),
             Triple("dark","Dunkel · Tiefschwarz","Schwarze Flächen und grüne Symbole"),
@@ -68,6 +69,16 @@ fun NativeSettingsScreen(repo: QuartinautRepository,mode: String,
             Row(Modifier.fillMaxWidth().clickable { updateMode(key) }
                 .padding(vertical=7.dp),verticalAlignment=Alignment.CenterVertically) {
                 RadioButton(selected=mode==key,onClick={updateMode(key)})
+                val preview=when(key){
+                    "light" -> androidx.compose.ui.graphics.Color.White
+                    "green" -> androidx.compose.ui.graphics.Color(0xFF173E31)
+                    "dark" -> androidx.compose.ui.graphics.Color(0xFF030504)
+                    "red" -> androidx.compose.ui.graphics.Color(0xFFD52B1E)
+                    else -> MaterialTheme.colorScheme.surfaceVariant
+                }
+                Box(Modifier.size(34.dp).padding(end=7.dp)
+                    .background(preview,androidx.compose.foundation.shape.RoundedCornerShape(9.dp))
+                    .border(1.dp,MaterialTheme.colorScheme.outline,androidx.compose.foundation.shape.RoundedCornerShape(9.dp)))
                 Column(Modifier.weight(1f)) {
                     Text(title,fontWeight=FontWeight.SemiBold)
                     Text(description,style=MaterialTheme.typography.bodySmall)

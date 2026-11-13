@@ -13,8 +13,8 @@ android {
         applicationId = "ch.quartinaut.nativeapp"
         minSdk = 26
         targetSdk = 35
-        versionCode = 9
-        versionName = "5.5.3-navigation-municipalities"
+        versionCode = 10
+        versionName = "5.6.0-experience"
     }
     buildTypes {
         release { isMinifyEnabled = false }
