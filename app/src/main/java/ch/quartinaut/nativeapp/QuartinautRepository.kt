@@ -57,6 +57,8 @@ class QuartinautRepository(context: Context) {
         private set
     var hubItems by mutableStateOf<List<Map<String,Any?>>>(emptyList())
         private set
+    var communitySettings by mutableStateOf<Map<String,Any?>>(emptyMap())
+        private set
     var v50Items by mutableStateOf<List<Map<String,Any?>>>(emptyList())
         private set
     var regions by mutableStateOf<List<Region>>(emptyList())
@@ -486,6 +488,22 @@ class QuartinautRepository(context: Context) {
                 }.getOrNull()
                 onResult(bmp)
             }
+    }
+
+    fun loadCommunitySettings() {
+        if(user==null) return
+        functions.getHttpsCallable("quartinautHub")
+            .call(mapOf("action" to "settings.get"))
+            .addOnSuccessListener { result ->
+                val data=(result.data as? Map<*, *>)?.get("settings") as? Map<*, *>
+                communitySettings=data?.entries?.associate { DocString(it.key) to it.value } ?: emptyMap()
+            }.addOnFailureListener(::fail)
+    }
+    fun saveCommunitySettings(preferences: Map<String,Any?>) {
+        communityAction("settings.save",mapOf("settings" to preferences),false) {
+            communitySettings=preferences
+            message="Deine Einstellungen wurden gespeichert."
+        }
     }
 
 }
