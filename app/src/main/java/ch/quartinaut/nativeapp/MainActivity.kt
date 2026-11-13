@@ -166,6 +166,18 @@ private fun QuartinautApp(repo: QuartinautRepository,
         "admin" -> "Verwaltung"
         "help" -> "Hilfe & Datenschutz"
         "diagnostics" -> "Verbindungsdiagnose"
+        "enhancements" -> "Quartinaut Extras"
+        "enh-posts" -> "Meine Beiträge"
+        "enh-radar" -> "Quartinaut Radar"
+        "enh-assist" -> "Inserat-Assistent"
+        "enh-loans" -> "Ausleih-Kalender"
+        "enh-map" -> "Schweizkarte+"
+        "enh-clubs" -> "Vereinszentrale"
+        "enh-trust" -> "Vertrauensprofil"
+        "enh-calendar" -> "Gemeindekalender+"
+        "enh-qr" -> "QR-Übergabe"
+        "enh-offline" -> "Offline-Modus"
+        "enh-favorites" -> "Favoriten"
         "hub-detail" -> "Quartier+"
         "request-detail" -> "Anliegen"
         "create-request" -> "Anliegen erstellen"
@@ -269,6 +281,18 @@ private fun QuartinautApp(repo: QuartinautRepository,
                 "board" -> BulletinPage(repo, navTo, openRequest)
                 "plus" -> HubPage(repo, navTo)
                 "chats" -> NativePrivateChatsPage(repo)
+                "enhancements" -> NativeExtrasDirectory(repo,navTo)
+                "enh-posts" -> NativeMyPostsScreen(repo)
+                "enh-radar" -> NativeRadarScreen(repo,navTo)
+                "enh-assist" -> NativeSmartListing(repo,navTo)
+                "enh-loans" -> NativeLoanPlanner(repo,navTo)
+                "enh-map" -> NativeMapPlus(repo,navTo)
+                "enh-clubs" -> NativeClubCenter(repo,navTo)
+                "enh-trust" -> NativeTrustScreen(repo,navTo)
+                "enh-calendar" -> NativeCalendarPlus(repo)
+                "enh-qr" -> NativeQRHandover(repo)
+                "enh-offline" -> NativeOfflineScreen(repo,navTo)
+                "enh-favorites" -> NativeFavoriteScreen(repo,navTo)
                 "profile" -> ProfilePage(repo, navTo)
                 "create" -> NativeNewChooser(navTo)
                 "create-request" -> NativeRequestComposer(repo,initialKind="Suche") { navTo("board") }
@@ -577,6 +601,15 @@ private fun CreateRequestPage(repo: QuartinautRepository, go: (String) -> Unit,
 @Composable
 private fun HubPage(repo: QuartinautRepository, go:(String)->Unit) = ScrollPage {
     SectionTitle("Quartier+", "Alles für deine Gemeinde – auf einer Plattform.")
+    Feature("Alle 12 Quartinaut-Erweiterungen",
+        "Radar, Favoriten, Inserate, Ausleihe, QR, Vereine, Kalender und mehr",
+        {Icon(Icons.Default.Widgets,null,tint=Forest)}) {go("enhancements")}
+    Feature("Meine Beiträge","Beitragsstatus und eigene Angebote verwalten",
+        {Icon(Icons.Default.EditNote,null,tint=Forest)}) {go("enh-posts")}
+    Feature("Quartinaut Radar","Persönliche Neuigkeiten aus deiner Umgebung",
+        {Icon(Icons.Default.Radar,null,tint=Forest)}) {go("enh-radar")}
+    Feature("Meine Favoriten","Gemerkte Inserate und Angebote",
+        {Icon(Icons.Default.FavoriteBorder,null,tint=Forest)}) {go("enh-favorites")}
     Feature("Marktplatz","Verkaufen, verschenken und tauschen",
         {Icon(Icons.Default.Storefront,null,tint=Forest)}) { go("market") }
     Feature("Leihbörse","Werkzeuge und andere Dinge ausleihen",
@@ -695,6 +728,10 @@ private fun ProfilePage(repo: QuartinautRepository, go:(String)->Unit) = ScrollP
     Panel("Konto",repo.user?.email.orEmpty(),"Status: " + DocString(repo.profile["accountStatus"]))
     Panel("Verifizierung", if (repo.profile["verified"] == true) "Verifiziert" else "Noch nicht verifiziert",
         "Rolle: " + DocString(repo.profile["role"]))
+    Feature("Alle Erweiterungen","Radar, Kalender, Vereinszentrale, QR und Offline",
+        {Icon(Icons.Default.Widgets,null,tint=Forest)}) {go("enhancements")}
+    Feature("Meine Beiträge","Bearbeiten, pausieren, archivieren",
+        {Icon(Icons.Default.EditNote,null,tint=Forest)}) {go("enh-posts")}
     Feature("Schweiz entdecken","Kantone und Gemeinden",
         { Icon(Icons.Default.Map,null,tint=Forest) }) { go("map") }
     Feature("Einstellungen","Startseite, Themen und Design",
