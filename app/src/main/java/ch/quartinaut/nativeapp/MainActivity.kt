@@ -9,6 +9,7 @@ import androidx.activity.SystemBarStyle
 import androidx.compose.ui.graphics.toArgb
 import androidx.activity.compose.setContent
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -215,6 +216,8 @@ private fun QuartinautApp(repo: QuartinautRepository,
         }
     }
     BackHandler(enabled=page!="home" || history.isNotEmpty()) { goBack() }
+    val dispatcher=LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+    val backAction: () -> Unit = { if(dispatcher!=null) dispatcher.onBackPressed() else goBack() }
     val openHub: (Map<String,Any?>) -> Unit = { selectedHubItem=it;navTo("hub-detail") }
     val openRequest: (DocumentSnapshot) -> Unit = { selectedRequest=it;navTo("request-detail") }
     val toolbarBackground=when(mode) {
@@ -289,7 +292,7 @@ private fun QuartinautApp(repo: QuartinautRepository,
                 Row(Modifier.fillMaxWidth().height(70.dp).padding(horizontal=12.dp),
                     verticalAlignment=Alignment.CenterVertically) {
                     if(page!="home") {
-                        IconButton(onClick=goBack,modifier=Modifier.size(44.dp)) {
+                        IconButton(onClick=backAction,modifier=Modifier.size(44.dp)) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription="Einen Schritt zurück",tint=toolbarForeground)
                         }
@@ -378,7 +381,7 @@ private fun QuartinautApp(repo: QuartinautRepository,
         Box(Modifier.fillMaxSize().padding(padding).pointerInput(page,mapCanton,mapMunicipality) {
             detectHorizontalDragGestures(
                 onDragStart={ start -> fromEdge=start.x<=edgePixels;dragged=0f },
-                onDragEnd={ if(fromEdge && dragged>swipeDistance) goBack() },
+                onDragEnd={ if(fromEdge && dragged>swipeDistance && page!="home") backAction() },
                 onHorizontalDrag={ change,amount ->
                     if(fromEdge && amount>0f) dragged+=amount
                     if(fromEdge) change.consume()
