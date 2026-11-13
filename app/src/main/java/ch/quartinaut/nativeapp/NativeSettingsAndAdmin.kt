@@ -57,7 +57,7 @@ fun NativeSettingsScreen(repo: QuartinautRepository,mode: String,
         verticalArrangement=Arrangement.spacedBy(13.dp)) {
         Text("Einstellungen",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold)
         Text("Darstellung",style=MaterialTheme.typography.titleMedium)
-        Text("Vier vollständige Farbdesigns · inklusive Status- und Navigationsleiste",
+        Text("Vier Farbdesigns und automatische Anpassung · inklusive Systemleisten",
             style=MaterialTheme.typography.bodySmall)
         listOf(
             Triple("system","Automatisch · System","Android folgt automatisch Hell oder Dunkel"),
@@ -134,6 +134,15 @@ fun NativeSettingsScreen(repo: QuartinautRepository,mode: String,
         }
         Text("Die Freigabe gilt nur für dieses Gerät und kann in Android jederzeit widerrufen werden.",
             style=MaterialTheme.typography.bodySmall)
+        HorizontalDivider()
+        Text("Barrierefreiheit",style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
+        Text("Quartinaut berücksichtigt die Android-Schriftgrösse und unterstützt die Bedienung über beschriftete Schaltflächen.",
+            style=MaterialTheme.typography.bodySmall)
+        OutlinedButton(onClick={
+            runCatching {context.startActivity(android.content.Intent(
+                android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS))}
+                .onFailure {repo.showMessage("Android-Bedienhilfen konnten nicht geöffnet werden.")}
+        },modifier=Modifier.fillMaxWidth()) {Text("Android-Bedienhilfen öffnen")}
         TextButton(onClick={navigate("diagnostics")}) {
             Text("Verbindungsdiagnose · Firebase-Zugriff prüfen")
         }

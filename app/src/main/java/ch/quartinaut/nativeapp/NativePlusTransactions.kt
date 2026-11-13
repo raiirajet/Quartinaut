@@ -112,6 +112,8 @@ fun NativeLoanPlanner(repo:QuartinautRepository,navigate:(String)->Unit) {
 fun NativeClubCenter(repo:QuartinautRepository,navigate:(String)->Unit) {
     LaunchedEffect(Unit){repo.loadV50("association.list")}
     val all=repo.hubItems.filter{it["kind"]=="group"||it["kind"]=="project"}
+    val context=LocalContext.current
+    var expandedClub by remember {mutableStateOf("")}
     var groupPosts by remember {mutableStateOf<List<Map<String,Any?>>>(emptyList())}
     var selected by remember {mutableStateOf("")}
     var post by remember {mutableStateOf("")}
@@ -149,8 +151,39 @@ fun NativeClubCenter(repo:QuartinautRepository,navigate:(String)->Unit) {
                 style=MaterialTheme.typography.titleMedium)}
             items(all){row->
                 ToolCard(DocString(row["title"]),DocString(row["description"])) {
-                    Text("Mitglieder: "+DocString(row["memberCount"]),
+                    Text("Ort: "+DocString(row["area"]).ifBlank{"Nicht angegeben"},
                         color=TMute)
+                    val count=DocString(row["memberCount"])
+                    if(count.isNotBlank())Text("Mitglieder laut Eintrag: "+count,color=TMute)
+                    val clubId=DocString(row["id"])
+                    OutlinedButton(onClick={expandedClub=if(expandedClub==clubId)"" else clubId}) {
+                        Text(if(expandedClub==clubId)"Vereinsprofil schliessen" else "Vereinsprofil ansehen")
+                    }
+                    if(expandedClub==clubId) {
+                        Text("Vereinsprofil",fontWeight=FontWeight.SemiBold,
+                            color=MaterialTheme.colorScheme.onSurface)
+                        Text("Die Angaben stammen vom veröffentlichten Vereins- oder Quartiereintrag.",
+                            color=TMute,style=MaterialTheme.typography.bodySmall)
+                        val website=DocString(row["website"])
+                        if(website.startsWith("https://") && website.length<300) {
+                            OutlinedButton(onClick={
+                                runCatching {context.startActivity(Intent(Intent.ACTION_VIEW,
+                                    android.net.Uri.parse(website)))}
+                            }) {Text("Website laut Eintrag öffnen")}
+                        }
+                        val related=repo.hubItems.filter {event ->
+                            DocString(event["kind"])=="calendar" &&
+                            DocString(event["status"])=="published" &&
+                            DocString(event["groupId"])==clubId
+                        }.take(5)
+                        if(related.isNotEmpty()) {
+                            Text("Verknüpfte Veranstaltungen",fontWeight=FontWeight.SemiBold)
+                            related.forEach {event->
+                                Text("• "+DocString(event["title"]),color=TMute,
+                                    style=MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                    }
                     Row(Modifier.horizontalScroll(rememberScrollState()),
                         horizontalArrangement=Arrangement.spacedBy(7.dp)) {
                         if(row["status"]=="published"&&row["isMine"]!=true)
