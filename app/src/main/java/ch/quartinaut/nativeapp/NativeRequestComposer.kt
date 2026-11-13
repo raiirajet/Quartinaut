@@ -42,6 +42,10 @@ fun NativeRequestComposer(
     var categoriesOpen by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
     var confirmed by remember { mutableStateOf(false) }
+    val photoToken=rememberSaveable {
+        java.util.UUID.randomUUID().toString().replace("-","")
+    }
+    val photoPaths=remember { mutableStateListOf<String>() }
     BackHandler(enabled=step>0) { step-=1; error="" }
     Column(Modifier.fillMaxSize().background(Color(0xFF111F19))
         .verticalScroll(rememberScrollState()).padding(horizontal=18.dp,vertical=16.dp),
@@ -119,6 +123,10 @@ fun NativeRequestComposer(
                     supportingText={Text(details.length.toString()+" / 1200 Zeichen")},
                     keyboardOptions=KeyboardOptions(capitalization=KeyboardCapitalization.Sentences),
                     isError=details.isNotBlank()&&details.trim().length<12)
+                NativePostPhotoPicker(repo,"requests",photoToken,
+                    photoPaths.toList()) { updated ->
+                    photoPaths.clear();photoPaths.addAll(updated)
+                }
                 Text("Tipp: Beschreibe Ort, Zeitraum und was du genau suchst oder anbietest. Veröffentliche keine privaten Kontaktdaten.",
                     color=CreateText,style=MaterialTheme.typography.bodySmall)
             }
@@ -163,9 +171,8 @@ fun NativeRequestComposer(
                 OutlinedButton(onClick={step=1},modifier=Modifier.weight(1f),
                     enabled=!repo.busy) {Text("Bearbeiten")}
                 Button(onClick={
-                    repo.createRequest(title.trim(),details.trim(),category,kind,urgency){
-                        onDone()
-                    }
+                    repo.createRequest(title.trim(),details.trim(),category,kind,urgency,
+                        onCreated=onDone,photoPaths=photoPaths.toList())
                 },modifier=Modifier.weight(1f),
                     enabled=confirmed&&!repo.busy) {
                     if(repo.busy) CircularProgressIndicator(Modifier.size(18.dp),
