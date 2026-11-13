@@ -68,6 +68,15 @@ class QuartinautRepository(context: Context) {
     var chatId by mutableStateOf("")
         private set
 
+    // Private personal dashboard photo is not a Firestore image field.
+    // The callable returns image bytes only to the authenticated owner.
+    var dashboardBackground by mutableStateOf<android.graphics.Bitmap?>(null)
+        private set
+    var dashboardBackgroundStatus by mutableStateOf("checking")
+        private set
+    var backgroundBusy by mutableStateOf(false)
+        private set
+
     init {
         // The web config is a public Firebase project identifier, not a secret.
         // Register a dedicated Android app in Firebase before production distribution.
@@ -93,6 +102,9 @@ class QuartinautRepository(context: Context) {
                 chats = emptyList(); messages = emptyList()
                 hubItems = emptyList(); v50Items = emptyList()
                 chatId = ""
+                dashboardBackground = null
+                dashboardBackgroundStatus = "checking"
+                backgroundBusy = false
                 if (next != null) loadProfile(next.uid)
             }
         }
@@ -273,7 +285,10 @@ class QuartinautRepository(context: Context) {
             }
             val wasEmpty = profile.isEmpty()
             profile = snapshot.data ?: emptyMap()
-            if (wasEmpty && active()) startListening(uid)
+            if (wasEmpty && active()) {
+                startListening(uid)
+                loadDashboardBackground()
+            }
         })
     }
     private fun observe(query: Query, onData: (List<DocumentSnapshot>) -> Unit) {
@@ -533,6 +548,78 @@ class QuartinautRepository(context: Context) {
             communitySettings=preferences
             message="Deine Einstellungen wurden gespeichert."
         }
+    }
+
+
+    /**
+     * The new callable is separately deployable. When not yet deployed,
+     * mark it unavailable rather than claiming that an image was uploaded.
+     * Never use an unrestricted public Storage URL.
+     */
+    fun loadDashboardBackground() {
+        val uid = user?.uid ?: return
+        if (!active() || backgroundBusy) return
+        backgroundBusy = true
+        functions.getHttpsCallable("quartinautAppearance")
+            .call(mapOf("action" to "get"))
+            .addOnCompleteListener { task ->
+                if (user?.uid != uid) return@addOnCompleteListener
+                backgroundBusy = false
+                if (!task.isSuccessful) {
+                    val e = task.exception
+                    dashboardBackgroundStatus = if (
+                        e is com.google.firebase.functions.FirebaseFunctionsException &&
+                        e.code == com.google.firebase.functions.FirebaseFunctionsException.Code.NOT_FOUND
+                    ) "unavailable" else "error"
+                    return@addOnCompleteListener
+                }
+                val data = task.result?.data as? Map<*, *>
+                val encoded = data?.get("base64") as? String
+                dashboardBackground = if (encoded.isNullOrBlank()) null else runCatching {
+                    val bytes = android.util.Base64.decode(encoded,android.util.Base64.DEFAULT)
+                    android.graphics.BitmapFactory.decodeByteArray(bytes,0,bytes.size)
+                }.getOrNull()
+                dashboardBackgroundStatus = "ready"
+            }
+    }
+
+    fun saveDashboardBackground(base64: String) {
+        val uid = user?.uid ?: return
+        if (!active() || backgroundBusy || dashboardBackgroundStatus != "ready") return
+        backgroundBusy = true
+        functions.getHttpsCallable("quartinautAppearance")
+            .call(mapOf("action" to "save","base64" to base64))
+            .addOnCompleteListener { task ->
+                if (user?.uid != uid) return@addOnCompleteListener
+                backgroundBusy = false
+                if (task.isSuccessful) {
+                    message = "Hintergrund serverseitig gespeichert."
+                    loadDashboardBackground()
+                } else {
+                    message = task.exception?.localizedMessage
+                        ?: "Das Hintergrundbild konnte nicht gespeichert werden."
+                }
+            }
+    }
+
+    fun removeDashboardBackground() {
+        val uid = user?.uid ?: return
+        if (!active() || backgroundBusy || dashboardBackground == null) return
+        backgroundBusy = true
+        functions.getHttpsCallable("quartinautAppearance")
+            .call(mapOf("action" to "remove"))
+            .addOnCompleteListener { task ->
+                if (user?.uid != uid) return@addOnCompleteListener
+                backgroundBusy = false
+                if (task.isSuccessful) {
+                    dashboardBackground = null
+                    dashboardBackgroundStatus = "ready"
+                    message = "Hintergrund vom Server entfernt."
+                } else {
+                    message = task.exception?.localizedMessage
+                        ?: "Der Hintergrund konnte nicht gelöscht werden."
+                }
+            }
     }
 
 }
