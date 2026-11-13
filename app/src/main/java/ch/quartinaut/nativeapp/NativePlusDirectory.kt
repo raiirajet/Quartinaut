@@ -10,6 +10,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.platform.LocalContext
+import org.json.JSONArray
+import org.json.JSONObject
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -37,39 +41,75 @@ private val allExtensions=listOf(
     PlusRoute("enh-trust","Vertrauensprofile","Verifizierungsstatus und echte Bewertungen","🛡️"),
     PlusRoute("enh-calendar","Gemeindekalender+","Entsorgung, Termine und Erinnerungen","📆"),
     PlusRoute("enh-qr","QR-Übergabe","Sichere Ausleihe bestätigen","🔳"),
-    PlusRoute("enh-offline","Offline-Modus","Gemeindeverzeichnis und zwischengespeicherte Daten","📱")
+    PlusRoute("enh-offline","Offline-Modus","Gemeindeverzeichnis und zwischengespeicherte Daten","📱"),
+    PlusRoute("personal-center","Mein Quartinaut","Meine Aktivitäten, Verlauf und Schnellzugriffe","👤"),
+    PlusRoute("enh-favorites","Favoriten","Gespeicherte Einträge wiederfinden","⭐"),
+    PlusRoute("community-pulse","Gemeinde aktuell","Mitteilungen und Beiträge zusammengefasst","📣"),
+    PlusRoute("municipal-compare","Gemeinden vergleichen","Zwei Schweizer Gemeinden gegenüberstellen","🏘️"),
+    PlusRoute("calendar-planner","Meine Termine","Termine in Android-Kalender übernehmen","📅"),
+    PlusRoute("safety-center","Sicherheit","Vertrauen, Meldungen und Privatsphäre","🛡️"),
+    PlusRoute("search","Alles durchsuchen","Beiträge, Gemeinden und Mitteilungen","🔎")
 )
+private data class RadarPreset(val term:String,val scope:String,val tags:List<String>)
 private val radarTags=listOf("market" to "Marktplatz","lend" to "Ausleihen",
     "group" to "Vereine","project" to "Aktionen","request" to "Hilfegesuche",
     "calendar" to "Gemeindetermine","lost" to "Fundbüro")
 
 @Composable
 fun NativeExtrasDirectory(repo:QuartinautRepository,navigate:(String)->Unit) {
+    var query by rememberSaveable { mutableStateOf("") }
+    val opened=remember { mutableStateMapOf<String,Boolean>() }
+    val groups=linkedMapOf(
+        "Für mich" to listOf("personal-center","enh-favorites","enh-posts","chats","enh-trust"),
+        "Entdecken & Inserieren" to listOf("search","create","enh-assist","enh-radar","enh-map","municipal-compare"),
+        "Gemeinde & Vereine" to listOf("community-pulse","enh-clubs","enh-calendar","calendar-planner","enh-loans","enh-qr"),
+        "Schutz & Offline" to listOf("safety-center","enh-offline")
+    )
     Column(Modifier.fillMaxSize().background(PlusBg).verticalScroll(rememberScrollState())
-        .padding(16.dp),verticalArrangement=Arrangement.spacedBy(11.dp)) {
+        .padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
         Text("QUARTINAUT · MEHR",color=PlusAccent,style=MaterialTheme.typography.labelLarge)
         Text("Alles für dein Quartier",color=MaterialTheme.colorScheme.onSurface,
             style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold)
-        Text("Entdecken, helfen, verkaufen, ausleihen und gemeinsam aktiv sein.",
-            color=PlusMuted)
-        allExtensions.forEach { option ->
-            Surface(onClick={navigate(option.key)},
-                color=PlusSurface,shape=RoundedCornerShape(19.dp),
-                border=BorderStroke(1.dp,PlusBorder)) {
-                Row(Modifier.fillMaxWidth().padding(15.dp),
-                    verticalAlignment=Alignment.CenterVertically) {
-                    Text(option.emoji,style=MaterialTheme.typography.headlineSmall)
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(option.name,color=MaterialTheme.colorScheme.onSurface,
-                            fontWeight=FontWeight.SemiBold)
-                        Text(option.detail,color=PlusMuted,
-                            style=MaterialTheme.typography.bodySmall)
+        Text("Deine Funktionen, nach Aufgaben geordnet und jederzeit auffindbar.",color=PlusMuted)
+        OutlinedTextField(value=query,onValueChange={query=it.take(70)},singleLine=true,
+            modifier=Modifier.fillMaxWidth(),label={Text("Funktionen durchsuchen")},
+            leadingIcon={Icon(Icons.Default.Search,contentDescription=null)})
+        groups.forEach { (section,ids) ->
+            val options=allExtensions.filter {option->option.key in ids &&
+                (query.isBlank() || (option.name+" "+option.detail).contains(query,ignoreCase=true))}
+            if(options.isNotEmpty()) {
+                val expanded=if(query.isNotBlank())true else opened[section] ?: (section=="Für mich")
+                Row(Modifier.fillMaxWidth().clickable { opened[section]=!expanded }
+                    .padding(vertical=9.dp),verticalAlignment=Alignment.CenterVertically) {
+                    Text(section,style=MaterialTheme.typography.titleMedium,
+                        fontWeight=FontWeight.SemiBold,modifier=Modifier.weight(1f))
+                    Text(options.size.toString(),color=PlusMuted,style=MaterialTheme.typography.labelMedium)
+                    Spacer(Modifier.width(8.dp))
+                    Icon(if(expanded)Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription=if(expanded)"Einklappen" else "Ausklappen")
+                }
+                if(expanded) options.forEach { option->
+                    Surface(onClick={navigate(option.key)},
+                        color=PlusSurface,shape=RoundedCornerShape(19.dp),
+                        border=BorderStroke(1.dp,PlusBorder)) {
+                        Row(Modifier.fillMaxWidth().heightIn(min=68.dp).padding(13.dp),
+                            verticalAlignment=Alignment.CenterVertically) {
+                            Text(option.emoji,style=MaterialTheme.typography.titleLarge)
+                            Spacer(Modifier.width(12.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(option.name,color=MaterialTheme.colorScheme.onSurface,
+                                    fontWeight=FontWeight.SemiBold)
+                                Text(option.detail,color=PlusMuted,style=MaterialTheme.typography.bodySmall)
+                            }
+                            Icon(Icons.Default.ChevronRight,contentDescription="Öffnen",tint=PlusAccent)
+                        }
                     }
-                    Icon(Icons.Default.ChevronRight,null,tint=PlusAccent)
                 }
             }
         }
+        if(query.isNotBlank()&&allExtensions.none {
+            (it.name+" "+it.detail).contains(query,ignoreCase=true)
+        }) Text("Keine passende Erweiterung gefunden.",color=PlusMuted)
         Text("Deine Gemeinde: "+repo.area()+" ("+repo.canton()+")",
             color=PlusMuted,style=MaterialTheme.typography.bodySmall)
     }
@@ -104,9 +144,34 @@ private fun ExtraItem(title:String,description:String,detail:String="",
 }
 @Composable
 fun NativeRadarScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
-    var text by remember {mutableStateOf("")}
-    var scope by remember {mutableStateOf("municipality")}
-    val tags=remember{mutableStateListOf<String>()}
+    val context=LocalContext.current
+    val uid=repo.user?.uid.orEmpty()
+    val preferences=remember(context) { context.getSharedPreferences(
+        "quartinaut_radar_presets",android.content.Context.MODE_PRIVATE) }
+    val presetKey="presets_"+uid
+    val presets=remember(uid) { mutableStateListOf<RadarPreset>().also { list ->
+        runCatching {
+            val raw=JSONArray(preferences.getString(presetKey,"[]") ?: "[]")
+            for(i in 0 until raw.length()) {
+                val item=raw.optJSONObject(i) ?: continue
+                val tagsJson=item.optJSONArray("tags") ?: JSONArray()
+                val savedTags=(0 until tagsJson.length()).mapNotNull {tagsJson.optString(it).takeIf(String::isNotBlank)}
+                list.add(RadarPreset(item.optString("term").take(80),
+                    item.optString("scope","municipality"),savedTags))
+            }
+        }
+    }}
+    val savePresets: () -> Unit = {
+        val array=JSONArray()
+        presets.forEach {preset->
+            array.put(JSONObject().put("term",preset.term)
+                .put("scope",preset.scope).put("tags",JSONArray(preset.tags)))
+        }
+        preferences.edit().putString(presetKey,array.toString()).apply()
+    }
+    var text by rememberSaveable(uid) {mutableStateOf("")}
+    var scope by rememberSaveable(uid) {mutableStateOf("municipality")}
+    val tags=remember(uid){mutableStateListOf<String>()}
     LaunchedEffect(scope,tags.toList()){
         repo.loadEnhancementList("radar.list",mapOf("scope" to scope,"tags" to tags.toList()))
     }
@@ -120,6 +185,32 @@ fun NativeRadarScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
         OutlinedTextField(text,{text=it},label={Text("Beiträge durchsuchen")},
             singleLine=true,modifier=Modifier.fillMaxWidth(),
             leadingIcon={Icon(Icons.Default.Search,null)})
+        Row(verticalAlignment=Alignment.CenterVertically) {
+            Text("Suchaufträge",modifier=Modifier.weight(1f),fontWeight=FontWeight.SemiBold)
+            TextButton(onClick={
+                val next=RadarPreset(text.trim().take(80),scope,tags.toList())
+                if(next.term.isNotBlank() || next.tags.isNotEmpty()) {
+                    presets.removeAll {it==next}
+                    presets.add(0,next)
+                    while(presets.size>5)presets.removeAt(presets.lastIndex)
+                    savePresets()
+                }
+            },enabled=text.isNotBlank()||tags.isNotEmpty()) {Text("Suche merken")}
+        }
+        presets.forEach { preset->
+            Row(verticalAlignment=Alignment.CenterVertically) {
+                AssistChip(onClick={
+                    text=preset.term;scope=preset.scope;tags.clear();tags.addAll(preset.tags)
+                },modifier=Modifier.weight(1f),
+                    label={Text(preset.term.ifBlank{"Kategorien: "+preset.tags.joinToString(", ")},
+                        maxLines=1,overflow=TextOverflow.Ellipsis)})
+                IconButton(onClick={presets.remove(preset);savePresets()}) {
+                    Icon(Icons.Default.Close,contentDescription="Suchauftrag entfernen")
+                }
+            }
+        }
+        Text("Gemerkte Suchen werden beim Öffnen abgeglichen. Automatische Push-Hinweise benötigen eine zusätzliche serverseitige Freischaltung.",
+            style=MaterialTheme.typography.bodySmall,color=PlusMuted)
         Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
             FilterChip(selected=scope=="municipality",onClick={scope="municipality"},
                 label={Text("Meine Gemeinde")})
