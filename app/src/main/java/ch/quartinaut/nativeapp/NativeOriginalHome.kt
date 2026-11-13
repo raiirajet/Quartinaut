@@ -283,12 +283,12 @@ private fun HomeHero(repo: QuartinautRepository, firstName: String,
                 }
                 val hills=Path().apply {
                     moveTo(0f,size.height*0.84f)
-                    lineTo(size.width*.10f,size.height*.76f)
-                    lineTo(size.width*.26f,size.height*.86f)
-                    lineTo(size.width*.49f,size.height*.70f)
-                    lineTo(size.width*.66f,size.height*.82f)
-                    lineTo(size.width*.86f,size.height*.72f)
-                    lineTo(size.width,size.height*.79f)
+                    lineTo(size.width*0.10f,size.height*0.76f)
+                    lineTo(size.width*0.26f,size.height*0.86f)
+                    lineTo(size.width*0.49f,size.height*0.70f)
+                    lineTo(size.width*0.66f,size.height*0.82f)
+                    lineTo(size.width*0.86f,size.height*0.72f)
+                    lineTo(size.width,size.height*0.79f)
                     lineTo(size.width,size.height)
                     lineTo(0f,size.height)
                     close()
