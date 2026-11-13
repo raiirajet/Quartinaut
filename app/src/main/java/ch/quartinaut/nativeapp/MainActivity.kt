@@ -413,6 +413,11 @@ private fun DashboardPage(repo: QuartinautRepository, go: (String) -> Unit) = Sc
     Feature("Schweizkarte", "26 Kantone und alle Gemeinden", { Icon(Icons.Default.Map,null,tint=Forest) }) { go("map") }
     Feature("Gemeinde-Informationen", "Offizielle Hinweise und Alarme",
         { Icon(Icons.Default.Campaign,null,tint=Forest) }) { go("official") }
+    SectionTitle("Schweizkarte","Registrierungen nach Kanton")
+    NativeCantonMap(selected=repo.canton(),counts=repo.cantonCounts) { go("map") }
+    OutlinedButton(onClick={go("map")},modifier=Modifier.fillMaxWidth()) {
+        Text("26 Kantone und 2'110 Gemeinden entdecken")
+    }
     SectionTitle("Aktuelle Anliegen")
     repo.requests.filter { it.str("status") == "offen" }.take(3).forEach { doc ->
         Panel(doc.title(), doc.str("text"), doc.str("area") + " · " + doc.str("type")) { go("board") }
@@ -653,12 +658,19 @@ private fun RegionPage(repo: QuartinautRepository) {
         SectionTitle(if(canton==null) "Schweiz entdecken" else canton.name,
             if(canton==null) "26 Kantone · 2'110 Gemeinden" else "Kanton " + canton.code + " · " + canton.municipalities.size + " Gemeinden")
         if (canton == null) {
-            NativeCantonMap(selectedCode) { selectedCode=it;selectedMunicipality=null;search="" }
+            NativeCantonMap(selectedCode,repo.cantonCounts) {
+                selectedCode=it;selectedMunicipality=null;search=""
+            }
         } else {
             NativeMunicipalityMap(canton,selectedMunicipality) { selectedMunicipality=it }
         }
         if(canton != null) {
             TextButton(onClick={selectedCode="";selectedMunicipality=null;search=""}) { Text("← Alle Kantone") }
+            Panel("Kanton "+canton.code,
+                "Hauptort: " + (SwissCapitals[canton.code] ?: "Nicht hinterlegt") +
+                    " · " + canton.municipalities.size + " Gemeinden",
+                "BFS-Kantonnummer: " + canton.bfs +
+                    " · Quartinaut-Registrierungen: " + (repo.cantonCounts[canton.code] ?: 0))
             selectedMunicipality?.let { m ->
                 Panel(m.name,"Kanton " + canton.code + " · Schweiz",
                     "Amtliche BFS-Nummer: " + m.bfs)
