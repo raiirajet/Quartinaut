@@ -200,6 +200,8 @@ class QuartinautRepository(context: Context) {
         }.start()
     }
     fun clearMessage() { message = "" }
+    fun showMessage(text:String) { message=text }
+
     fun displayName(): String = DocString(profile["displayName"]).ifBlank { user?.email.orEmpty() }
     fun area(): String = DocString(profile["area"])
     fun canton(): String = DocString(profile["cantonCode"])
