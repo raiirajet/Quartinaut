@@ -58,6 +58,18 @@ class QuartinautRepository(context: Context) {
         private set
     var chats by mutableStateOf<List<DocumentSnapshot>>(emptyList())
         private set
+    // Optional authenticated Cloud Functions fallback for restrictive live
+    // Firestore chat-list rules. It never changes security rules.
+    var serverChats by mutableStateOf<List<Map<String,Any?>>>(emptyList())
+        private set
+    var serverMessages by mutableStateOf<List<Map<String,Any?>>>(emptyList())
+        private set
+    var serverChatReady by mutableStateOf(false)
+        private set
+    var serverChatLoading by mutableStateOf(false)
+        private set
+    var serverChatActive by mutableStateOf(false)
+        private set
     var messages by mutableStateOf<List<DocumentSnapshot>>(emptyList())
         private set
     var hubItems by mutableStateOf<List<Map<String,Any?>>>(emptyList())
@@ -111,6 +123,8 @@ class QuartinautRepository(context: Context) {
                 profile = emptyMap()
                 requests = emptyList(); alerts = emptyList(); notices = emptyList()
                 chats = emptyList(); messages = emptyList()
+                serverChats = emptyList(); serverMessages = emptyList()
+                serverChatReady = false; serverChatLoading = false; serverChatActive = false
                 hubItems = emptyList(); v50Items = emptyList()
                 chatId = ""
                 dashboardBackground = null
@@ -331,9 +345,15 @@ class QuartinautRepository(context: Context) {
                 syncIssues = syncIssues + (label to
                     (e.localizedMessage ?: "Zugriff verweigert."))
                 android.util.Log.w("QuartinautSync", "Firestore feed: " + label, e)
+                if (label == "Private Chats") {
+                    loadServerChats()
+                }
                 return@addSnapshotListener
             }
             if(label in syncIssues) syncIssues = syncIssues - label
+            if(label=="Private Chats") {
+                serverChatReady=false; serverChats=emptyList()
+            }
             onData(snaps?.documents ?: emptyList())
         })
     }
@@ -449,6 +469,10 @@ class QuartinautRepository(context: Context) {
         }
     }
     fun openRequestChat(request: DocumentSnapshot, onOpen: () -> Unit) {
+        if(serverChatReady) {
+            startServerRequestChat(request,onOpen)
+            return
+        }
         val current = user?.uid ?: return
         val owner = request.str("uid").ifBlank { request.str("authorId") }
         if (owner.isBlank() || owner == current) {
@@ -481,6 +505,7 @@ class QuartinautRepository(context: Context) {
         }.addOnFailureListener(::fail)
     }
     fun openChat(chat: DocumentSnapshot) {
+        serverChatActive=false
         activeChatListener?.remove()
         activeChatListener = null
         chatId = chat.id
@@ -507,6 +532,8 @@ class QuartinautRepository(context: Context) {
         activeChatListener = null
         chatId = ""
         messages = emptyList()
+        serverMessages=emptyList()
+        serverChatActive=false
     }
     fun sendChat(text: String, onSent: () -> Unit = {}) {
         val uid = user?.uid ?: return
@@ -745,6 +772,109 @@ class QuartinautRepository(context: Context) {
                 // Public, non-admin feeds can still be retried.
                 verifiedAdminClaim=false
                 startListening(current.uid)
+            }
+        }
+    }
+
+    private fun asPlainMaps(raw: Any?): List<Map<String,Any?>> {
+        return (raw as? List<*>)?.mapNotNull { value ->
+            (value as? Map<*, *>)?.entries?.associate { DocString(it.key) to it.value }
+        } ?: emptyList()
+    }
+    private fun chatApiUnavailable(error: Exception?): Boolean {
+        return error is com.google.firebase.functions.FirebaseFunctionsException &&
+            (error.code == com.google.firebase.functions.FirebaseFunctionsException.Code.NOT_FOUND ||
+             error.code == com.google.firebase.functions.FirebaseFunctionsException.Code.UNIMPLEMENTED)
+    }
+    /** Only the server can read every user's chat list; responses are UID-scoped. */
+    fun loadServerChats() {
+        val uid=user?.uid ?:return
+        if(serverChatLoading || !active())return
+        serverChatLoading=true
+        functions.getHttpsCallable("quartinautPrivateChats")
+            .call(mapOf("action" to "list"))
+            .addOnCompleteListener { result ->
+                if(user?.uid!=uid)return@addOnCompleteListener
+                serverChatLoading=false
+                if(result.isSuccessful) {
+                    val payload=result.result?.data as? Map<*,*>
+                    serverChats=asPlainMaps(payload?.get("chats"))
+                    serverChatReady=true
+                    syncIssues=syncIssues-"Private Chats"
+                    syncIssues=syncIssues-"Privater Chat-Dienst"
+                } else {
+                    serverChatReady=false
+                    val explanation=if(chatApiUnavailable(result.exception))
+                        "Der geschützte Chat-Dienst ist noch nicht auf Firebase veröffentlicht."
+                    else result.exception?.localizedMessage
+                        ?: "Chat-Dienst nicht erreichbar."
+                    syncIssues=syncIssues + ("Privater Chat-Dienst" to explanation)
+                }
+            }
+    }
+    fun openServerChat(id:String) {
+        if(!serverChatReady)return
+        activeChatListener?.remove();activeChatListener=null
+        chatId=id;messages=emptyList();serverMessages=emptyList()
+        serverChatActive=true
+        refreshServerMessages()
+    }
+    fun refreshServerMessages() {
+        val uid=user?.uid ?: return
+        val requestedChat=chatId
+        if(!serverChatActive || requestedChat.isBlank())return
+        functions.getHttpsCallable("quartinautPrivateChats")
+            .call(mapOf("action" to "messages","chatId" to requestedChat))
+            .addOnCompleteListener { task ->
+                if(user?.uid!=uid||chatId!=requestedChat)return@addOnCompleteListener
+                if(task.isSuccessful) {
+                    serverMessages=asPlainMaps((task.result?.data as? Map<*,*>)?.get("messages"))
+                    syncIssues=syncIssues-"Chatnachrichten"
+                } else {
+                    syncIssues=syncIssues + ("Chatnachrichten" to
+                        (task.exception?.localizedMessage ?: "Nachrichten nicht erreichbar."))
+                }
+            }
+    }
+    fun sendServerChat(text:String,onSent:()->Unit) {
+        val uid=user?.uid ?:return
+        val requestedChat=chatId
+        if(!serverChatActive || requestedChat.isBlank()||text.trim().isBlank())return
+        busy=true
+        functions.getHttpsCallable("quartinautPrivateChats").call(mapOf(
+            "action" to "send","chatId" to requestedChat,
+            "text" to text.trim().take(500),
+            "operationId" to UUID.randomUUID().toString().replace("-","")
+        )).addOnCompleteListener { task ->
+            if(user?.uid!=uid)return@addOnCompleteListener
+            busy=false
+            if(task.isSuccessful) {
+                onSent()
+                refreshServerMessages()
+                loadServerChats()
+            } else {
+                message=task.exception?.localizedMessage ?: "Nachricht konnte nicht gesendet werden."
+            }
+        }
+    }
+    fun startServerRequestChat(request:DocumentSnapshot,onOpen:()->Unit) {
+        val uid=user?.uid ?:return
+        busy=true
+        functions.getHttpsCallable("quartinautPrivateChats").call(mapOf(
+            "action" to "start","requestId" to request.id
+        )).addOnCompleteListener { result ->
+            if(user?.uid!=uid)return@addOnCompleteListener
+            busy=false
+            if(result.isSuccessful) {
+                val chat=(result.result?.data as? Map<*,*>)?.get("chat") as? Map<*,*>
+                val id=DocString(chat?.get("id"))
+                if(id.isNotBlank()) {
+                    openServerChat(id)
+                    onOpen()
+                    loadServerChats()
+                }
+            } else {
+                message=result.exception?.localizedMessage ?: "Chat konnte nicht eröffnet werden."
             }
         }
     }
