@@ -74,11 +74,11 @@ async function sanitizedJpeg(raw) {
 // reads are still private and only return a 480 KB maximum JPEG.
 async function checkWriteQuota(uid) {
   const today=new Date().toISOString().slice(0,10);
-  const ref=db.collection('dashboardBackgroundQuotas').doc(uid+'_'+today);
+  const ref=db.collection('dashboardBackgroundQuotas').doc(uid);
   const now=Date.now();
   await db.runTransaction(async tx => {
     const snap=await tx.get(ref);
-    const used=Number(snap.data()?.count||0);
+    const used=snap.data()?.day===today?Number(snap.data()?.count||0):0;
     const last=Number(snap.data()?.lastWriteMillis||0);
     if(used>=24)error('resource-exhausted','Tageslimit für Hintergrundänderungen erreicht.');
     if(now-last<10000)error('resource-exhausted','Bitte zwischen zwei Bildänderungen kurz warten.');
