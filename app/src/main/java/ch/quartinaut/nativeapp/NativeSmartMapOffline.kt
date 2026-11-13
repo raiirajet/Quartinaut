@@ -14,6 +14,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.label.ImageLabeling
+import com.google.mlkit.vision.label.defaults.ImageLabelerOptions
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
@@ -27,6 +32,13 @@ private val NAccent=Color(0xFFA3E3B5)
 private val NSub=Color(0xFFCADECF)
 private val NLine=Color(0xFF456853)
 
+private val mlGermanLabels=mapOf(
+    "bicycle" to "Velo","bike" to "Velo","furniture" to "Möbel",
+    "plant" to "Pflanze","flower" to "Blumen","chair" to "Stuhl",
+    "table" to "Tisch","tool" to "Werkzeug","toy" to "Spielzeug",
+    "vehicle" to "Fahrzeug","car" to "Auto","electronic" to "Elektronik",
+    "sport" to "Sportgerät","kitchen" to "Haushalt","appliance" to "Haushaltsgerät"
+)
 private val localRules=listOf(
     "Velos & Verkehr" to listOf("velo","fahrrad","e-bike","reifen","bike"),
     "Werkzeug" to listOf("bohrmaschine","akkuschrauber","säge","leiter","werkzeug","hammer"),
@@ -46,7 +58,41 @@ fun NativeSmartListing(repo:QuartinautRepository,navigate:(String)->Unit) {
     val context=LocalContext.current
     var input by remember{mutableStateOf("")}
     var kind by remember{mutableStateOf("market")}
-    val suggested=remember(input){suggestGroup(input)}
+    var imageLabels by remember{mutableStateOf<List<Pair<String,Float>>>(emptyList())}
+    var labelBusy by remember{mutableStateOf(false)}
+    var labelError by remember{mutableStateOf("")}
+    val chooser=rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ){ uri->
+        if(uri!=null) {
+            labelBusy=true;labelError=""
+            val labeler=ImageLabeling.getClient(
+                ImageLabelerOptions.Builder().setConfidenceThreshold(0.50f).build()
+            )
+            try {
+                val image=InputImage.fromFilePath(context,uri)
+                labeler.process(image)
+                    .addOnSuccessListener{ result->
+                        imageLabels=result.sortedByDescending{it.confidence}
+                            .take(6).map{it.text to it.confidence}
+                        if(input.isBlank() && imageLabels.isNotEmpty()) {
+                            val name=imageLabels.first().first
+                            input=mlGermanLabels[name.lowercase()] ?: name
+                        }
+                    }
+                    .addOnFailureListener{err->
+                        labelError=err.localizedMessage ?: "Foto konnte nicht erkannt werden."
+                    }
+                    .addOnCompleteListener{labeler.close();labelBusy=false}
+            } catch(e:Exception) {
+                labelBusy=false;labeler.close()
+                labelError=e.localizedMessage ?: "Foto konnte nicht geöffnet werden."
+            }
+        }
+    }
+    val suggested=remember(input,imageLabels){
+        suggestGroup(input+" "+imageLabels.joinToString(" "){it.first})
+    }
     val hints=remember(input,kind){
         if(input.trim().length<4)emptyList() else listOf(
             "Titel: "+input.trim().replaceFirstChar{it.titlecase()},
@@ -61,8 +107,22 @@ fun NativeSmartListing(repo:QuartinautRepository,navigate:(String)->Unit) {
         verticalArrangement=Arrangement.spacedBy(12.dp)) {
         Text("Inserat-Assistent",style=MaterialTheme.typography.headlineSmall,
             color=Color.White,fontWeight=FontWeight.Bold)
-        Text("Schnelle Vorschläge für Titel und Kategorie – lokal auf dem Handy. Es werden dafür keine Inhalte an einen KI-Dienst geschickt.",
+        Text("Ein integriertes Bilderkennungsmodell erkennt Gegenstände auch ohne Internet. Du überprüfst und bearbeitest jeden Vorschlag vor der Veröffentlichung.",
             color=NSub,style=MaterialTheme.typography.bodySmall)
+        OutlinedButton(onClick={chooser.launch("image/*")},
+            enabled=!labelBusy,modifier=Modifier.fillMaxWidth()) {
+            Icon(Icons.Default.AddPhotoAlternate,null)
+            Spacer(Modifier.width(8.dp))
+            Text(if(labelBusy)"Foto wird lokal analysiert …"
+                else "Artikel auf Foto erkennen (Offline-KI)")
+        }
+        if(labelBusy) LinearProgressIndicator(Modifier.fillMaxWidth())
+        if(imageLabels.isNotEmpty()) {
+            Text("Erkannte Motive: "+imageLabels.joinToString(", "){
+                it.first+" ("+(it.second*100).toInt()+"%)"
+            },color=NSub,style=MaterialTheme.typography.bodySmall)
+        }
+        if(labelError.isNotBlank())Text(labelError,color=MaterialTheme.colorScheme.error)
         Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
             FilterChip(kind=="market",{kind="market"},label={Text("Verkaufen")})
             FilterChip(kind=="lend",{kind="lend"},label={Text("Ausleihen")})
@@ -84,6 +144,10 @@ fun NativeSmartListing(repo:QuartinautRepository,navigate:(String)->Unit) {
         Button(onClick={
             val clip=context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
             clip.setPrimaryClip(ClipData.newPlainText("Quartinaut Titel",input.trim()))
+            // One-time per-account handoff to the native listing form.
+            val prefs=context.getSharedPreferences("quartinaut_smart_drafts",Context.MODE_PRIVATE)
+            prefs.edit().putString("title_"+repo.user?.uid+"_"+kind,input.trim())
+                .apply()
             navigate("hub-create:"+kind)
         },enabled=input.trim().length>=5,
             modifier=Modifier.fillMaxWidth().height(48.dp)) {
