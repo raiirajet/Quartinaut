@@ -2,8 +2,6 @@ name: Android native debug APK
 on:
   push:
     branches: [native-android-v1]
-  pull_request:
-    branches: [main]
   workflow_dispatch:
 jobs:
   build:
