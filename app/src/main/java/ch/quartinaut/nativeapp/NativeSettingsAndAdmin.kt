@@ -91,6 +91,9 @@ fun NativeSettingsScreen(repo: QuartinautRepository,dark: Boolean,
         },enabled=!repo.busy,modifier=Modifier.fillMaxWidth()) {Text("Einstellungen speichern")}
         Text("Hinweis: Für echte Android-Pushmeldungen wird zusätzlich eine registrierte Firebase-Android-App benötigt.",
             style=MaterialTheme.typography.bodySmall)
+        TextButton(onClick={navigate("diagnostics")}) {
+            Text("Verbindungsdiagnose · Firebase-Zugriff prüfen")
+        }
         TextButton(onClick={navigate("help")}) { Text("Hilfe und Datenschutz") }
     }
 }
