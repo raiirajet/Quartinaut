@@ -411,4 +411,81 @@ class QuartinautRepository(context: Context) {
                 "readBy." + uid to now))
         }
     }
+    /**
+     * Calls existing protected callable APIs. The Android client never writes
+     * to protected community Firestore collections directly.
+     */
+    fun communityAction(
+        action: String, values: Map<String, Any?> = emptyMap(),
+        refreshOnSuccess: Boolean = true,
+        success: ((Map<String, Any?>) -> Unit)? = null
+    ) {
+        if (user == null || !active()) return
+        busy = true
+        functions.getHttpsCallable("quartinautHub").call(values + ("action" to action))
+            .addOnCompleteListener { task ->
+                busy = false
+                if (!task.isSuccessful) {
+                    message = task.exception?.localizedMessage ?: "Quartier+-Aktion fehlgeschlagen."
+                } else {
+                    val result = task.result?.data as? Map<*, *> ?: emptyMap<String,Any?>()
+                    val map = result.entries.associate { DocString(it.key) to it.value }
+                    if(refreshOnSuccess) loadHub()
+                    success?.invoke(map)
+                }
+            }
+    }
+
+    fun createCommunityItem(item: Map<String,Any?>, completed: () -> Unit) {
+        communityAction("create",mapOf("item" to item,
+            "opId" to "android_" + UUID.randomUUID().toString().replace("-","")),
+            refreshOnSuccess=true) { response ->
+            message = if(DocString(response["status"])=="published")
+                "Quartier+-Beitrag veröffentlicht."
+                else "Beitrag eingereicht. Freigabe steht noch aus."
+            completed()
+        }
+    }
+
+    fun reactionAction(action: String, kind: String, id: String,
+                       values: Map<String,Any?> = emptyMap(),
+                       success: ((Map<String,Any?>) -> Unit)? = null) {
+        busy = true
+        functions.getHttpsCallable("quartinautSocial")
+            .call(values + mapOf("action" to action,"kind" to kind,"id" to id))
+            .addOnCompleteListener { task ->
+                busy = false
+                if (!task.isSuccessful) message = task.exception?.localizedMessage
+                    ?: "Kommentar oder Reaktion konnte nicht geladen werden."
+                else {
+                    val entries = (task.result?.data as? Map<*, *>)?.entries ?: emptySet()
+                    success?.invoke(entries.associate { DocString(it.key) to it.value })
+                }
+            }
+    }
+
+    fun readProtectedPhoto(path: String, onResult: (android.graphics.Bitmap?) -> Unit) {
+        if (user == null || path.isBlank() ||
+            !path.matches(Regex("^post-photos/(requests|community|groups)/[^/]+/[^/]+/[0-2]\\\\.jpg$"))) {
+            onResult(null)
+            return
+        }
+        functions.getHttpsCallable("quartinautPhoto")
+            .call(mapOf("action" to "read", "path" to path))
+            .addOnCompleteListener { task ->
+                if (!task.isSuccessful) {
+                    // No direct Firebase Storage URL: protected images need the callable.
+                    onResult(null)
+                    return@addOnCompleteListener
+                }
+                val raw = (task.result?.data as? Map<*, *>)?.get("base64") as? String
+                if (raw == null) { onResult(null); return@addOnCompleteListener }
+                val bmp = runCatching {
+                    val bytes = android.util.Base64.decode(raw,android.util.Base64.DEFAULT)
+                    android.graphics.BitmapFactory.decodeByteArray(bytes,0,bytes.size)
+                }.getOrNull()
+                onResult(bmp)
+            }
+    }
+
 }
