@@ -21,3 +21,5 @@ firebase-debug.log
 
 # Private chat callable dependencies
 functions/nativeChats/node_modules/
+
+functions/enhancements/node_modules/
