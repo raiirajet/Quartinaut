@@ -12,6 +12,8 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
 import com.google.firebase.functions.FirebaseFunctions
+import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.StorageMetadata
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
@@ -34,6 +36,7 @@ class QuartinautRepository(context: Context) {
     val auth: FirebaseAuth
     private val db: FirebaseFirestore
     private val functions: FirebaseFunctions
+    private val storage: FirebaseStorage
     private val subscriptions = mutableListOf<ListenerRegistration>()
     private val feedSubscriptions = mutableListOf<ListenerRegistration>()
     private var verifiedAdminClaim by mutableStateOf(false)
@@ -75,6 +78,8 @@ class QuartinautRepository(context: Context) {
         private set
     var serverChatActive by mutableStateOf(false)
         private set
+    var chatMediaLoading by mutableStateOf(false)
+        private set
     var messages by mutableStateOf<List<DocumentSnapshot>>(emptyList())
         private set
     var hubItems by mutableStateOf<List<Map<String,Any?>>>(emptyList())
@@ -112,6 +117,7 @@ class QuartinautRepository(context: Context) {
         auth = FirebaseAuth.getInstance(firebase)
         db = FirebaseFirestore.getInstance(firebase)
         functions = FirebaseFunctions.getInstance(firebase, "europe-west6")
+        storage = FirebaseStorage.getInstance(firebase)
         auth.addAuthStateListener {
             val next = it.currentUser
             if (user?.uid != next?.uid) {
@@ -845,6 +851,7 @@ class QuartinautRepository(context: Context) {
         chatId=id;messages=emptyList();serverMessages=emptyList()
         serverChatActive=true
         refreshServerMessages()
+        markServerChatRead()
     }
     fun refreshServerMessages() {
         val uid=user?.uid ?: return
@@ -857,6 +864,7 @@ class QuartinautRepository(context: Context) {
                 if(task.isSuccessful) {
                     serverMessages=asPlainMaps((task.result?.data as? Map<*,*>)?.get("messages"))
                     syncIssues=syncIssues-"Chatnachrichten"
+                    markServerChatRead()
                 } else {
                     syncIssues=syncIssues + ("Chatnachrichten" to
                         (task.exception?.localizedMessage ?: "Nachrichten nicht erreichbar."))
@@ -871,6 +879,7 @@ class QuartinautRepository(context: Context) {
         functions.getHttpsCallable("quartinautPrivateChats").call(mapOf(
             "action" to "send","chatId" to requestedChat,
             "text" to text.trim().take(500),
+            "messageType" to "text",
             "operationId" to UUID.randomUUID().toString().replace("-","")
         )).addOnCompleteListener { task ->
             if(user?.uid!=uid)return@addOnCompleteListener
@@ -883,6 +892,93 @@ class QuartinautRepository(context: Context) {
                 message=task.exception?.localizedMessage ?: "Nachricht konnte nicht gesendet werden."
             }
         }
+    }
+
+    fun sendServerChatImage(bytes:ByteArray,caption:String,onSent:()->Unit) {
+        val uid=user?.uid ?:return
+        val requestedChat=chatId
+        if(!serverChatActive||requestedChat.isBlank()||bytes.isEmpty()||bytes.size>2_500_000)return
+        val operationId=UUID.randomUUID().toString().replace("-","")
+        val messageId="msg_${uid}_$operationId"
+        val path="chat-media/$requestedChat/$uid/$messageId.jpg"
+        val metadata=StorageMetadata.Builder()
+            .setContentType("image/jpeg")
+            .setCustomMetadata("chatId",requestedChat)
+            .setCustomMetadata("senderUid",uid)
+            .setCustomMetadata("messageId",messageId)
+            .build()
+        busy=true;chatMediaLoading=true
+        val objectRef=storage.reference.child(path)
+        objectRef.putBytes(bytes,metadata).continueWithTask { upload ->
+            if(!upload.isSuccessful)throw upload.exception ?: IllegalStateException("Bild-Upload fehlgeschlagen.")
+            functions.getHttpsCallable("quartinautPrivateChats").call(mapOf(
+                "action" to "send","chatId" to requestedChat,
+                "text" to caption.trim().take(500),"messageType" to "image",
+                "operationId" to operationId,
+                "media" to mapOf("storagePath" to path,"contentType" to "image/jpeg","size" to bytes.size)
+            ))
+        }.addOnCompleteListener { task ->
+            if(user?.uid!=uid)return@addOnCompleteListener
+            busy=false;chatMediaLoading=false
+            if(task.isSuccessful) {
+                onSent();refreshServerMessages();loadServerChats()
+            } else {
+                objectRef.delete()
+                message=task.exception?.localizedMessage ?: "Chatbild konnte nicht gesendet werden."
+            }
+        }
+    }
+
+    fun loadChatImage(path:String,onReady:(android.graphics.Bitmap?)->Unit) {
+        if(!path.startsWith("chat-media/")||path.length>700) {onReady(null);return}
+        storage.reference.child(path).getBytes(2_500_000)
+            .addOnSuccessListener { bytes ->
+                onReady(android.graphics.BitmapFactory.decodeByteArray(bytes,0,bytes.size))
+            }.addOnFailureListener {onReady(null)}
+    }
+
+    fun setServerChatMuted(muted:Boolean) = chatControl("mute",mapOf("muted" to muted))
+    fun setServerChatBlocked(blocked:Boolean) = chatControl("block",mapOf("blocked" to blocked))
+
+    private fun chatControl(action:String,args:Map<String,Any?>) {
+        val uid=user?.uid ?:return
+        val requestedChat=chatId
+        if(!serverChatActive||requestedChat.isBlank()||busy)return
+        busy=true
+        functions.getHttpsCallable("quartinautPrivateChats").call(
+            mapOf("action" to action,"chatId" to requestedChat)+args
+        ).addOnCompleteListener { task ->
+            if(user?.uid!=uid)return@addOnCompleteListener
+            busy=false
+            if(task.isSuccessful) {loadServerChats();refreshServerMessages()}
+            else message=task.exception?.localizedMessage ?: "Chat-Einstellung konnte nicht gespeichert werden."
+        }
+    }
+
+    fun reportServerChat(reason:String,note:String,onDone:()->Unit) {
+        val uid=user?.uid ?:return
+        val requestedChat=chatId
+        if(!serverChatActive||requestedChat.isBlank()||busy)return
+        busy=true
+        functions.getHttpsCallable("quartinautPrivateChats").call(mapOf(
+            "action" to "report","chatId" to requestedChat,"reason" to reason,
+            "note" to note.trim().take(500),
+            "operationId" to UUID.randomUUID().toString().replace("-","")
+        )).addOnCompleteListener { task ->
+            if(user?.uid!=uid)return@addOnCompleteListener
+            busy=false
+            if(task.isSuccessful) {message="Meldung wurde sicher übermittelt.";onDone()}
+            else message=task.exception?.localizedMessage ?: "Meldung konnte nicht übermittelt werden."
+        }
+    }
+
+    private fun markServerChatRead() {
+        val uid=user?.uid ?:return
+        val requestedChat=chatId
+        if(!serverChatActive||requestedChat.isBlank())return
+        functions.getHttpsCallable("quartinautPrivateChats")
+            .call(mapOf("action" to "read","chatId" to requestedChat))
+            .addOnSuccessListener {if(user?.uid==uid)loadServerChats()}
     }
     fun startServerRequestChat(request:DocumentSnapshot,onOpen:()->Unit) {
         val uid=user?.uid ?:return

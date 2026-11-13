@@ -4,7 +4,12 @@
 // chats/{chatId}: exactly two participant UIDs, request binding, bounded
 // labels and message preview. Membership and request identity are immutable.
 // chatMessages/{messageId}: immutable sender/recipient/chat/request binding,
-// text <= 500 characters; only the recipient can mark a message as read.
+// text <= 500 characters; optional immutable private JPEG descriptor; only
+// the recipient can mark a message as read.
+// userBlocks/{blockId}: server-owned directional block edge. Client access is
+// denied; the callable checks both directions before every message.
+// moderationCases/{caseId}: reporter-bound chat report with a closed reason
+// enum, bounded note and immutable evidence snapshot; only admins may review.
 // deviceTokens/{tokenId}: owner UID, FCM token, Android metadata and regional
 // routing fields. Legacy displayName/email fields remain optional during the
 // migration and are size/type checked.
@@ -32,8 +37,8 @@ service cloud.firestore {
     function isAdmin() {
       return signedIn()
         && (
-          request.auth.token.admin == true
-          || request.auth.token.role in ['admin', 'area_admin']
+          request.auth.token.get('admin', false) == true
+          || request.auth.token.get('role', '') in ['admin', 'area_admin']
         );
     }
 
@@ -125,6 +130,30 @@ service cloud.firestore {
         && data.participantLabels[data.participants[1]].size() <= 80;
     }
 
+    function validParticipantMemberList(data, field) {
+      let values = data.get(field, []);
+      return values is list
+        && values.size() <= 2
+        && (
+          values.size() == 0
+          || (values.size() == 1 && values[0] in data.participants)
+          || (values.size() == 2
+            && values[0] in data.participants
+            && values[1] in data.participants
+            && values[0] != values[1])
+        );
+    }
+
+    function validReadBy(data) {
+      return data.get('readBy', {}) is map
+        && data.get('readBy', {}).size() <= 2
+        && data.get('readBy', {}).keys().hasOnly(data.participants)
+        && data.get('readBy', {}).get(data.participants[0], '') is string
+        && data.get('readBy', {}).get(data.participants[0], '').size() <= 40
+        && data.get('readBy', {}).get(data.participants[1], '') is string
+        && data.get('readBy', {}).get(data.participants[1], '').size() <= 40;
+    }
+
     function validChat(data) {
       return data.keys().hasAll([
           'id', 'requestId', 'requestTitle', 'requestOwnerUid', 'participants',
@@ -135,7 +164,7 @@ service cloud.firestore {
           'id', 'requestId', 'requestTitle', 'requestOwnerUid', 'participants',
           'participantLabels', 'createdAt', 'lastMessageAt',
           'lastMessagePreview', 'lastSenderUid', 'mutedBy', 'readBy',
-          'trashedBy', 'purgedBy', 'updatedAt'
+          'blockedBy', 'trashedBy', 'purgedBy', 'updatedAt'
         ])
         && data.id is string && data.id.size() >= 8 && data.id.size() <= 340
         && data.requestId is string && data.requestId.size() >= 1 && data.requestId.size() <= 150
@@ -148,10 +177,11 @@ service cloud.firestore {
         && data.lastMessageAt is string && data.lastMessageAt.size() <= 40
         && data.lastMessagePreview is string && data.lastMessagePreview.size() <= 120
         && data.lastSenderUid is string && data.lastSenderUid.size() <= 128
-        && data.get('mutedBy', []) is list && data.get('mutedBy', []).size() <= 2
-        && data.get('readBy', {}) is map && data.get('readBy', {}).size() <= 2
-        && data.get('trashedBy', []) is list && data.get('trashedBy', []).size() <= 2
-        && data.get('purgedBy', []) is list && data.get('purgedBy', []).size() <= 2
+        && validParticipantMemberList(data, 'mutedBy')
+        && validParticipantMemberList(data, 'blockedBy')
+        && validReadBy(data)
+        && validParticipantMemberList(data, 'trashedBy')
+        && validParticipantMemberList(data, 'purgedBy')
         && validOptionalString(data, 'updatedAt', 40);
     }
 
@@ -177,7 +207,7 @@ service cloud.firestore {
           'id', 'chatId', 'requestId', 'requestTitle', 'requestOwnerUid',
           'senderUid', 'recipientUid', 'participants', 'participantLabels',
           'text', 'createdAt', 'readAt', 'deliveryStatus', 'messageType',
-          'appointment'
+          'media', 'appointment'
         ])
         && data.id is string && data.id.size() >= 8 && data.id.size() <= 150
         && data.chatId is string && data.chatId.size() >= 8 && data.chatId.size() <= 340
@@ -187,13 +217,86 @@ service cloud.firestore {
         && data.senderUid != data.recipientUid
         && data.participants is list && data.participants.size() == 2
         && data.senderUid in data.participants && data.recipientUid in data.participants
-        && data.text is string && data.text.size() >= 1 && data.text.size() <= 500
+        && data.text is string && data.text.size() <= 500
         && data.createdAt is string && data.createdAt.size() <= 40
         && data.readAt is string && data.readAt.size() <= 40
         && data.deliveryStatus in ['sent', 'delivered', 'read']
         && validOptionalString(data, 'requestTitle', 140)
         && validOptionalString(data, 'requestOwnerUid', 128)
-        && validOptionalString(data, 'messageType', 20);
+        && data.get('messageType', 'text') in ['text', 'image']
+        && (
+          (data.get('messageType', 'text') == 'text' && data.text.size() >= 1 && !data.keys().hasAny(['media']))
+          || (data.get('messageType', 'text') == 'image' && validChatMedia(data))
+        );
+    }
+
+    function validChatMedia(data) {
+      let media = data.get('media', {});
+      return media is map
+        && media.keys().hasOnly(['storagePath', 'contentType', 'size'])
+        && media.keys().hasAll(['storagePath', 'contentType', 'size'])
+        && media.storagePath is string
+        && media.storagePath == 'chat-media/' + data.chatId + '/' + data.senderUid + '/' + data.id + '.jpg'
+        && media.contentType == 'image/jpeg'
+        && media.size is int && media.size >= 1 && media.size <= 2500000;
+    }
+
+    function validModerationCase(data, caseId) {
+      return data.keys().hasAll([
+          'id', 'type', 'status', 'reporterUid', 'reportedUid', 'chatId',
+          'reason', 'note', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'type', 'status', 'reporterUid', 'reportedUid', 'chatId',
+          'messageId', 'reason', 'note', 'requestId', 'messageSnapshot',
+          'createdAt', 'updatedAt', 'resolution', 'reviewerUid'
+        ])
+        && data.id == caseId
+        && data.type == 'Privater Chat'
+        && data.status == 'offen'
+        && data.reporterUid == request.auth.uid
+        && data.reportedUid is string && data.reportedUid.size() >= 20 && data.reportedUid.size() <= 128
+        && data.reportedUid != data.reporterUid
+        && data.chatId is string && data.chatId.size() >= 8 && data.chatId.size() <= 340
+        && isChatParticipantById(data.chatId)
+        && data.reason in ['spam', 'harassment', 'fraud', 'unsafe', 'other']
+        && data.note is string && data.note.size() <= 500
+        && data.createdAt is string && data.createdAt.size() <= 40
+        && validOptionalString(data, 'messageId', 150)
+        && validOptionalString(data, 'requestId', 150)
+        && validModerationSnapshot(data);
+    }
+
+    function validModerationSnapshot(data) {
+      let snapshot = data.get('messageSnapshot', {});
+      return !data.keys().hasAny(['messageSnapshot'])
+        || (
+          snapshot is map
+          && snapshot.keys().hasOnly([
+            'id', 'chatId', 'senderUid', 'text', 'createdAt', 'readAt',
+            'messageType', 'media'
+          ])
+          && snapshot.get('id', '') is string && snapshot.get('id', '').size() <= 150
+          && snapshot.get('chatId', '') is string && snapshot.get('chatId', '').size() <= 340
+          && snapshot.get('senderUid', '') is string && snapshot.get('senderUid', '').size() <= 128
+          && snapshot.get('text', '') is string && snapshot.get('text', '').size() <= 500
+          && snapshot.get('createdAt', '') is string && snapshot.get('createdAt', '').size() <= 40
+          && snapshot.get('readAt', '') is string && snapshot.get('readAt', '').size() <= 40
+          && snapshot.get('messageType', 'text') in ['text', 'image']
+          && (
+            !snapshot.keys().hasAny(['media'])
+            || (
+              snapshot.media is map
+              && snapshot.media.keys().hasOnly(['storagePath', 'contentType', 'size'])
+              && snapshot.media.get('storagePath', '') is string
+              && snapshot.media.get('storagePath', '').size() <= 700
+              && snapshot.media.get('contentType', '') == 'image/jpeg'
+              && snapshot.media.get('size', 0) is int
+              && snapshot.media.get('size', 0) >= 1
+              && snapshot.media.get('size', 0) <= 2500000
+            )
+          )
+        );
     }
 
     function messageMatchesChat(data) {
@@ -422,6 +525,7 @@ service cloud.firestore {
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.participantLabels == resource.data.participantLabels
         && request.resource.data.get('mutedBy', []) == resource.data.get('mutedBy', [])
+        && request.resource.data.get('blockedBy', []) == resource.data.get('blockedBy', [])
         && request.resource.data.get('trashedBy', []) == resource.data.get('trashedBy', [])
         && request.resource.data.get('purgedBy', []) == resource.data.get('purgedBy', [])
         && request.resource.data.get('readBy', {}).diff(resource.data.get('readBy', {})).affectedKeys().hasOnly([request.auth.uid])
@@ -471,12 +575,11 @@ service cloud.firestore {
 
     match /moderationCases/{caseId} {
       allow read, update, delete: if isAdmin();
-      allow create: if isAdmin() || (
-        activeUser()
-        && request.resource.data.reporterUid == request.auth.uid
-        && request.resource.data.status == 'offen'
-        && request.resource.data.type in ['Meldung', 'Privater Chat']
-      );
+      allow create: if isAdmin() || (activeUser() && validModerationCase(request.resource.data, caseId));
+    }
+
+    match /userBlocks/{blockId} {
+      allow read, create, update, delete: if false;
     }
 
     match /inviteCodes/{inviteId} {

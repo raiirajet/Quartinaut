@@ -8,7 +8,7 @@ import {
   initializeTestEnvironment
 } from '@firebase/rules-unit-testing';
 import {doc, getDoc, setDoc, updateDoc} from 'firebase/firestore';
-import {ref, uploadBytes} from 'firebase/storage';
+import {deleteObject, getBytes, ref, uploadBytes} from 'firebase/storage';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'..');
@@ -26,7 +26,7 @@ const chat=()=>({
   id:chatId,requestId:'request1',requestTitle:'Bohrmaschine',
   requestOwnerUid:bob,participants:[alice,bob],
   participantLabels:{[alice]:'Alice',[bob]:'Bob'},
-  mutedBy:[],readBy:{[alice]:'2026-11-13T10:00:00Z'},
+  mutedBy:[],blockedBy:[],readBy:{[alice]:'2026-11-13T10:00:00Z'},
   createdAt:'2026-11-13T10:00:00Z',lastMessageAt:'2026-11-13T10:00:00Z',
   lastMessagePreview:'',lastSenderUid:''
 });
@@ -114,6 +114,21 @@ test('non-participant cannot inject a message into a chat',async()=>{
   }));
 });
 
+test('participant can create a strictly bound image message only',async()=>{
+  const db=env.authenticatedContext(alice).firestore();
+  const media={
+    storagePath:`chat-media/${chatId}/${alice}/msg_alice_operation0001.jpg`,
+    contentType:'image/jpeg',size:3
+  };
+  await assertSucceeds(setDoc(doc(db,'chatMessages','msg_alice_operation0001'),{
+    ...message(),text:'',messageType:'image',media
+  }));
+  await assertFails(setDoc(doc(db,'chatMessages','msg_alice_operation0002'),{
+    ...message(),id:'msg_alice_operation0002',text:'',messageType:'image',
+    media:{...media,storagePath:`chat-media/${chatId}/${bob}/msg_alice_operation0002.jpg`}
+  }));
+});
+
 test('participant can update own read state but not another participant state',async()=>{
   const db=env.authenticatedContext(alice).firestore();
   const own={...chat(),lastMessageAt:'2026-11-13T10:01:00Z',
@@ -123,6 +138,30 @@ test('participant can update own read state but not another participant state',a
   await assertFails(updateDoc(doc(db,'chats',chatId),{
     [`readBy.${bob}`]:'2026-11-13T10:02:00Z',
     lastMessageAt:'2026-11-13T10:02:00Z',lastMessagePreview:'Manipuliert',lastSenderUid:alice
+  }));
+});
+
+test('client cannot forge chat block membership',async()=>{
+  const db=env.authenticatedContext(alice).firestore();
+  await assertFails(updateDoc(doc(db,'chats',chatId),{blockedBy:[alice]}));
+  await assertFails(setDoc(doc(db,'userBlocks',`${alice}_${bob}`),{
+    blockerUid:alice,blockedUid:bob,chatId
+  }));
+});
+
+test('chat reports are participant-bound and schema-limited',async()=>{
+  const db=env.authenticatedContext(alice).firestore();
+  const report={
+    id:'chatreport_alice_00000001',type:'Privater Chat',status:'offen',
+    reporterUid:alice,reportedUid:bob,chatId,reason:'harassment',note:'Bitte prüfen',
+    createdAt:'2026-11-13T10:03:00Z'
+  };
+  await assertSucceeds(setDoc(doc(db,'moderationCases',report.id),report));
+  await assertFails(setDoc(doc(db,'moderationCases','chatreport_alice_00000002'),{
+    ...report,id:'chatreport_alice_00000002',reason:'admin_override'
+  }));
+  await assertFails(setDoc(doc(db,'moderationCases','chatreport_alice_00000003'),{
+    ...report,id:'chatreport_alice_00000003',messageSnapshot:{text:'x'.repeat(501)}
   }));
 });
 
@@ -146,4 +185,24 @@ test('verification photo accepts one immutable JPEG only',async()=>{
     ref(storage,`verification-photos/${alice}/verification2.jpg`),
     new TextEncoder().encode('<svg/>'),{contentType:'image/svg+xml'}
   ));
+});
+
+test('chat media is immutable and readable only by chat participants',async()=>{
+  const messageId='msg_alice_operation0001';
+  const path=`chat-media/${chatId}/${alice}/${messageId}.jpg`;
+  const metadata={contentType:'image/jpeg',customMetadata:{chatId,senderUid:alice,messageId}};
+  const aliceStorage=env.authenticatedContext(alice).storage();
+  const bobStorage=env.authenticatedContext(bob).storage();
+  const malloryStorage=env.authenticatedContext(mallory).storage();
+  await assertSucceeds(uploadBytes(ref(aliceStorage,path),new Uint8Array([255,216,255]),metadata));
+  await assertSucceeds(getBytes(ref(bobStorage,path),16));
+  await assertFails(getBytes(ref(malloryStorage,path),16));
+  await assertFails(uploadBytes(ref(aliceStorage,path),new Uint8Array([255,216,255]),metadata));
+  await assertFails(uploadBytes(
+    ref(malloryStorage,`chat-media/${chatId}/${mallory}/msg_mallory_operation1.jpg`),
+    new Uint8Array([255,216,255]),{
+      contentType:'image/jpeg',customMetadata:{chatId,senderUid:mallory,messageId:'msg_mallory_operation1'}
+    }
+  ));
+  await assertSucceeds(deleteObject(ref(aliceStorage,path)));
 });
