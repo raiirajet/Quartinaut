@@ -46,3 +46,23 @@ Benutzt bestehende Firestore-/Firebase-Auth-/Functions-Schnittstellen im Projekt
 - Vollständige Audit-Matrix und Release-Gates in `AUDIT_NATIVE_54_2026-11-13.md`.
 
 Keine produktive Firebase-Funktion, Hosting-Datei oder Rules wurden verändert.
+
+## Native Preview 5.4.3 (Android 15 / 16 und Chat-Fix)
+
+- Statusleiste: echter dunkler Edge-to-Edge-Hintergrund und kontrastreiche Symbole.
+- Beiträge und Karten: passende Material-Farben statt weisser Karten mit weissem Text.
+- Hilfe suchen/anbieten: 3-Schritt-Assistent mit Vorschau und Speicherung nach Firebase-Bestätigung.
+- Quartier+-Beiträge: Bereiche, Kategorie, Pflichtfelder, Preis, Datum und Teilnehmerzahl werden validiert; Vorschau vor dem Veröffentlichen. Eine stabile Vorgangskennung schützt vor doppelten Inseraten nach Verbindungsproblemen.
+- Private Chats: bei verweigerter direkter Firestore-Abfrage wird die separate Callable `quartinautPrivateChats` verwendet. Sie prüft bei jedem Aufruf aktive Benutzer und die exakte 1:1-Teilnahme. Alte Firestore-Regeln werden nicht gelockert.
+- Das neue, noch separat zu veröffentlichende Backend liegt in `functions/nativeChats/`, Konfiguration in `firebase.chats.json`. Die Android-APK allein kann eine durch Live-Regeln verweigerte Chatabfrage nicht zuverlässig beheben.
+- GitHub Actions testet sowohl die bisherigen Hintergrundbild- als auch die neuen Chat-Service-Validierungsroutinen.
+
+**Backend-Deploy (separat, produktives Firebase, nur bei berechtigtem Zugriff):**
+```bash
+cd ~/Quartinaut-Native
+git pull origin native-android-v1
+cd functions/nativeChats && npm install && npm test && cd ../..
+firebase deploy --project quartinaut --config firebase.chats.json --only functions:quartinaut-native-chats
+```
+
+**Wichtig:** Ohne bestätigten Cloud-Function-Deploy und Test mit zwei Konten ist die Chat-Reparatur im Produktivsystem noch nicht vollständig aktiv. Die Android-App selbst kann mit dem GitHub-APK gebaut und installiert werden.
