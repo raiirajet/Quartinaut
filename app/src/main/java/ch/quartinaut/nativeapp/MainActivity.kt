@@ -52,6 +52,8 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun QuartinautApp(repo: QuartinautRepository) {
     var page by remember { mutableStateOf("home") }
+    var selectedHubItem by remember { mutableStateOf<Map<String,Any?>>(emptyMap()) }
+    var selectedRequest by remember { mutableStateOf<DocumentSnapshot?>(null) }
     val authUser = repo.user
     val notice = repo.message
     if (notice.isNotBlank()) {
@@ -99,6 +101,8 @@ private fun QuartinautApp(repo: QuartinautRepository) {
         return
     }
     val navTo: (String) -> Unit = { page = it; if (it == "plus") repo.loadHub() }
+    val openHub: (Map<String,Any?>) -> Unit = { selectedHubItem = it; page = "hub-detail" }
+    val openRequest: (DocumentSnapshot) -> Unit = { selectedRequest = it; page = "request-detail" }
     val title = when(page) {
         "home" -> "Mein Quartier"
         "board" -> "Schwarzes Brett"
@@ -160,23 +164,35 @@ private fun QuartinautApp(repo: QuartinautRepository) {
         Box(Modifier.fillMaxSize().padding(padding)) {
             when(page) {
                 "home" -> DashboardPage(repo, navTo)
-                "board" -> BulletinPage(repo, navTo)
+                "board" -> BulletinPage(repo, navTo, openRequest)
                 "plus" -> HubPage(repo, navTo)
                 "chats" -> ChatsPage(repo)
                 "profile" -> ProfilePage(repo, navTo)
-                "create" -> CreateRequestPage(repo, navTo)
+                "create" -> NativeNewChooser(navTo)
+                "create-request" -> CreateRequestPage(repo, navTo)
+                "request-detail" -> selectedRequest?.let { doc ->
+                    NativeRequestDetail(repo,doc,{page="board"},{repo.openRequestChat(doc){page="chats"}})
+                }
+                "hub-detail" -> NativeHubDetail(repo,selectedHubItem) { page = "plus" }
                 "map" -> RegionPage(repo)
                 "alerts" -> DocumentsPage(repo, "Alarme", repo.alerts.filter {
                     it.str("cantonCode") == repo.canton() || it.str("scopeLevel") == "canton"
                 })
                 "official" -> DocumentsPage(repo, "Offizielle Mitteilungen", repo.notices)
-                "market" -> HubItemsPage(repo, "market", navTo)
-                "lend" -> HubItemsPage(repo, "lend", navTo)
-                "group" -> HubItemsPage(repo, "group", navTo)
-                "calendar" -> HubItemsPage(repo, "calendar", navTo)
+                "market" -> HubItemsPage(repo, "market", navTo, openHub)
+                "lend" -> HubItemsPage(repo, "lend", navTo, openHub)
+                "group" -> HubItemsPage(repo, "group", navTo, openHub)
+                "calendar" -> HubItemsPage(repo, "calendar", navTo, openHub)
+                "lost" -> HubItemsPage(repo, "lost", navTo, openHub)
+                "project" -> HubItemsPage(repo, "project", navTo, openHub)
+                "issue" -> HubItemsPage(repo, "issue", navTo, openHub)
                 "v50market", "v50loans", "v50associations" -> V50Page(repo, page)
                 "search" -> SearchPage(repo, navTo)
-                else -> DashboardPage(repo, navTo)
+                else -> {
+                    if(page.startsWith("hub-create:")) {
+                        NativeCreateHubPage(repo,page.substringAfter(":")) { navTo("plus") }
+                    } else DashboardPage(repo,navTo)
+                }
             }
             if (repo.busy) LinearProgressIndicator(Modifier.fillMaxWidth().align(Alignment.TopCenter))
         }
@@ -373,7 +389,8 @@ private fun Metric(value: String,label: String) {
 }
 
 @Composable
-private fun BulletinPage(repo: QuartinautRepository, go: (String) -> Unit) {
+private fun BulletinPage(repo: QuartinautRepository, go: (String) -> Unit,
+    openRequest: (DocumentSnapshot) -> Unit) {
     var query by remember { mutableStateOf("") }
     var showPending by remember { mutableStateOf(false) }
     val rows = repo.requests.filter { doc ->
@@ -383,7 +400,7 @@ private fun BulletinPage(repo: QuartinautRepository, go: (String) -> Unit) {
     }.sortedByDescending { it.str("createdAt") }
     Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         SectionTitle("Schwarzes Brett", "Suche oder biete Hilfe in deiner Umgebung.")
-        Button(onClick = { go("create") }, modifier=Modifier.fillMaxWidth()) {
+        Button(onClick = { go("create-request") }, modifier=Modifier.fillMaxWidth()) {
             Icon(Icons.Default.Add, null); Spacer(Modifier.width(6.dp)); Text("Neues Anliegen")
         }
         OutlinedTextField(query, {query=it}, label={Text("Anliegen durchsuchen")},
@@ -396,7 +413,9 @@ private fun BulletinPage(repo: QuartinautRepository, go: (String) -> Unit) {
             items(rows,key={it.id}) { doc ->
                 Column {
                     Panel(doc.title(), doc.str("text"),
-                        doc.str("category") + " · " + doc.str("area") + " · " + doc.str("status"))
+                        doc.str("category") + " · " + doc.str("area") + " · " + doc.str("status")) {
+                        openRequest(doc)
+                    }
                     if (doc.str("uid") != repo.user?.uid && doc.str("status") == "offen") {
                         TextButton(onClick = { repo.openRequestChat(doc) { go("chats") } }) {
                             Icon(Icons.AutoMirrored.Filled.Chat, null)
@@ -468,6 +487,12 @@ private fun HubPage(repo: QuartinautRepository, go:(String)->Unit) = ScrollPage 
         {Icon(Icons.Default.CalendarToday,null,tint=Forest)}) { go("v50loans") }
     Feature("Vereinsanmeldungen","Teilnahmen und Wartelisten",
         {Icon(Icons.Default.HowToReg,null,tint=Forest)}) { go("v50associations") }
+    Feature("Verloren & Gefunden","Vermisste und gefundene Gegenstände",
+        {Icon(Icons.Default.Search,null,tint=Forest)}) { go("lost") }
+    Feature("Quartieraktionen","Aktionen und Freiwilligenarbeit",
+        {Icon(Icons.Default.VolunteerActivism,null,tint=Forest)}) { go("project") }
+    Feature("Mängel melden","Probleme in deiner Gemeinde dokumentieren",
+        {Icon(Icons.Default.ReportProblem,null,tint=Forest)}) { go("issue") }
     Feature("Gemeinde-Alarme","Wichtige Warnungen",
         {Icon(Icons.Default.Warning,null,tint=Forest)}) { go("alerts") }
     Feature("Offizielle Mitteilungen","Nachrichten aus deiner Gemeinde",
@@ -475,7 +500,8 @@ private fun HubPage(repo: QuartinautRepository, go:(String)->Unit) = ScrollPage 
     OutlinedButton(onClick=repo::loadHub,modifier=Modifier.fillMaxWidth()) { Text("Quartier+ aktualisieren") }
 }
 @Composable
-private fun HubItemsPage(repo:QuartinautRepository,kind:String,go:(String)->Unit) {
+private fun HubItemsPage(repo:QuartinautRepository,kind:String,go:(String)->Unit,
+    openItem:(Map<String,Any?>)->Unit) {
     val labels = mapOf("market" to "Marktplatz","lend" to "Leihbörse","group" to "Vereine & Gruppen","calendar" to "Gemeindekalender")
     var query by remember(kind) { mutableStateOf("") }
     val rows=repo.hubItems.filter { DocString(it["kind"]) == kind && DocString(it["status"]) == "published"
@@ -491,7 +517,7 @@ private fun HubItemsPage(repo:QuartinautRepository,kind:String,go:(String)->Unit
                 val price=if(item["priceChf"] != null) " · CHF " + DocString(item["priceChf"]) else ""
                 Panel(DocString(item["title"]),
                     DocString(item["description"]),
-                    DocString(item["area"])+price)
+                    DocString(item["area"])+price) { openItem(item) }
             }
             if(rows.isEmpty()) item { Text("Keine passenden Einträge gefunden.") }
         }
