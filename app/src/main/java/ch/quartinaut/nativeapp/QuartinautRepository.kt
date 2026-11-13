@@ -701,4 +701,36 @@ class QuartinautRepository(context: Context) {
             }
     }
 
+    fun saveDashboardLayout(quick:List<String>,priority:List<String>) {
+        val uid=user?.uid ?: return
+        val available=setOf("need","offer","market","group","loans","calendar",
+            "events","bulletin","inbox","chats","saved","map","swissmap")
+        val allowedPriority=setOf("inbox","events","loans","bulletin","saved","map")
+        if(quick.size !in 2..8 || quick.any { it !in available } ||
+           quick.size!=quick.distinct().size ||
+           priority.size!=6 || priority.toSet()!=allowedPriority) {
+            message="Ungültige Dashboard-Auswahl."
+            return
+        }
+        busy=true
+        db.collection("users").document(uid).update(mapOf(
+            "dashboard.quickLinks" to quick,
+            "dashboard.priorityOrder" to priority
+        )).addOnCompleteListener { task ->
+            if(user?.uid!=uid)return@addOnCompleteListener
+            busy=false
+            if(task.isSuccessful)message="Deine Startseite wurde gespeichert."
+            else message="Dashboard: "+(task.exception?.localizedMessage ?: "Speichern nicht möglich")
+        }
+    }
+
+    fun retryFeeds() {
+        val uid=user?.uid ?: return
+        if(profile.isNotEmpty()&&active()) {
+            syncIssues=emptyMap()
+            startListening(uid)
+            loadCommunitySettings()
+        }
+    }
+
 }
