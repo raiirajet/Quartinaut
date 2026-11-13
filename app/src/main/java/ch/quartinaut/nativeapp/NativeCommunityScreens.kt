@@ -95,6 +95,8 @@ fun NativeCreateHubPage(
     var expanded by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
     var confirmed by remember { mutableStateOf(false) }
+    val photoToken=remember { java.util.UUID.randomUUID().toString().replace("-","") }
+    val photoPaths=remember { mutableStateListOf<String>() }
     // The same op ID is reused on every retry, preventing duplicate listings
     // after a slow or interrupted connection.
     val operationId=remember { "android_"+java.util.UUID.randomUUID().toString().replace("-","") }
@@ -215,6 +217,10 @@ fun NativeCreateHubPage(
                             modifier=Modifier.fillMaxWidth(),
                             label={Text("Ort oder Treffpunkt (optional)")},singleLine=true)
                     }
+                    NativePostPhotoPicker(repo,"community",photoToken,
+                        photoPaths.toList()) { updated ->
+                        photoPaths.clear();photoPaths.addAll(updated)
+                    }
                     Text("Persönliche Kontaktdaten müssen nicht veröffentlicht werden. Für Rückfragen ist der Quartinaut-Kontakt vorgesehen.",
                         color=Color(0xFFC5DBCA),style=MaterialTheme.typography.bodySmall)
                 } else {
@@ -282,7 +288,7 @@ fun NativeCreateHubPage(
                                     "priceChf" to (priceValue ?: 0.0),
                                     "capacity" to (count ?: 0),
                                     "venue" to venue.trim(),"startsAt" to date,
-                                    "photoPaths" to emptyList<String>())
+                                    "photoPaths" to photoPaths.toList())
                                 repo.createCommunityItem(data,onCompleted,operationId)
                             }
                         }
