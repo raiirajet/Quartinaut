@@ -13,7 +13,9 @@ async function who(request) {
   const uid=request.auth?.uid;
   if(!uid)fail('unauthenticated','Bitte anmelden.');
   const snap=await db.collection('users').doc(uid).get();
-  if(!snap.exists||snap.data()?.accountStatus!=='active') {
+  // Existing Quartinaut Firestore rules treat a missing legacy status as active.
+  const accountStatus=snap.data()?.accountStatus || 'active';
+  if(!snap.exists||accountStatus!=='active') {
     fail('permission-denied','Das Benutzerkonto ist nicht aktiv.');
   }
   return {uid,user:snap.data()};
