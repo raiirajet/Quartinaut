@@ -72,10 +72,14 @@ internal fun bundledWappen(context:Context):Map<String,String> {
 }
 internal fun bundledWappenAsset(context:Context,bfs:String):String? {
     if(!bfs.matches(Regex("[0-9]{1,4}")))return null
-    val file="wappen/$bfs.svg"
-    val exists=runCatching {context.assets.open(file).use {it.read()==60 || it.available()>0}}
-        .getOrDefault(false)
-    return if(exists)"file:///android_asset/$file" else null
+    // Some cantons store their arms as PNG/JPEG rather than SVG.
+    return listOf("svg","png","jpg","jpeg","webp","gif")
+        .firstNotNullOfOrNull { ext ->
+            val file="wappen/$bfs.$ext"
+            val exists=runCatching {context.assets.open(file).use {it.read()>=0}}
+                .getOrDefault(false)
+            if(exists) "file:///android_asset/$file" else null
+        }
 }
 
 // Explicitly verified legacy emblem for Flawil, BFS 3402. No guessed arms.
