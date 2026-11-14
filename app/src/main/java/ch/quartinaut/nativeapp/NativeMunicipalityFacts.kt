@@ -27,6 +27,7 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
+import java.security.MessageDigest
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -50,6 +51,31 @@ private val cantonCoatCache=java.util.concurrent.ConcurrentHashMap<String,Map<St
 private val individualCoatCache=java.util.concurrent.ConcurrentHashMap<String,String>()
 private val coatRetryAfter=java.util.concurrent.ConcurrentHashMap<String,Long>()
 private val resolvedWappenCache=java.util.concurrent.ConcurrentHashMap<String,String>()
+private var bundledWappenIndex: Map<String,String>? = null
+@Synchronized
+internal fun bundledWappen(context:Context):Map<String,String> {
+    bundledWappenIndex?.let { return it }
+    val index=runCatching {
+        context.assets.open("wappen/index.json").bufferedReader().use { stream ->
+            val parsed=JSONObject(stream.readText())
+            parsed.keys().asSequence().mapNotNull { key ->
+                if(key.toIntOrNull()==null)return@mapNotNull null
+                val url=safeWappenUrl(parsed.optString(key))
+                if(url!=null) key to url else null
+            }.toMap()
+        }
+    }.getOrDefault(emptyMap())
+    bundledWappenIndex=index
+    return index
+}
+internal fun bundledWappenAsset(context:Context,bfs:String):String? {
+    if(!bfs.matches(Regex("[0-9]{1,4}")))return null
+    val file="wappen/$bfs.svg"
+    val exists=runCatching {context.assets.open(file).use {it.read()==60 || it.available()>0}}
+        .getOrDefault(false)
+    return if(exists)"file:///android_asset/$file" else null
+}
+
 // Explicitly verified legacy emblem for Flawil, BFS 3402. No guessed arms.
 private val verifiedWappenFallbacks=mapOf(
     "3401" to "https://commons.wikimedia.org/wiki/Special:FilePath/CHE%20Degersheim%20COA.svg",
@@ -148,15 +174,14 @@ internal fun resolveWappenImage(url:String):String {
             Uri.decode(uri.path.orEmpty().substringAfter("/wiki/File:"))
         else->return original
     }.replace('_',' ')
-    val query="https://commons.wikimedia.org/w/api.php?action=query&format=json" +
-        "&prop=imageinfo&iiprop=url&iiurlwidth=180&titles="+
-        URLEncoder.encode("File:"+filename,"UTF-8")
-    val pages=readWikimediaApi(query)?.optJSONObject("query")?.optJSONObject("pages")
-        ?: return original
-    val page=pages.keys().asSequence().mapNotNull {pages.optJSONObject(it)}.firstOrNull()
-    val info=page?.optJSONArray("imageinfo")?.optJSONObject(0)
-    val resolved=safeWappenUrl(info?.optString("thumburl"))
-        ?: safeWappenUrl(info?.optString("url")) ?: original
+    // Commons storage URLs are deterministic from the canonical filename.
+    // Avoid a separate mediawiki API roundtrip and unreliable mobile redirects.
+    val canonical=filename.replace(' ','_')
+    val digest=MessageDigest.getInstance("MD5")
+        .digest(canonical.toByteArray(Charsets.UTF_8))
+        .joinToString("") { "%02x".format(it.toInt() and 0xff) }
+    val resolved="https://upload.wikimedia.org/wikipedia/commons/"+
+        digest.take(1)+"/"+digest.take(2)+"/"+Uri.encode(canonical)
     resolvedWappenCache[url]=resolved
     return resolved
 }
@@ -213,8 +238,17 @@ internal fun queryMunicipalityFacts(bfs: String): MunicipalityFacts? {
  * cover a very small known exception without inventing heraldry.
  */
 @Synchronized
+private fun filterBfsCoats(canton:Region,coats:Map<String,String>):Map<String,String> =
+    canton.municipalities.mapNotNull { it.bfs.takeIf(coats::containsKey)
+        ?.let { bfs -> bfs to coats.getValue(bfs) }}.toMap()
+
 internal fun queryCantonWappen(canton: Region, context: Context? = null): Map<String,String> {
-    cantonCoatCache[canton.code]?.let { return it }
+    val bundled=context?.let(::bundledWappen).orEmpty()
+    val current=filterBfsCoats(canton,bundled)
+    cantonCoatCache[canton.code]?.let { cached ->
+        val joined=cached+current
+        if(joined.size>=canton.municipalities.size*0.90)return joined
+    }
     val preferences=context?.getSharedPreferences("quartinaut_wappen_cache",Context.MODE_PRIVATE)
     val key="bfs_wappen_"+canton.code
     val stored=runCatching {
@@ -231,12 +265,17 @@ internal fun queryCantonWappen(canton: Region, context: Context? = null): Map<St
     val completeness=stored.size.toDouble()/codes.size.coerceAtLeast(1)
     val ttl=if(completeness>=0.85) 30L*86400*1000 else 3L*60*60*1000
     if(refreshedAt>0 && System.currentTimeMillis()-refreshedAt<ttl) {
-        if(stored.isNotEmpty()) cantonCoatCache[canton.code]=stored
-        return stored
+        val combined=stored+current
+        if(combined.isNotEmpty()) cantonCoatCache[canton.code]=combined
+        return combined
     }
-    val coats=stored.toMutableMap()
+    val coats=(stored+current).toMutableMap()
+    if(coats.size>=codes.size*0.90) {
+        cantonCoatCache[canton.code]=coats
+        return coats
+    }
     var allChunksLoaded=true
-    for(chunk in codes.chunked(40)) {
+    for(chunk in codes.filterNot(coats::containsKey).chunked(40)) {
         val literals=chunk.joinToString(" ") { "\"$it\"" }
         val query="""
             SELECT ?bfs ?coat WHERE {
@@ -313,9 +352,11 @@ internal fun MunicipalityCoat(
     val context=LocalContext.current
     val resolved by produceState<String?>(initialValue=null,url,bfs,cantonCode) {
         value=withContext(Dispatchers.IO) {
+            val local=bfs?.let {bundledWappenAsset(context,it)}
             val source=safeWappenUrl(url) ?:
-                (bfs?.let(::queryWappenByBfs) ?: cantonCode?.let(::queryCantonCoat))
-            source?.let(::resolveWappenImage)
+                bfs?.let {bundledWappen(context)[it] ?: queryWappenByBfs(it)}
+                    ?: cantonCode?.let(::queryCantonCoat)
+            local ?: source?.let(::resolveWappenImage)
         }
     }
     if(resolved!=null) {
@@ -349,7 +390,9 @@ internal fun wappenLoader(context:Context):ImageLoader {
 }
 internal suspend fun wappenBitmap(context:Context,loader:ImageLoader,url:String):Bitmap? =
     withContext(Dispatchers.IO) {
-        for(address in listOf(resolveWappenImage(url),url).distinct()) {
+        val candidates=if(url.startsWith("file:///android_asset/"))listOf(url)
+            else listOf(resolveWappenImage(url),url).distinct()
+        for(address in candidates) {
             val image=runCatching {
                 val request=ImageRequest.Builder(context)
                     .data(address).size(96,116).allowHardware(false).build()
