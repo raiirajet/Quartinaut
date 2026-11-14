@@ -45,15 +45,7 @@ fun NativePrivateChatsPage(repo: QuartinautRepository) {
     val scope=rememberCoroutineScope()
     val server=repo.serverChatReady
     val uid=repo.user?.uid.orEmpty()
-    val records:List<Map<String,Any?>> = if(server) repo.serverChats else
-        repo.chats.map { doc ->
-            mapOf("id" to doc.id,"requestTitle" to doc.str("requestTitle"),
-                "lastMessageAt" to doc.str("lastMessageAt"),
-                "lastMessagePreview" to doc.str("lastMessagePreview"),
-                "lastSenderUid" to doc.str("lastSenderUid"),
-                "readBy" to doc.get("readBy"),"mutedBy" to doc.get("mutedBy"),
-                "blockedBy" to doc.get("blockedBy"))
-        }
+    val records:List<Map<String,Any?>> = if(server) repo.serverChats else emptyList()
     val visible=records.filter {
         (DocString(it["requestTitle"])+DocString(it["lastMessagePreview"]))
             .contains(filter,ignoreCase=true)
@@ -204,7 +196,7 @@ fun NativePrivateChatsPage(repo: QuartinautRepository) {
                         style=MaterialTheme.typography.bodySmall)
                 }
                 IconButton(onClick={
-                    if(server||"Private Chats" in repo.syncIssues)repo.loadServerChats() else repo.retryFeeds()
+                    repo.loadServerChats()
                 }) {Icon(Icons.Default.Refresh,"Chats aktualisieren",tint=MaterialTheme.colorScheme.onSurface)}
             }
             OutlinedTextField(filter,{filter=it},modifier=Modifier.fillMaxWidth(),
@@ -212,13 +204,13 @@ fun NativePrivateChatsPage(repo: QuartinautRepository) {
                 label={Text("Unterhaltungen durchsuchen")},singleLine=true,
                 shape=RoundedCornerShape(18.dp))
             if(repo.serverChatLoading)LinearProgressIndicator(Modifier.fillMaxWidth())
-            if(!server&&"Private Chats" in repo.syncIssues) {
+            if(!server && ("Privater Chat-Dienst" in repo.syncIssues || !repo.serverChatLoading)) {
                 Card(colors=CardDefaults.cardColors(containerColor=Color(0xFF2C3A2D))) {
                     Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
                         Text("Chatliste aktuell nicht verfügbar",color=Color(0xFFFFE2AF),
                             fontWeight=FontWeight.SemiBold)
                         Text(repo.syncIssues["Privater Chat-Dienst"]
-                            ?:"Firebase verweigert die direkte Chat-Abfrage. Ein geschützter Serverkanal wird geprüft.",
+                            ?:"Der geschützte Chat-Dienst ist noch nicht erreichbar. Bitte erneut versuchen.",
                             color=MaterialTheme.colorScheme.onSurface,style=MaterialTheme.typography.bodySmall)
                         OutlinedButton(onClick=repo::loadServerChats) {
                             Text("Geschützten Chat-Abruf versuchen")
@@ -238,7 +230,6 @@ fun NativePrivateChatsPage(repo: QuartinautRepository) {
                         onClick={
                             val id=DocString(chat["id"])
                             if(server)repo.openServerChat(id)
-                            else repo.chats.firstOrNull{it.id==id}?.let(repo::openChat)
                         }) {
                         Row(Modifier.padding(16.dp),verticalAlignment=Alignment.CenterVertically) {
                             Box(Modifier.size(45.dp).background(MyBubble,RoundedCornerShape(15.dp)),

@@ -428,7 +428,7 @@ private fun QuartinautApp(repo: QuartinautRepository,
                 "request-detail" -> selectedRequest?.let { doc ->
                     NativeRequestDetail(repo,doc,goBack,{repo.openRequestChat(doc){navTo("chats")}})
                 }
-                "hub-detail" -> NativeHubDetail(repo,selectedHubItem,goBack)
+                "hub-detail" -> NativeHubDetail(repo,selectedHubItem,goBack,{navTo("enh-loans")})
                 "map" -> RegionPage(repo,mapCanton,mapMunicipality,
                     {mapCanton=it;mapMunicipality=""},{mapMunicipality=it},
                     {navTo("municipal-compare")})

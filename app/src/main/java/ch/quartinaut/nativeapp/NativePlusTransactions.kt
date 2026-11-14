@@ -61,6 +61,13 @@ fun NativeLoanPlanner(repo:QuartinautRepository,navigate:(String)->Unit) {
             OutlinedButton(onClick={repo.loadV50("loan.list")}){Text("Aktualisieren")}
             OutlinedButton(onClick={navigate("lend")}){Text("Leihangebote")}
         }
+        if(repo.v50Error.isNotBlank()) {
+            Text("Ausleihdienst nicht erreichbar: "+repo.v50Error,
+                color=MaterialTheme.colorScheme.error,
+                style=MaterialTheme.typography.bodySmall)
+        }
+        Text("Angebote sind keine Buchungen. Hier erscheinen Anfragen erst, nachdem jemand einen fremden Artikel ausgeliehen hat.",
+            color=TMute,style=MaterialTheme.typography.bodySmall)
         LazyColumn(verticalArrangement=Arrangement.spacedBy(12.dp)) {
             items(rows) { loan ->
                 val uid=repo.user?.uid
@@ -103,7 +110,10 @@ fun NativeLoanPlanner(repo:QuartinautRepository,navigate:(String)->Unit) {
                 }
             }
             if(rows.isEmpty())item {
-                Text("Noch keine reservierten Ausleihen vorhanden.",color=TMute)
+                Text(if(repo.v50Error.isNotBlank())
+                    "Es konnten keine Buchungen abgerufen werden."
+                    else "Noch keine Ausleihanfragen. Öffne ein fremdes Leihangebot und wähle „Ausleihe anfragen“.",
+                    color=TMute)
             }
         }
     }

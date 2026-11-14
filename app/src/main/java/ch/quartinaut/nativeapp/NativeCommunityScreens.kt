@@ -315,11 +315,13 @@ fun NativeCreateHubPage(
 @Composable
 fun NativeHubDetail(
     repo: QuartinautRepository, item: Map<String,Any?>,
-    onClose: () -> Unit
+    onClose: () -> Unit, onShowLoans: () -> Unit
 ) {
     val id=DocString(item["id"])
     val kind=DocString(item["kind"])
     val owner=DocString(item["ownerUid"])==repo.user?.uid
+    // All published lending listings use the loanReservations transaction flow.
+    // A generic hub "reserve" does not create an entry in the loan calendar.
     val v50=item["v50ReservationMode"]==true
     val paths=(item["photoPaths"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
     val published=DocString(item["status"])=="published"
@@ -328,8 +330,25 @@ fun NativeHubDetail(
     var commentInput by remember(id) { mutableStateOf("") }
     var liked by remember(id) { mutableStateOf<Boolean?>(null) }
     var likedCount by remember(id) { mutableStateOf(0) }
-    var loanFrom by remember(id) { mutableStateOf(Instant.now().plus(1,ChronoUnit.DAYS).truncatedTo(ChronoUnit.HOURS).toString()) }
-    var loanTo by remember(id) { mutableStateOf(Instant.now().plus(3,ChronoUnit.DAYS).truncatedTo(ChronoUnit.HOURS).toString()) }
+    val context=LocalContext.current
+    val zurich=java.time.ZoneId.of("Europe/Zurich")
+    var loanFrom by remember(id) {
+        mutableStateOf(java.time.LocalDate.now(zurich).plusDays(1))
+    }
+    var loanTo by remember(id) {
+        mutableStateOf(java.time.LocalDate.now(zurich).plusDays(3))
+    }
+    var loanFromHour by remember(id) { mutableIntStateOf(10) }
+    var loanToHour by remember(id) { mutableIntStateOf(18) }
+    var loanOperationId by remember(id) {
+        mutableStateOf("android_"+java.util.UUID.randomUUID().toString().replace("-",""))
+    }
+    val loanStartInstant=loanFrom.atTime(loanFromHour,0).atZone(zurich).toInstant()
+    val loanEndInstant=loanTo.atTime(loanToHour,0).atZone(zurich).toInstant()
+    val loanValid=loanStartInstant.isAfter(Instant.now()) &&
+        loanEndInstant.isAfter(loanStartInstant) &&
+        loanEndInstant.isBefore(Instant.now().plus(180,ChronoUnit.DAYS))
+    val dateFormat=java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy")
     var holdMinutes by remember(id) { mutableIntStateOf(60) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement=Arrangement.spacedBy(13.dp)) {
@@ -398,24 +417,85 @@ fun NativeHubDetail(
                     Button(onClick={repo.communityAction("reserve",mapOf("id" to id))},
                         modifier=Modifier.fillMaxWidth(),enabled=!repo.busy) { Text("Artikel reservieren") }
                 }
-                "lend" -> if(v50) {
-                    Text("Ausleihzeitraum",style=MaterialTheme.typography.titleMedium)
-                    OutlinedTextField(loanFrom,{loanFrom=it},label={Text("Von (ISO-8601)")},modifier=Modifier.fillMaxWidth())
-                    OutlinedTextField(loanTo,{loanTo=it},label={Text("Bis (ISO-8601)")},modifier=Modifier.fillMaxWidth())
-                    Button(onClick={repo.v50Action("loan.request", mapOf("listingId" to id,
-                            "from" to loanFrom,"to" to loanTo,
-                            "opId" to "android_"+java.util.UUID.randomUUID().toString().replace("-","")))},
-                        modifier=Modifier.fillMaxWidth(),enabled=!repo.busy) { Text("Ausleihe anfragen") }
-                } else {
-                    Button(onClick={repo.communityAction("reserve",mapOf("id" to id))},
-                        modifier=Modifier.fillMaxWidth(),enabled=!repo.busy) {Text("Gegenstand reservieren")}
+                "lend" -> {
+                    Text("Ausleihe anfragen",style=MaterialTheme.typography.titleMedium,
+                        fontWeight=FontWeight.SemiBold)
+                    Text("Wähle einen Zeitraum. Die Eigentümerin oder der Eigentümer bestätigt deine Anfrage.",
+                        style=MaterialTheme.typography.bodySmall,
+                        color=MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick={
+                            android.app.DatePickerDialog(context,{_,year,month,day ->
+                                loanFrom=java.time.LocalDate.of(year,month+1,day)
+                                if(loanTo.isBefore(loanFrom))loanTo=loanFrom.plusDays(1)
+                            },loanFrom.year,loanFrom.monthValue-1,loanFrom.dayOfMonth).apply {
+                                datePicker.minDate=System.currentTimeMillis()-86400000L
+                            }.show()
+                        },modifier=Modifier.weight(1f)) {
+                            Text("Von "+loanFrom.format(dateFormat),maxLines=1)
+                        }
+                        OutlinedButton(onClick={
+                            android.app.DatePickerDialog(context,{_,year,month,day ->
+                                loanTo=java.time.LocalDate.of(year,month+1,day)
+                            },loanTo.year,loanTo.monthValue-1,loanTo.dayOfMonth).apply {
+                                datePicker.minDate=System.currentTimeMillis()-86400000L
+                            }.show()
+                        },modifier=Modifier.weight(1f)) {
+                            Text("Bis "+loanTo.format(dateFormat),maxLines=1)
+                        }
+                    }
+                    Text("Abholung",style=MaterialTheme.typography.labelMedium)
+                    Row(Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement=Arrangement.spacedBy(7.dp)) {
+                        listOf(8,10,14,18).forEach { hour ->
+                            FilterChip(selected=loanFromHour==hour,onClick={loanFromHour=hour},
+                                label={Text("%02d:00".format(hour))})
+                        }
+                    }
+                    Text("Rückgabe",style=MaterialTheme.typography.labelMedium)
+                    Row(Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement=Arrangement.spacedBy(7.dp)) {
+                        listOf(8,10,14,18).forEach { hour ->
+                            FilterChip(selected=loanToHour==hour,onClick={loanToHour=hour},
+                                label={Text("%02d:00".format(hour))})
+                        }
+                    }
+                    if(!loanValid) Text("Bitte einen zukünftigen Zeitraum mit einer Rückgabe nach der Abholung wählen (max. 180 Tage).",
+                        color=MaterialTheme.colorScheme.error,
+                        style=MaterialTheme.typography.bodySmall)
+                    Button(onClick={
+                        repo.v50Action("loan.request", mapOf(
+                            "listingId" to id,
+                            "from" to loanStartInstant.toString(),
+                            "to" to loanEndInstant.toString(),
+                            "opId" to loanOperationId
+                        )) {
+                            loanOperationId="android_"+java.util.UUID.randomUUID()
+                                .toString().replace("-","")
+                            onShowLoans()
+                        }
+                    },modifier=Modifier.fillMaxWidth(),
+                        enabled=!repo.busy&&loanValid) {
+                        Icon(Icons.Default.EventAvailable,contentDescription=null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Verbindliche Ausleihanfrage senden")
+                    }
+                    if(repo.v50Error.isNotBlank())
+                        Text(repo.v50Error,color=MaterialTheme.colorScheme.error,
+                            style=MaterialTheme.typography.bodySmall)
                 }
                 "lost" -> Button(onClick={repo.communityAction("reserve",mapOf("id" to id))},
                     modifier=Modifier.fillMaxWidth()) {Text("Kontakt aufnehmen")}
             }
         }
-        if(owner) Text("Das ist dein eigener Quartier+-Eintrag.",
-            style=MaterialTheme.typography.bodySmall)
+        if(owner) {
+            Text("Das ist dein eigener Quartier+-Eintrag. Du kannst deinen eigenen Artikel nicht ausleihen.",
+                style=MaterialTheme.typography.bodySmall)
+            if(kind=="lend") OutlinedButton(onClick=onShowLoans,
+                modifier=Modifier.fillMaxWidth()) {
+                Text("Meine Ausleihanfragen und Rückgaben")
+            }
+        }
         if(published && kind !in listOf("issue","calendar")) {
             HorizontalDivider()
             Text("Reaktionen und Kommentare",

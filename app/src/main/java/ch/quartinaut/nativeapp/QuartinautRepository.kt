@@ -94,6 +94,9 @@ class QuartinautRepository(context: Context) {
         private set
     var v50Items by mutableStateOf<List<Map<String,Any?>>>(emptyList())
         private set
+    var v50Error by mutableStateOf("")
+        private set
+        private set
     var regions by mutableStateOf<List<Region>>(emptyList())
         private set
     var cantonCounts by mutableStateOf<Map<String,Int>>(emptyMap())
@@ -135,7 +138,7 @@ class QuartinautRepository(context: Context) {
                 chats = emptyList(); messages = emptyList()
                 serverChats = emptyList(); serverMessages = emptyList()
                 serverChatReady = false; serverChatLoading = false; serverChatActive = false
-                hubItems = emptyList(); v50Items = emptyList()
+                hubItems = emptyList(); v50Items = emptyList(); v50Error = ""
                 offlineHubItems=emptyList();offlineCacheDate=""
                 enhancedItems=emptyList();enhancementLoading=false;enhancementError=""
                 chatId = ""
@@ -374,15 +377,9 @@ class QuartinautRepository(context: Context) {
                 syncIssues = syncIssues + (label to
                     (e.localizedMessage ?: "Zugriff verweigert."))
                 android.util.Log.w("QuartinautSync", "Firestore feed: " + label, e)
-                if (label == "Private Chats") {
-                    loadServerChats()
-                }
                 return@addSnapshotListener
             }
             if(label in syncIssues) syncIssues = syncIssues - label
-            if(label=="Private Chats") {
-                serverChatReady=false; serverChats=emptyList()
-            }
             onData(snaps?.documents ?: emptyList())
         })
     }
@@ -423,8 +420,9 @@ class QuartinautRepository(context: Context) {
             observe("Gemeindemitteilungen", db.collection("officialNotices").whereEqualTo("cantonCode", canton)
                 .whereEqualTo("status", "online").orderBy("createdAt", Query.Direction.DESCENDING)) { notices = it }
         }
-        observe("Private Chats", db.collection("chats").whereArrayContains("participants", uid)
-            .orderBy("lastMessageAt", Query.Direction.DESCENDING)) { chats = it }
+        // Chat metadata is fetched through quartinautPrivateChats, not via a
+        // direct Firestore list query blocked by the production security rules.
+        loadServerChats()
         loadHub()
     }
     fun loadHub() {
@@ -444,6 +442,7 @@ class QuartinautRepository(context: Context) {
     fun loadV50(action: String) {
         if (user == null || !active()) return
         v50Items = emptyList()
+        v50Error = ""
         functions.getHttpsCallable("quartinautV50").call(mapOf("action" to action))
             .addOnSuccessListener { result ->
                 val raw = result.data as? Map<*, *>
@@ -451,16 +450,30 @@ class QuartinautRepository(context: Context) {
                 v50Items = items.mapNotNull { (it as? Map<*, *>)?.entries?.associate { e ->
                     DocString(e.key) to e.value
                 } }
-            }.addOnFailureListener(::fail)
+            }.addOnFailureListener { e ->
+                v50Error = e.localizedMessage ?: "Der Buchungsdienst konnte nicht geladen werden."
+                syncIssues = syncIssues + ("Ausleih-/Reservationsdienst" to v50Error)
+            }
     }
-    fun v50Action(action: String, data: Map<String, Any?>) {
+    fun v50Action(action: String, data: Map<String, Any?>, onSuccess: () -> Unit = {}) {
+        if(busy)return
         busy = true
+        v50Error = ""
         functions.getHttpsCallable("quartinautV50").call(data + ("action" to action))
             .addOnCompleteListener {
                 busy = false
-                if (!it.isSuccessful) message = it.exception?.localizedMessage ?: "Aktion fehlgeschlagen."
-                else { message = "Aktion gespeichert."; val kind = action.substringBefore(".")
+                if (!it.isSuccessful) {
+                    v50Error = it.exception?.localizedMessage ?: "Aktion fehlgeschlagen."
+                    message = "Die Buchung wurde nicht gespeichert: " + v50Error
+                    syncIssues = syncIssues + ("Ausleih-/Reservationsdienst" to v50Error)
+                } else {
+                    message = if(action=="loan.request")
+                        "Ausleihanfrage gesendet. Die andere Person muss sie bestätigen."
+                    else "Aktion gespeichert."
+                    syncIssues=syncIssues-"Ausleih-/Reservationsdienst"
+                    val kind = action.substringBefore(".")
                     loadV50(when(kind) { "loan" -> "loan.list"; "market" -> "market.list"; "association" -> "association.list"; else -> "calendar.list" })
+                    onSuccess()
                 }
             }
     }
@@ -501,40 +514,9 @@ class QuartinautRepository(context: Context) {
         }
     }
     fun openRequestChat(request: DocumentSnapshot, onOpen: () -> Unit) {
-        if(serverChatReady) {
-            startServerRequestChat(request,onOpen)
-            return
-        }
-        val current = user?.uid ?: return
-        val owner = request.str("uid").ifBlank { request.str("authorId") }
-        if (owner.isBlank() || owner == current) {
-            message = "Für eigene Anliegen findest du Antworten unter deinen Chats."; return
-        }
-        val users = listOf(current, owner).sorted()
-        fun safe(value: String) = value.replace(Regex("[^a-zA-Z0-9_-]"),"").take(80).ifBlank { "x" }
-        val id = "chat_" + safe(request.id) + "_" + users.joinToString("_") { safe(it) }
-        val ref = db.collection("chats").document(id)
-        ref.get().addOnSuccessListener { existing ->
-            if (existing.exists()) {
-                openChat(existing);onOpen()
-            } else {
-                val now = isoNow()
-                val payload = mapOf<String, Any>(
-                    "id" to id, "requestId" to request.id, "requestTitle" to request.title(),
-                    "requestOwnerUid" to owner, "participants" to users,
-                    "participantLabels" to mapOf(current to displayName(), owner to
-                        request.str("authorName").ifBlank { "Quartiermitglied" }),
-                    "mutedBy" to emptyList<String>(), "readBy" to mapOf(current to now),
-                    "createdAt" to now, "lastMessageAt" to now,
-                    "lastMessagePreview" to "", "lastSenderUid" to ""
-                )
-                ref.set(payload).addOnSuccessListener {
-                    ref.get().addOnSuccessListener { chat ->
-                        openChat(chat); onOpen()
-                    }.addOnFailureListener(::fail)
-                }.addOnFailureListener(::fail)
-            }
-        }.addOnFailureListener(::fail)
+        // Never fall back to direct client-side chat creation: that bypasses
+        // the server's validation path and triggers production permission errors.
+        startServerRequestChat(request,onOpen)
     }
     fun openChat(chat: DocumentSnapshot) {
         serverChatActive=false
