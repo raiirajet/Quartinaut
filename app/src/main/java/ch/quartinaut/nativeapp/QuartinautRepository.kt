@@ -98,7 +98,6 @@ class QuartinautRepository(context: Context) {
         private set
     var v50Loading by mutableStateOf(false)
         private set
-        private set
     var regions by mutableStateOf<List<Region>>(emptyList())
         private set
     var cantonCounts by mutableStateOf<Map<String,Int>>(emptyMap())
