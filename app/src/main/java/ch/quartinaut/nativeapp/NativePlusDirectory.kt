@@ -28,29 +28,6 @@ private val PlusAccent: Color @Composable get() = MaterialTheme.colorScheme.prim
 private val PlusMuted: Color @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant
 private val PlusBorder: Color @Composable get() = MaterialTheme.colorScheme.outlineVariant
 
-private data class PlusRoute(val key:String,val name:String,val detail:String,val emoji:String)
-private val allExtensions=listOf(
-    PlusRoute("chats","Private Chats","Nachrichten, sichere Kontakte und Lesestatus","💬"),
-    PlusRoute("enh-posts","Meine Beiträge","Bearbeiten, pausieren und abschliessen","📝"),
-    PlusRoute("create","Fotos & Inserate","Bilder hochladen und Beiträge erstellen","📷"),
-    PlusRoute("enh-radar","Quartinaut Radar","Neue Angebote in Kanton oder Gemeinde","📡"),
-    PlusRoute("enh-assist","Inserat-Assistent","Titel und Kategorien offline vorbereiten","✨"),
-    PlusRoute("enh-loans","Ausleih-Kalender","Anfragen, Zeiträume und Rückgaben","🗓️"),
-    PlusRoute("enh-map","Schweizkarte+","26 Kantone und 2'110 Gemeinden","🇨🇭"),
-    PlusRoute("enh-clubs","Vereinszentrale","Anmeldungen und Mitglieder verwalten","👥"),
-    PlusRoute("enh-trust","Vertrauensprofile","Verifizierungsstatus und echte Bewertungen","🛡️"),
-    PlusRoute("enh-calendar","Gemeindekalender+","Entsorgung, Termine und Erinnerungen","📆"),
-    PlusRoute("enh-qr","QR-Übergabe","Sichere Ausleihe bestätigen","🔳"),
-    PlusRoute("enh-offline","Offline-Modus","Gemeindeverzeichnis und zwischengespeicherte Daten","📱"),
-    PlusRoute("personal-center","Mein Quartinaut","Meine Aktivitäten, Verlauf und Schnellzugriffe","👤"),
-    PlusRoute("enh-favorites","Favoriten","Gespeicherte Einträge wiederfinden","⭐"),
-    PlusRoute("community-pulse","Gemeinde aktuell","Mitteilungen und Beiträge zusammengefasst","📣"),
-    PlusRoute("municipal-compare","Gemeinden vergleichen","Zwei Schweizer Gemeinden gegenüberstellen","🏘️"),
-    PlusRoute("calendar-planner","Meine Termine","Termine in Android-Kalender übernehmen","📅"),
-    PlusRoute("official-calendar","Offizielle Termine","Bestätigte öffentliche Termine und Feiertage · Quellen","🇨🇭"),
-    PlusRoute("safety-center","Sicherheit","Vertrauen, Meldungen und Privatsphäre","🛡️"),
-    PlusRoute("search","Alles durchsuchen","Beiträge, Gemeinden und Mitteilungen","🔎")
-)
 private data class RadarPreset(val term:String,val scope:String,val tags:List<String>)
 private val radarTags=listOf("market" to "Marktplatz","lend" to "Ausleihen",
     "group" to "Vereine","project" to "Aktionen","request" to "Hilfegesuche",
@@ -58,62 +35,7 @@ private val radarTags=listOf("market" to "Marktplatz","lend" to "Ausleihen",
 
 @Composable
 fun NativeExtrasDirectory(repo:QuartinautRepository,navigate:(String)->Unit) {
-    var query by rememberSaveable { mutableStateOf("") }
-    val opened=remember { mutableStateMapOf<String,Boolean>() }
-    val groups=linkedMapOf(
-        "Für mich" to listOf("personal-center","enh-favorites","enh-posts","chats","enh-trust"),
-        "Entdecken & Inserieren" to listOf("search","create","enh-assist","enh-radar","enh-map","municipal-compare"),
-        "Gemeinde & Vereine" to listOf("official-calendar","community-pulse","enh-clubs","enh-calendar","calendar-planner","enh-loans","enh-qr"),
-        "Schutz & Offline" to listOf("safety-center","enh-offline")
-    )
-    Column(Modifier.fillMaxSize().background(PlusBg).verticalScroll(rememberScrollState())
-        .padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
-        Text("QUARTINAUT · MEHR",color=PlusAccent,style=MaterialTheme.typography.labelLarge)
-        Text("Alles für dein Quartier",color=MaterialTheme.colorScheme.onSurface,
-            style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold)
-        Text("Deine Funktionen, nach Aufgaben geordnet und jederzeit auffindbar.",color=PlusMuted)
-        OutlinedTextField(value=query,onValueChange={query=it.take(70)},singleLine=true,
-            modifier=Modifier.fillMaxWidth(),label={Text("Funktionen durchsuchen")},
-            leadingIcon={Icon(Icons.Default.Search,contentDescription=null)})
-        groups.forEach { (section,ids) ->
-            val options=allExtensions.filter {option->option.key in ids &&
-                (query.isBlank() || (option.name+" "+option.detail).contains(query,ignoreCase=true))}
-            if(options.isNotEmpty()) {
-                val expanded=if(query.isNotBlank())true else opened[section] ?: (section=="Für mich")
-                Row(Modifier.fillMaxWidth().clickable { opened[section]=!expanded }
-                    .padding(vertical=9.dp),verticalAlignment=Alignment.CenterVertically) {
-                    Text(section,style=MaterialTheme.typography.titleMedium,
-                        fontWeight=FontWeight.SemiBold,modifier=Modifier.weight(1f))
-                    Text(options.size.toString(),color=PlusMuted,style=MaterialTheme.typography.labelMedium)
-                    Spacer(Modifier.width(8.dp))
-                    Icon(if(expanded)Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                        contentDescription=if(expanded)"Einklappen" else "Ausklappen")
-                }
-                if(expanded) options.forEach { option->
-                    Surface(onClick={navigate(option.key)},
-                        color=PlusSurface,shape=RoundedCornerShape(19.dp),
-                        border=BorderStroke(1.dp,PlusBorder)) {
-                        Row(Modifier.fillMaxWidth().heightIn(min=68.dp).padding(13.dp),
-                            verticalAlignment=Alignment.CenterVertically) {
-                            Text(option.emoji,style=MaterialTheme.typography.titleLarge)
-                            Spacer(Modifier.width(12.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text(option.name,color=MaterialTheme.colorScheme.onSurface,
-                                    fontWeight=FontWeight.SemiBold)
-                                Text(option.detail,color=PlusMuted,style=MaterialTheme.typography.bodySmall)
-                            }
-                            Icon(Icons.Default.ChevronRight,contentDescription="Öffnen",tint=PlusAccent)
-                        }
-                    }
-                }
-            }
-        }
-        if(query.isNotBlank()&&allExtensions.none {
-            (it.name+" "+it.detail).contains(query,ignoreCase=true)
-        }) Text("Keine passende Erweiterung gefunden.",color=PlusMuted)
-        Text("Deine Gemeinde: "+repo.area()+" ("+repo.canton()+")",
-            color=PlusMuted,style=MaterialTheme.typography.bodySmall)
-    }
+    NativeQuartierAllFeatures(repo,navigate)
 }
 @Composable
 private fun ExtraHeader(title:String,description:String) {
