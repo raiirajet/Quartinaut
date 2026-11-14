@@ -183,14 +183,14 @@ fun NativePrivateChatsPage(repo: QuartinautRepository) {
             verticalArrangement=Arrangement.spacedBy(14.dp)) {
             Row(verticalAlignment=Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Private Chats",style=MaterialTheme.typography.headlineSmall,
+                    Text("Nachrichten",style=MaterialTheme.typography.headlineSmall,
                         fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.onSurface)
                     Text("Deine vertraulichen Unterhaltungen",color=ChatMuted,
                         style=MaterialTheme.typography.bodySmall)
                 }
                 IconButton(onClick={
                     repo.loadServerChats()
-                }) {Icon(Icons.Default.Refresh,"Chats aktualisieren",tint=MaterialTheme.colorScheme.onSurface)}
+                }) {Icon(Icons.Default.Refresh,"Nachrichten aktualisieren",tint=MaterialTheme.colorScheme.onSurface)}
             }
             OutlinedTextField(filter,{filter=it},modifier=Modifier.fillMaxWidth(),
                 leadingIcon={Icon(Icons.Default.Search,null)},
@@ -244,7 +244,7 @@ fun NativePrivateChatsPage(repo: QuartinautRepository) {
                     }
                 }
                 if(visible.isEmpty()&&!repo.serverChatLoading&&(repo.syncIssues.isEmpty()||server))item {
-                    Text("Noch keine privaten Chats. Öffne ein Anliegen und tippe auf «Nachricht schreiben».",
+                    Text("Noch keine Nachrichten. Öffne ein Anliegen und tippe auf «Nachricht schreiben».",
                         color=ChatMuted,style=MaterialTheme.typography.bodyMedium)
                 }
             }

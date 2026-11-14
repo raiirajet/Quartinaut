@@ -99,7 +99,7 @@ private val quartierSections = listOf(
                 )),
             QuartierSubsection("kommunikation", "Nachrichten & Termine", "Alles Wichtige für dich",
                 listOf(
-                    link("chats","Private Chats","Deine privaten Unterhaltungen","💬"),
+                    link("chats","Private Nachrichten","Deine privaten Unterhaltungen","💬"),
                     link("calendar-planner","Meine Termine","Termine in Android-Kalender übernehmen","📅")
                 ))
         )),
@@ -196,13 +196,7 @@ fun NativeQuartierOverview(repo: QuartinautRepository, navigate: (String) -> Uni
             ) {
                 Row(Modifier.fillMaxWidth().heightIn(min = 80.dp).padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically) {
-                    Surface(shape = RoundedCornerShape(14.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer) {
-                        Box(Modifier.size(46.dp), contentAlignment = Alignment.Center) {
-                            Icon(section.icon, contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer)
-                        }
-                    }
+                    Quartinaut3DIcon(section.id, Modifier.size(52.dp))
                     Spacer(Modifier.width(13.dp))
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Text(section.title, fontWeight = FontWeight.SemiBold,
@@ -254,9 +248,15 @@ fun NativeQuartierCategoryPage(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(section.title, style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold)
-        Text(section.description, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Quartinaut3DIcon(section.id, Modifier.size(64.dp))
+            Spacer(Modifier.width(13.dp))
+            Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)) {
+                Text(section.title,style=MaterialTheme.typography.headlineSmall,
+                    fontWeight=FontWeight.Bold)
+                Text(section.description,color=MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
         OutlinedTextField(
             value = query, onValueChange = { query = it.take(80) },
             modifier = Modifier.fillMaxWidth(), singleLine = true,
@@ -314,7 +314,8 @@ fun NativeQuartierAllFeatures(repo: QuartinautRepository, navigate: (String) -> 
                 found += count
                 val open = query.isNotBlank() || expanded == section.id
                 QuartierAccordion(section.title, section.description, count, open,
-                    { expanded = if (expanded == section.id) "" else section.id }) {
+                    { expanded = if (expanded == section.id) "" else section.id },
+                    iconKey=section.id) {
                     section.subsections.forEach { sub ->
                         val options = sub.links.filter {
                             query.isBlank() || (it.title + " " + it.description)
@@ -340,7 +341,8 @@ fun NativeQuartierAllFeatures(repo: QuartinautRepository, navigate: (String) -> 
 @Composable
 private fun QuartierAccordion(
     title: String, description: String, count: Int, expanded: Boolean,
-    onToggle: () -> Unit, content: @Composable ColumnScope.() -> Unit
+    onToggle: () -> Unit, iconKey: String? = null,
+    content: @Composable ColumnScope.() -> Unit
 ) {
     Surface(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp),
         color = MaterialTheme.colorScheme.surface,
@@ -349,6 +351,10 @@ private fun QuartierAccordion(
             Row(Modifier.fillMaxWidth().clickable(onClick = onToggle)
                 .heightIn(min = 72.dp).padding(14.dp),
                 verticalAlignment = Alignment.CenterVertically) {
+                if(iconKey != null) {
+                    Quartinaut3DIcon(iconKey, Modifier.size(38.dp))
+                    Spacer(Modifier.width(10.dp))
+                }
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(title, fontWeight = FontWeight.SemiBold,
                         style = MaterialTheme.typography.titleMedium)

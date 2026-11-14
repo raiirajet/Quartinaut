@@ -49,7 +49,7 @@ private val links = listOf(
     HomeLink("events","Veranstaltungen","Lokale Anlässe","🎉","calendar"),
     HomeLink("bulletin","Schwarzes Brett","Gesuche & Angebote","📋","board"),
     HomeLink("inbox","Mitteilungen","Neues und Anfragen","🔔","official"),
-    HomeLink("chats","Chats","Privat austauschen","💬","chats"),
+    HomeLink("chats","Nachrichten","Privat austauschen","💬","chats"),
     HomeLink("saved","Favoriten","Gespeicherte Beiträge","⭐","enh-favorites"),
     HomeLink("map","Quartierkarte","Deine Umgebung","📍","map"),
     HomeLink("swissmap","Schweizkarte","Kantone & Gemeinden","🇨🇭","map")
@@ -410,7 +410,16 @@ private fun HomeShortcut(card:HomeLink,modifier:Modifier,onClick:()->Unit) {
         color=NightCard,shape=RoundedCornerShape(22.dp),
         border=androidx.compose.foundation.BorderStroke(1.dp,PanelLine)) {
         Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(5.dp)) {
-            Text(card.emoji,style=MaterialTheme.typography.headlineSmall)
+            val iconKey=when(card.route) {
+                "personal-center" -> "meine"
+                "community-pulse", "group" -> "gemeinde"
+                "chats" -> "messages"
+                "map" -> "entdecken"
+                "settings" -> "sicherheit"
+                else -> null
+            }
+            if(iconKey!=null) Quartinaut3DIcon(iconKey,Modifier.size(42.dp))
+            else Text(card.emoji,style=MaterialTheme.typography.headlineSmall)
             Spacer(Modifier.height(3.dp))
             Text(card.title,color=MaterialTheme.colorScheme.onSurface,
                 style=MaterialTheme.typography.titleMedium,maxLines=1)

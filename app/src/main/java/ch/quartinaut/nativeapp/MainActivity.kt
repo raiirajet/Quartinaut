@@ -39,6 +39,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.google.firebase.firestore.DocumentSnapshot
 
 private val Forest = Color(0xFF195A42)
@@ -273,7 +274,7 @@ private fun QuartinautApp(repo: QuartinautRepository,
         "safety-center" -> "Vertrauen & Sicherheit"
         "board" -> "Schwarzes Brett"
         "plus" -> "Quartier+"
-        "chats" -> "Private Chats"
+        "chats" -> "Nachrichten"
         "profile" -> "Profil"
         "map" -> "Schweizkarte"
         "alerts" -> "Gemeinde-Alarme"
@@ -365,7 +366,7 @@ private fun QuartinautApp(repo: QuartinautRepository,
                 Triple("home","Start","start"),
                 Triple("plus","Quartier+","quartier"),
                 Triple("create","Neu","neu"),
-                Triple("chats","Chats","chats"),
+                Triple("chats","Nachrichten","chats"),
                 Triple("profile","Profil","profil")
             )
             Box(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)
@@ -398,10 +399,17 @@ private fun QuartinautApp(repo: QuartinautRepository,
                             Box(Modifier.size(45.dp).clip(RoundedCornerShape(15.dp))
                                 .background(if(displayMode=="dark") Color(0xFF10281B)
                                     else Color(0xFFF5FBF7)),contentAlignment=Alignment.Center) {
-                                OriginalNavigationIcon(asset,Modifier.size(if(active)42.dp else 39.dp))
+                                if(route=="chats") {
+                                    Quartinaut3DIcon("messages",
+                                        Modifier.size(if(active)42.dp else 39.dp))
+                                } else {
+                                    OriginalNavigationIcon(asset,
+                                        Modifier.size(if(active)42.dp else 39.dp))
+                                }
                             }
                             Text(label,color=if(active && displayMode=="red") Forest else bottomLabel,
                                 style=MaterialTheme.typography.labelSmall,
+                                fontSize=10.sp,
                                 maxLines=1,overflow=TextOverflow.Ellipsis)
                         }
                     }
