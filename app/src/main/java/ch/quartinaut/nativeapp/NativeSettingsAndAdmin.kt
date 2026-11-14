@@ -148,6 +148,12 @@ fun NativeSettingsScreen(repo: QuartinautRepository,mode: String,
         TextButton(onClick={navigate("diagnostics")}) {
             Text("Verbindungsdiagnose · Firebase-Zugriff prüfen")
         }
+        OutlinedButton(
+            onClick={navigate("sources")},
+            modifier=Modifier.fillMaxWidth()
+        ) {
+            Text("Quellenverweise · Wappen und Gemeindedaten")
+        }
         TextButton(onClick={navigate("help")}) { Text("Hilfe und Datenschutz") }
     }
 }
