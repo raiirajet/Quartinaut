@@ -344,16 +344,25 @@ fun NativeMunicipalityMap(
                     features.forEach { feature ->
                         val active=feature.bfs==selected?.bfs
                         drawPath(feature.path,if(active)Color(0xFFDBAA39) else Color(0xFF95C7A7))
+                        // Keep armorial proportions. The previous implementation
+                        // stretched the image across the whole municipality,
+                        // producing oversized, distorted emblems on the map.
                         coats[feature.bfs]?.let { bitmap ->
                             val bounds=feature.path.getBounds()
-                            if(bounds.width>8f && bounds.height>8f) {
+                            if(bounds.width>11f && bounds.height>12f) {
                                 drawIntoCanvas { canvas ->
                                     val native=canvas.nativeCanvas
-                                    val saved=native.save()
-                                    native.clipPath(feature.path.asAndroidPath())
+                                    val maxW=kotlin.math.min(19f,bounds.width*0.65f)
+                                    val maxH=kotlin.math.min(23f,bounds.height*0.65f)
+                                    val bitmapRatio=bitmap.width.toFloat()/
+                                        bitmap.height.coerceAtLeast(1)
+                                    val width=kotlin.math.min(maxW,maxH*bitmapRatio)
+                                    val height=width/bitmapRatio
+                                    val centerX=bounds.left+bounds.width/2f
+                                    val centerY=bounds.top+bounds.height/2f
                                     native.drawBitmap(bitmap,null,android.graphics.RectF(
-                                        bounds.left,bounds.top,bounds.right,bounds.bottom),null)
-                                    native.restoreToCount(saved)
+                                        centerX-width/2f,centerY-height/2f,
+                                        centerX+width/2f,centerY+height/2f),null)
                                 }
                             }
                         }
