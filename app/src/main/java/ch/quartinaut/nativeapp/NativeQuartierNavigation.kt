@@ -154,6 +154,13 @@ internal fun quartierNavigationRoutes(): List<String> =
 internal fun quartierSectionTitle(id: String): String =
     quartierSections.firstOrNull { it.id == id }?.title ?: "Quartier+"
 
+/** Area names may already contain the canton abbreviation. */
+internal fun quartierAreaLabel(area: String, canton: String): String {
+    val base=area.trim()
+    val suffix=if(canton.isBlank()) "" else " ("+canton.trim()+")"
+    return base.removeSuffix(suffix).trim()+suffix
+}
+
 /** Only action titles and descriptions are indexed, never private content. */
 internal fun quartierMatchingRoutes(term: String): List<Triple<String, String, String>> {
     val needle = term.trim()
@@ -219,7 +226,7 @@ fun NativeQuartierOverview(repo: QuartinautRepository, navigate: (String) -> Uni
             Spacer(Modifier.width(8.dp))
             Text("Alle Funktionen durchsuchen")
         }
-        Text("Deine Gemeinde: " + repo.area() + " (" + repo.canton() + ")",
+        Text("Deine Gemeinde: " + quartierAreaLabel(repo.area(),repo.canton()),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         TextButton(onClick = repo::loadHub, modifier = Modifier.fillMaxWidth()) {
@@ -324,7 +331,7 @@ fun NativeQuartierAllFeatures(repo: QuartinautRepository, navigate: (String) -> 
         }
         if (found == 0) Text("Keine passende Funktion gefunden.",
             color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text("Deine Gemeinde: " + repo.area() + " (" + repo.canton() + ")",
+        Text("Deine Gemeinde: " + quartierAreaLabel(repo.area(),repo.canton()),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
