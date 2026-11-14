@@ -140,6 +140,7 @@ private val quartierSections = listOf(
                 listOf(
                     link("enh-offline","Offline-Modus","Gespeicherte Daten ohne Internet nutzen","📱"),
                     link("settings","Einstellungen","Darstellung und App-Verhalten anpassen","⚙️"),
+                    link("sources","Quellenverweise","Herkunft der Wappen, Karten und Daten","📚"),
                     link("diagnostics","Verbindungsdiagnose","Datenverbindung und Synchronisation prüfen","🔧")
                 ))
         ))
