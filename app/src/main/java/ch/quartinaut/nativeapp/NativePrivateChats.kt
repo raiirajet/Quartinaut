@@ -204,7 +204,7 @@ fun NativePrivateChatsPage(repo: QuartinautRepository) {
                 label={Text("Unterhaltungen durchsuchen")},singleLine=true,
                 shape=RoundedCornerShape(18.dp))
             if(repo.serverChatLoading)LinearProgressIndicator(Modifier.fillMaxWidth())
-            if(!server && ("Privater Chat-Dienst" in repo.syncIssues || !repo.serverChatLoading)) {
+            if(!server && "Privater Chat-Dienst" in repo.syncIssues) {
                 Card(colors=CardDefaults.cardColors(containerColor=Color(0xFF2C3A2D))) {
                     Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
                         Text("Chatliste aktuell nicht verfügbar",color=Color(0xFFFFE2AF),

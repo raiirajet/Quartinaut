@@ -345,6 +345,8 @@ fun NativeHubDetail(
     }
     val loanStartInstant=loanFrom.atTime(loanFromHour,0).atZone(zurich).toInstant()
     val loanEndInstant=loanTo.atTime(loanToHour,0).atZone(zurich).toInstant()
+    val loanAvailability=DocString(item["availability"]).lowercase()
+    val loanAvailable=loanAvailability !in listOf("reserved","unavailable","lent","closed")
     val loanValid=loanStartInstant.isAfter(Instant.now()) &&
         loanEndInstant.isAfter(loanStartInstant) &&
         loanEndInstant.isBefore(Instant.now().plus(180,ChronoUnit.DAYS))
@@ -386,8 +388,9 @@ fun NativeHubDetail(
                 }
             }) {Text("Anbieterprofil prüfen")}
         }
-        Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)) {
-            Column(Modifier.padding(17.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+        Card(modifier=Modifier.fillMaxWidth(),
+            colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)) {
+            Column(Modifier.fillMaxWidth().padding(17.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
                 Text(DocString(item["description"]))
                 if(item["priceChf"]!=null) Text(
                     "CHF " + DocString(item["priceChf"]) +
@@ -471,6 +474,9 @@ fun NativeHubDetail(
                                 label={Text("%02d:00".format(hour))})
                         }
                     }
+                    if(!loanAvailable) Text("Der Gegenstand ist aktuell nicht als verfügbar gekennzeichnet.",
+                        color=MaterialTheme.colorScheme.error,
+                        style=MaterialTheme.typography.bodySmall)
                     if(!loanValid) Text("Bitte einen zukünftigen Zeitraum mit einer Rückgabe nach der Abholung wählen (max. 180 Tage).",
                         color=MaterialTheme.colorScheme.error,
                         style=MaterialTheme.typography.bodySmall)
@@ -486,7 +492,7 @@ fun NativeHubDetail(
                             onShowLoans()
                         }
                     },modifier=Modifier.fillMaxWidth(),
-                        enabled=!repo.busy&&loanValid) {
+                        enabled=!repo.busy&&loanValid&&loanAvailable) {
                         Icon(Icons.Default.EventAvailable,contentDescription=null)
                         Spacer(Modifier.width(8.dp))
                         Text("Verbindliche Ausleihanfrage senden")
