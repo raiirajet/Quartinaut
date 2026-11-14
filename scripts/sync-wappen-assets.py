@@ -44,7 +44,12 @@ def commons_filename(url):
     else:
         filename = path.rsplit("/", 1)[-1]
     filename = filename.replace("_", " ").strip()
-    if not filename.lower().endswith(".svg") or len(filename) > 180 or "/" in filename:
+    # P94 is not always SVG! About 70 Swiss municipalities have PNG/JPEG
+    # arms; the original SVG-only filter silently discarded those records.
+    ext = Path(filename).suffix.lower()
+    if ext not in (".svg", ".png", ".jpg", ".jpeg", ".webp", ".gif"):
+        return None
+    if len(filename) > 200 or "/" in filename:
         return None
     return filename
 
@@ -86,29 +91,32 @@ def wikidata_index(valid_ids):
             time.sleep(2)
     return {}
 
-def download_svg(entry):
+def download_coat(entry):
     bfs, filename = entry
-    # Wikidata may refer to an older Commons filename that redirects.
-    # Special:FilePath resolves redirects; direct hashed upload is fastest
-    # when the page already has its canonical filename.
+    extension=Path(filename).suffix.lower()
     urls = [url_for(filename), file_page_for(filename)]
     for url in urls:
         for attempt in range(2):
             try:
-                raw = request(url, timeout=16)
+                raw = request(url, timeout=12)
                 prefix = raw[:8192].lower()
-                if (b"<svg" not in prefix and b"<?xml" not in prefix) or b"<html" in prefix:
+                mime_ok = (
+                    (extension == ".svg" and b"<svg" in prefix) or
+                    (extension == ".png" and raw.startswith(b"\\x89PNG")) or
+                    (extension in (".jpg",".jpeg") and raw.startswith(b"\\xff\\xd8")) or
+                    (extension == ".webp" and raw.startswith(b"RIFF")) or
+                    (extension == ".gif" and raw.startswith(b"GIF8"))
+                )
+                if not mime_ok or len(raw)>250_000:
                     break
-                if len(raw) > 250_000:
-                    break
-                (OUT / (bfs + ".svg")).write_bytes(raw)
+                (OUT / (bfs + extension)).write_bytes(raw)
                 return True
             except urllib.error.HTTPError as exc:
-                if exc.code in (404, 400): break
-                if exc.code not in (429, 500, 502, 503, 504): break
-                time.sleep(1.0 + attempt)
+                if exc.code in (400,404): break
+                if exc.code not in (429,500,502,503,504): break
+                time.sleep(0.8+attempt)
             except OSError:
-                if attempt == 0: time.sleep(0.5)
+                if attempt==0:time.sleep(0.3)
     return False
 
 def main():
@@ -137,9 +145,11 @@ def main():
     # SG is packaged for an immediately usable, offline-first canton map.
     images = [(bfs, filenames[bfs]) for bfs in sorted(sg_ids) if bfs in filenames]
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
-        loaded = sum(bool(ok) for ok in pool.map(download_svg, images))
-    print("Wappen index: {} BFS entries; St. Gallen offline SVGs: {}/{}"
-          .format(len(verified),loaded,len(images)))
+        loaded = sum(bool(ok) for ok in pool.map(download_coat, images))
+    bytype={ext:sum(Path(name).suffix.lower()==ext for name in filenames.values())
+            for ext in (".svg",".png",".jpg",".jpeg",".webp",".gif")}
+    print("Wappen index: {} BFS entries; image formats: {}".format(len(verified),bytype))
+    print("St. Gallen offline coats: {}/{}".format(loaded,len(images)))
     if loaded == 0:
         print("WARNING: Commons not reachable; live fallback remains available")
     if not (OUT / "index.json").exists():
