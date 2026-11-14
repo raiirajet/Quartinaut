@@ -21,10 +21,10 @@ import androidx.core.content.ContextCompat
 private val HomeLabels = linkedMapOf(
     "home" to "Übersicht", "hub" to "Quartier+",
     "bulletin" to "Schwarzes Brett", "events" to "Gemeindetermine",
-    "inbox" to "Mitteilungen", "chats" to "Chats"
+    "inbox" to "Mitteilungen", "chats" to "Nachrichten"
 )
 private val Topics = linkedMapOf(
-    "chats" to "Private Chats","alerts" to "Gemeinde-Alarme",
+    "chats" to "Private Nachrichten","alerts" to "Gemeinde-Alarme",
     "help" to "Nachbarschaftshilfe","events" to "Veranstaltungen",
     "groups" to "Vereine & Gruppen","market" to "Marktplatz",
     "lending" to "Ausleihen","municipality" to "Gemeindenachrichten"
