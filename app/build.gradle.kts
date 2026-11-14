@@ -13,8 +13,8 @@ android {
         applicationId = "ch.quartinaut.nativeapp"
         minSdk = 26
         targetSdk = 35
-        versionCode = 16
-        versionName = "5.7.5-wappen-map-layout"
+        versionCode = 17
+        versionName = "5.8.0-navigation-personalisiert"
     }
     buildTypes {
         release { isMinifyEnabled = false }
