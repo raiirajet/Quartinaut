@@ -91,32 +91,84 @@ def wikidata_index(valid_ids):
             time.sleep(2)
     return {}
 
+def thumbnail_index(filenames):
+    """Fetch the Commons imageinfo service in batches (not 2100 API calls).
+
+    The thumbnail URLs are already rasterized and served through Wikimedia's
+    image CDN, substantially reducing SVG parsing and redirect failures.
+    """
+    results = {}
+    reverse = {}
+    for bfs, file in filenames.items():
+        reverse.setdefault(file.replace("_", " ").casefold(), []).append(bfs)
+    unique = list({file.replace("_", " "): None for file in filenames.values()})
+    batches = [unique[i:i+40] for i in range(0, len(unique), 40)]
+
+    def one(batch):
+        titles = "|".join("File:" + x for x in batch)
+        params = urllib.parse.urlencode({
+            "action": "query", "format": "json", "formatversion": "2",
+            "prop": "imageinfo", "iiprop": "url", "iiurlwidth": "112",
+            "redirects": "1", "titles": titles
+        })
+        url = "https://commons.wikimedia.org/w/api.php?" + params
+        try:
+            payload = json.loads(request(url, timeout=15))
+            found = {}
+            query = payload.get("query", {})
+            redirs = {r["from"].removeprefix("File:").casefold():
+                      r["to"].removeprefix("File:").casefold()
+                      for r in query.get("redirects", [])}
+            redirects_back = {}
+            for source,target in redirs.items():
+                redirects_back.setdefault(target, []).append(source)
+            for page in query.get("pages", []):
+                file = str(page.get("title", "")).removeprefix("File:").replace("_", " ")
+                info = (page.get("imageinfo") or [{}])[0]
+                asset = info.get("thumburl") or info.get("url")
+                if not asset: continue
+                parsed = urllib.parse.urlparse(asset)
+                if parsed.scheme != "https" or parsed.hostname != "upload.wikimedia.org":
+                    continue
+                keys = [file.casefold()] + redirects_back.get(file.casefold(), [])
+                for key in keys:
+                    for bfs in reverse.get(key, []): found[bfs] = asset
+            return found
+        except (OSError, ValueError, KeyError, TypeError):
+            return {}
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=7) as pool:
+        for chunk in pool.map(one, batches):
+            results.update(chunk)
+    print("Commons thumbnails: {}/{} BFS images".format(len(results),len(filenames)))
+    return results
+
 def download_coat(entry):
-    bfs, filename = entry
-    extension=Path(filename).suffix.lower()
-    urls = [url_for(filename), file_page_for(filename)]
+    bfs, filename, image = entry
+    extension = Path(filename).suffix.lower()
+    # A tiny PNG thumbnail is preferred over an arbitrary large SVG original.
+    urls = list(dict.fromkeys([image, url_for(filename), file_page_for(filename)]))
     for url in urls:
-        for attempt in range(2):
-            try:
-                raw = request(url, timeout=12)
-                prefix = raw[:8192].lower()
-                mime_ok = (
-                    (extension == ".svg" and b"<svg" in prefix) or
-                    (extension == ".png" and raw.startswith(b"\\x89PNG")) or
-                    (extension in (".jpg",".jpeg") and raw.startswith(b"\\xff\\xd8")) or
-                    (extension == ".webp" and raw.startswith(b"RIFF")) or
-                    (extension == ".gif" and raw.startswith(b"GIF8"))
-                )
-                if not mime_ok or len(raw)>250_000:
-                    break
-                (OUT / (bfs + extension)).write_bytes(raw)
-                return True
-            except urllib.error.HTTPError as exc:
-                if exc.code in (400,404): break
-                if exc.code not in (429,500,502,503,504): break
-                time.sleep(0.8+attempt)
-            except OSError:
-                if attempt==0:time.sleep(0.3)
+        try:
+            raw = request(url, timeout=6)
+            if len(raw)>150_000: continue
+            header = raw[:8192].lower()
+            if raw.startswith(b"\x89PNG"):
+                final_ext = ".png"
+            elif raw.startswith(b"\xff\xd8"):
+                final_ext = ".jpg"
+            elif raw.startswith(b"RIFF") and b"WEBP" in raw[:16]:
+                final_ext = ".webp"
+            elif b"<svg" in header and b"<html" not in header:
+                final_ext = ".svg"
+            elif raw.startswith(b"GIF8"):
+                final_ext = ".gif"
+            else:
+                continue
+            (OUT / (bfs + final_ext)).write_bytes(raw)
+            return True
+        except OSError:
+            continue
     return False
 
 def main():
@@ -137,21 +189,46 @@ def main():
     OUT.mkdir(parents=True, exist_ok=True)
     filenames = dict(VERIFIED)
     filenames.update(wikidata_index(all_ids))
-    verified = {bfs: file_page_for(name) for bfs, name in filenames.items() if bfs in all_ids}
+    # Cover all 26 cantons: raster arms are kept alongside SVG arms.
+    thumbnails = thumbnail_index(filenames)
+    verified = {
+        bfs: thumbnails.get(bfs, file_page_for(name))
+        for bfs, name in filenames.items() if bfs in all_ids
+    }
     (OUT / "index.json").write_text(
         json.dumps(verified,ensure_ascii=False,separators=(",",":")),
         encoding="utf-8"
     )
-    # SG is packaged for an immediately usable, offline-first canton map.
-    images = [(bfs, filenames[bfs]) for bfs in sorted(sg_ids) if bfs in filenames]
-    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
-        loaded = sum(bool(ok) for ok in pool.map(download_coat, images))
+    provenance = {
+        bfs: "https://commons.wikimedia.org/wiki/File:" +
+             urllib.parse.quote(filename.replace(" ", "_"), safe="()_,.-")
+        for bfs,filename in filenames.items() if bfs in all_ids
+    }
+    (OUT / "sources.json").write_text(
+        json.dumps(provenance,ensure_ascii=False,separators=(",",":")),
+        encoding="utf-8"
+    )
+    # Download all 26 cantons with a fixed build-time budget. Every remaining
+    # entry has a verified online URL and is cached by Coil after first use.
+    images = [(bfs, name, verified[bfs]) for bfs,name in sorted(filenames.items())
+              if bfs in all_ids]
+    pool = concurrent.futures.ThreadPoolExecutor(max_workers=24)
+    futures = [pool.submit(download_coat,entry) for entry in images]
+    done,pending = concurrent.futures.wait(futures,timeout=160)
+    loaded = sum(bool(f.result()) for f in done if not f.exception())
+    for future in pending:future.cancel()
+    pool.shutdown(wait=False,cancel_futures=True)
     bytype={ext:sum(Path(name).suffix.lower()==ext for name in filenames.values())
             for ext in (".svg",".png",".jpg",".jpeg",".webp",".gif")}
-    print("Wappen index: {} BFS entries; image formats: {}".format(len(verified),bytype))
-    print("St. Gallen offline coats: {}/{}".format(loaded,len(images)))
-    if loaded == 0:
-        print("WARNING: Commons not reachable; live fallback remains available")
+    offline_files = list(OUT.glob("*.png"))+list(OUT.glob("*.svg"))+list(OUT.glob("*.jpg"))+list(OUT.glob("*.webp"))+list(OUT.glob("*.gif"))
+    offline_bfs={p.stem for p in offline_files}
+    sg_ready=len(sg_ids.intersection(offline_bfs))
+    print("Wappen index: {}/{} BFS entries; image formats: {}".format(
+        len(verified),len(all_ids),bytype))
+    print("Offline wappen: {}/{} across 26 cantons; SG: {}/{}".format(
+        len(offline_bfs),len(verified),sg_ready,len(sg_ids)))
+    if not offline_bfs:
+        print("WARNING: Commons did not return any packaged images; online fallback remains")
     if not (OUT / "index.json").exists():
         raise SystemExit("Wappen manifest was not generated")
 
