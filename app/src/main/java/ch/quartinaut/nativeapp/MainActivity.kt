@@ -862,11 +862,9 @@ private fun RegionPage(repo: QuartinautRepository, selectedCode: String,selected
     val screenContext=LocalContext.current
     val canton=repo.regions.firstOrNull { it.code==selectedCode }
     val selected=canton?.municipalities?.firstOrNull { it.bfs==selectedBfs }
-    val cantonCoatByCode by produceState<Map<String,String>>(initialValue=emptyMap(),repo.regions) {
-        value=kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-            querySwissCantonWappen(repo.regions)
-        }
-    }
+    // All 26 cantonal coats are bundled. MunicipalityCoat prioritizes the
+    // local SVG, so there is no reason to query Wikidata for every canton.
+    val cantonCoatByCode=emptyMap<String,String>()
     val coatByBfs by produceState<Map<String,String>>(initialValue=emptyMap(),canton?.code) {
         value=if(canton==null) emptyMap() else
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {

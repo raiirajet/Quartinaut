@@ -38,6 +38,15 @@ fun NativeSourceReferencesScreen() {
             "https://www.bfs.admin.ch/bfs/de/home/grundlagen/agvch.html"
         ),
         QuartinautSource(
+            "Swiss Flags – Yann Lerjen",
+            "Fest gespeicherte Wappen aller 26 Kantone (MIT)",
+            "Die Kantonswappen sind als SVG-Dateien direkt in der APK enthalten. " +
+                "Quelle: swiss-flags von Yann Lerjen, MIT-Lizenz (2019). " +
+                "Die vollständige Lizenz liegt in den App-Ressourcen unter " +
+                "wappen/cantons/LICENSE-MIT.txt. Die Darstellung erfordert keine Internetverbindung.",
+            "https://github.com/ylerjen/swiss-flags"
+        ),
+        QuartinautSource(
             "Wikidata",
             "BFS-Zuordnung und Wappenreferenzen",
             "Quartinaut sucht Wappen über die BFS-Gemeindenummer (P771) und " +
@@ -47,9 +56,10 @@ fun NativeSourceReferencesScreen() {
         QuartinautSource(
             "Wikimedia Commons",
             "Tatsächlich verwendete Bilddateien",
-            "Heraldikbilder und Wappen-Vorschaubilder werden, sofern verfügbar, von Commons " +
-                "bezogen und teilweise für Offline-Nutzung gespeichert. Rechte- und " +
-                "Urheberangaben sind bei der jeweiligen Datei zu prüfen.",
+            "Gemeindewappen werden nur mit einer zugeordneten aktuellen BFS-Nummer " +
+                "aus Wikidata/Commons übernommen. Einzelne Bilder sind beim Build " +
+                "offline eingebunden, andere brauchen noch eine Verbindung. " +
+                "Die Lizenz ist je Originaldatei zu prüfen.",
             "https://commons.wikimedia.org/wiki/Category:Coats_of_arms_of_municipalities_of_Switzerland"
         ),
         QuartinautSource(

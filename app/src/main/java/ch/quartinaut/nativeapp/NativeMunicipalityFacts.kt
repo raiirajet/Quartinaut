@@ -70,6 +70,16 @@ internal fun bundledWappen(context:Context):Map<String,String> {
     bundledWappenIndex=index
     return index
 }
+private val bundledCantonCodes=setOf(
+    "ZH","BE","LU","UR","SZ","OW","NW","GL","ZG","FR","SO","BS","BL",
+    "SH","AR","AI","SG","GR","AG","TG","TI","VD","VS","NE","GE","JU"
+)
+/** All 26 cantonal heraldic SVGs ship inside the APK under an MIT licence. */
+internal fun bundledCantonWappenAsset(code:String):String? {
+    val checked=code.trim().uppercase(java.util.Locale.ROOT)
+    return if(checked in bundledCantonCodes)
+        "file:///android_asset/wappen/cantons/$checked.svg" else null
+}
 internal fun bundledWappenAsset(context:Context,bfs:String):String? {
     if(!bfs.matches(Regex("[0-9]{1,4}")))return null
     // Some cantons store their arms as PNG/JPEG rather than SVG.
@@ -360,7 +370,10 @@ internal fun MunicipalityCoat(
         url,bfs,cantonCode) {
         value=withContext(Dispatchers.IO) {
             val local=bfs?.let {bundledWappenAsset(context,it)}
-            val source=safeWappenUrl(url) ?:
+                ?: cantonCode?.let(::bundledCantonWappenAsset)
+            // Bundled coats are authoritative for display; don't wait for
+            // a slow SPARQL/Commons query when an offline copy exists.
+            val source=if(local!=null) null else safeWappenUrl(url) ?:
                 bfs?.let {bundledWappen(context)[it] ?: queryWappenByBfs(it)}
                     ?: cantonCode?.let(::queryCantonCoat)
             val loader=wappenLoader(context)
