@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -342,7 +343,7 @@ fun NativeOfficialCalendarScreen(repo:QuartinautRepository,navigate:(String)->Un
                                 style=MaterialTheme.typography.labelSmall,
                                 maxLines=2,overflow=TextOverflow.Ellipsis)
                         }
-                        Icon(Icons.Default.InfoOutline,contentDescription="Quellen anzeigen",
+                        Icon(Icons.Default.Info,contentDescription="Quellen anzeigen",
                             tint=MaterialTheme.colorScheme.primary)
                     }
                 }
