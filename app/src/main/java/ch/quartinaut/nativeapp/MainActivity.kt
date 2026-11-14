@@ -426,7 +426,7 @@ private fun QuartinautApp(repo: QuartinautRepository,
             )
         }) {
             when(page) {
-                "home" -> NativeOriginalHome(repo, navTo,openRequest)
+                "home" -> NativeOriginalHome(repo, navTo,openRequest,openHub)
                 "board" -> BulletinPage(repo, navTo, openRequest)
                 "plus" -> HubPage(repo, navTo)
                 "chats" -> NativePrivateChatsPage(repo)
@@ -486,7 +486,7 @@ private fun QuartinautApp(repo: QuartinautRepository,
                 else -> {
                     if(page.startsWith("hub-create:")) {
                         NativeCreateHubPage(repo,page.substringAfter(":")) { navTo("plus") }
-                    } else NativeOriginalHome(repo,navTo,openRequest)
+                    } else NativeOriginalHome(repo,navTo,openRequest,openHub)
                 }
             }
             if (repo.busy) LinearProgressIndicator(Modifier.fillMaxWidth().align(Alignment.TopCenter))
