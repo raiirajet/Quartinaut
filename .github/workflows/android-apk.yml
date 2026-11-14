@@ -50,6 +50,8 @@ jobs:
         run: |
           node --check functions/enhancements/index.js
           node --test functions/enhancements/test/validators.test.js
+      - name: Validate official Swiss dates, regional scope and source evidence
+        run: python3 -m unittest discover -s scripts -p 'test_official_calendar.py' -v
       - name: Verify Firestore and Storage rules in emulators
         run: |
           npm ci --prefix firebase/rules-tests
@@ -60,7 +62,7 @@ jobs:
       - name: Package native Android Studio sources and original images
         run: |
           zip -q -r Quartinaut_Native_Quellcode.zip \
-            README.md ANDROID_STATUS.md AUDIT_NATIVE_54_2026-11-13.md FIREBASE_NATIVE_FOUNDATION.md CHAT_SECURITY_AND_MEDIA.md audit .gitignore \
+            README.md OFFICIAL_EVENTS_DATA.md ANDROID_STATUS.md AUDIT_NATIVE_54_2026-11-13.md FIREBASE_NATIVE_FOUNDATION.md CHAT_SECURITY_AND_MEDIA.md audit .gitignore \
             settings.gradle.kts build.gradle.kts gradle.properties firebase.json .firebaserc \
             scripts app/build.gradle.kts app/google-services.json app/src firebase \
             functions/appearance functions/nativeChats functions/enhancements \
