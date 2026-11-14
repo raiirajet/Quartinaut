@@ -417,11 +417,6 @@ fun NativeHubDetail(
     val v50=item["v50ReservationMode"]==true
     val paths=(item["photoPaths"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
     val published=DocString(item["status"])=="published"
-    var showComments by remember(id) { mutableStateOf(false) }
-    var comments by remember(id) { mutableStateOf<List<Map<String,Any?>>>(emptyList()) }
-    var commentInput by remember(id) { mutableStateOf("") }
-    var liked by remember(id) { mutableStateOf<Boolean?>(null) }
-    var likedCount by remember(id) { mutableStateOf(0) }
     val context=LocalContext.current
     val zurich=java.time.ZoneId.of("Europe/Zurich")
     var loanFrom by remember(id) {
@@ -612,49 +607,12 @@ fun NativeHubDetail(
         }
         if(published && kind !in listOf("issue","calendar")) {
             HorizontalDivider()
-            Text("Reaktionen und Kommentare",
-                style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
-            OutlinedButton(onClick={
-                repo.reactionAction("like.toggle","hub",id){ response->
-                    val summary=response["summary"] as? Map<*, *>
-                    liked=summary?.get("liked")==true
-                    likedCount=(summary?.get("likes") as? Number)?.toInt() ?: likedCount
-                }
-            }) { Text((if(liked==true)"♥" else "♡") + " Gefällt mir" +
-                (if(likedCount>0)" ($likedCount)" else "")) }
-            TextButton(onClick={
-                showComments=!showComments
-                if(showComments) repo.reactionAction("comments.list","hub",id){ result ->
-                    val list=result["comments"] as? List<*> ?: emptyList<Any>()
-                    comments=list.mapNotNull{ row -> (row as? Map<*, *>)?.entries?.associate {
-                        DocString(it.key) to it.value
-                    }}
-                }
-            }) { Text(if(showComments)"Kommentare ausblenden" else "Kommentare anzeigen") }
-            if(showComments) {
-                if(comments.isEmpty()) Text("Noch keine sichtbaren Kommentare.")
-                comments.forEach { entry ->
-                    Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)) {
-                        Column(Modifier.fillMaxWidth().padding(12.dp)) {
-                            Text(DocString(entry["authorName"]),fontWeight=FontWeight.SemiBold)
-                            Text(DocString(entry["text"]))
-                        }
-                    }
-                }
-                OutlinedTextField(commentInput,{commentInput=it.take(400)},
-                    label={Text("Kommentar")},minLines=2,modifier=Modifier.fillMaxWidth())
-                Button(onClick={
-                    repo.reactionAction("comment.create","hub",id,
-                        mapOf("text" to commentInput.trim())) {
-                        commentInput=""
-                        repo.reactionAction("comments.list","hub",id){ result ->
-                            comments=(result["comments"] as? List<*>)?.mapNotNull { row ->
-                                (row as? Map<*, *>)?.entries?.associate { DocString(it.key) to it.value }
-                            } ?: emptyList()
-                        }
-                    }
-                },enabled=commentInput.trim().length in 2..400) { Text("Kommentar senden") }
-            }
+            NativeReactionsPanel(
+                repo,"hub",id,
+                initialLikes=(item["likeCount"] as? Number)?.toInt()
+                    ?: (item["likes"] as? Number)?.toInt() ?: 0,
+                initialLiked=item["likedByMe"] as? Boolean
+            )
         }
     }
 }
@@ -667,9 +625,6 @@ fun NativeRequestDetail(
 ) {
     val paths=(doc.get("photoPaths") as? List<*>)?.filterIsInstance<String>() ?: emptyList()
     val id=doc.id
-    var comments by remember(id) { mutableStateOf<List<Map<String,Any?>>>(emptyList()) }
-    var showComments by remember(id) { mutableStateOf(false) }
-    var text by remember(id) { mutableStateOf("") }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement=Arrangement.spacedBy(12.dp)) {
         TextButton(onClick=onClose) { Text("← Schwarzes Brett") }
@@ -691,40 +646,11 @@ fun NativeRequestDetail(
                 Text("Privaten Chat starten")
             }
         }
-        OutlinedButton(onClick={
-            repo.reactionAction("like.toggle","request",id){ }
-        }) { Text("♡ Gefällt mir") }
-        TextButton(onClick={
-            showComments=!showComments
-            if(showComments) repo.reactionAction("comments.list","request",id){ result ->
-                val rows=result["comments"] as? List<*> ?: emptyList<Any>()
-                comments=rows.mapNotNull { r ->
-                    (r as? Map<*, *>)?.entries?.associate { DocString(it.key) to it.value }
-                }
-            }
-        }) { Text(if(showComments) "Kommentare ausblenden" else "Kommentare anzeigen") }
-        if(showComments) {
-            comments.forEach { entry ->
-                Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)) {
-                    Column(Modifier.fillMaxWidth().padding(12.dp)) {
-                        Text(DocString(entry["authorName"]),fontWeight=FontWeight.Bold)
-                        Text(DocString(entry["text"]))
-                    }
-                }
-            }
-            OutlinedTextField(text,{text=it.take(400)},label={Text("Kommentar")},
-                modifier=Modifier.fillMaxWidth(),minLines=2)
-            Button(onClick={
-                repo.reactionAction("comment.create","request",id,mapOf("text" to text.trim())) {
-                    text=""
-                    repo.reactionAction("comments.list","request",id){ data ->
-                        val rows=data["comments"] as? List<*> ?: emptyList<Any>()
-                        comments=rows.mapNotNull { r ->
-                            (r as? Map<*, *>)?.entries?.associate { DocString(it.key) to it.value }
-                        }
-                    }
-                }
-            },enabled=text.trim().length in 2..400) { Text("Kommentar senden") }
-        }
+        NativeReactionsPanel(
+            repo,"request",id,
+            initialLikes=(doc.get("likeCount") as? Number)?.toInt()
+                ?: (doc.get("likes") as? Number)?.toInt() ?: 0,
+            initialLiked=doc.get("likedByMe") as? Boolean
+        )
     }
 }
