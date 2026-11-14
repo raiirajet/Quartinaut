@@ -116,20 +116,14 @@ fun NativePrivateChatsPage(repo: QuartinautRepository) {
                 }
             }
             HorizontalDivider(color=Color(0xFF375445))
-            val messageRecords:List<Map<String,Any?>> =
-                if(repo.serverChatActive) repo.serverMessages.map { row ->
-                    mapOf("id" to DocString(row["id"]),
-                        "sender" to DocString(row["senderUid"]),
-                        "text" to DocString(row["text"]),
-                        "createdAt" to DocString(row["createdAt"]),
-                        "messageType" to DocString(row["messageType"]),
-                        "mediaPath" to DocString((row["media"] as? Map<*,*>)?.get("storagePath")))
-                } else repo.messages.map { msg ->
-                    mapOf("id" to msg.id,"sender" to msg.str("senderUid"),
-                        "text" to msg.str("text"),"createdAt" to msg.str("createdAt"),
-                        "messageType" to msg.str("messageType"),
-                        "mediaPath" to DocString((msg.get("media") as? Map<*,*>)?.get("storagePath")))
-                }
+            val messageRecords:List<Map<String,Any?>> = repo.serverMessages.map { row ->
+                mapOf("id" to DocString(row["id"]),
+                    "sender" to DocString(row["senderUid"]),
+                    "text" to DocString(row["text"]),
+                    "createdAt" to DocString(row["createdAt"]),
+                    "messageType" to DocString(row["messageType"]),
+                    "mediaPath" to DocString((row["media"] as? Map<*,*>)?.get("storagePath")))
+            }
             LazyColumn(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(11.dp),
                 contentPadding=PaddingValues(top=6.dp,bottom=10.dp)) {
                 items(messageRecords,key={DocString(it["id"])}) { msg ->
@@ -175,9 +169,8 @@ fun NativePrivateChatsPage(repo: QuartinautRepository) {
                     placeholder={Text("Nachricht schreiben")},label={Text("Nachricht")},
                     minLines=1,maxLines=4,shape=RoundedCornerShape(18.dp))
                 Button(onClick={
-                    if(repo.serverChatActive)repo.sendServerChat(draft){draft=""}
-                    else repo.sendChat(draft){draft=""}
-                },enabled=draft.isNotBlank()&&!repo.busy,
+                    repo.sendServerChat(draft){draft=""}
+                },enabled=draft.isNotBlank()&&repo.serverChatActive&&!repo.busy,
                     modifier=Modifier.height(56.dp).width(60.dp),
                     contentPadding=PaddingValues(0.dp),shape=RoundedCornerShape(18.dp)) {
                     Icon(Icons.AutoMirrored.Filled.Send,"Senden")

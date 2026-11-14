@@ -47,6 +47,11 @@ private fun ToolCard(title:String,subtitle:String,content:@Composable ColumnScop
         }
     }
 }
+internal fun loanTimeZurich(raw:String):String = runCatching {
+    java.time.Instant.parse(raw).atZone(java.time.ZoneId.of("Europe/Zurich"))
+        .format(java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"))
+}.getOrElse { "Ungültige Zeitangabe" }
+
 @Composable
 fun NativeLoanPlanner(repo:QuartinautRepository,navigate:(String)->Unit) {
     LaunchedEffect(Unit){repo.loadV50("loan.list")}
@@ -55,7 +60,7 @@ fun NativeLoanPlanner(repo:QuartinautRepository,navigate:(String)->Unit) {
         verticalArrangement=Arrangement.spacedBy(10.dp)) {
         Text("Ausleih-Kalender",color=MaterialTheme.colorScheme.onSurface,
             style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold)
-        Text("Anfragen, verfügbare Zeiträume und Rückgaben an einem Ort.",
+        Text("Tatsächliche Anfragen und Rückgaben – keine Inserateliste.",
             color=TMute)
         Row(horizontalArrangement=Arrangement.spacedBy(10.dp)) {
             OutlinedButton(onClick={repo.loadV50("loan.list")}){Text("Aktualisieren")}
@@ -66,17 +71,26 @@ fun NativeLoanPlanner(repo:QuartinautRepository,navigate:(String)->Unit) {
                 color=MaterialTheme.colorScheme.error,
                 style=MaterialTheme.typography.bodySmall)
         }
-        Text("Angebote sind keine Buchungen. Hier erscheinen Anfragen erst, nachdem jemand einen fremden Artikel ausgeliehen hat.",
+        Text("Ein veröffentlichtes Leihangebot ist noch keine Buchung. Erst gesendete Anfragen erscheinen hier.",
             color=TMute,style=MaterialTheme.typography.bodySmall)
+        if(repo.v50Loading) LinearProgressIndicator(Modifier.fillMaxWidth())
         LazyColumn(verticalArrangement=Arrangement.spacedBy(12.dp)) {
             items(rows) { loan ->
                 val uid=repo.user?.uid
                 val owner=DocString(loan["ownerUid"])==uid
                 val status=DocString(loan["status"])
+                val readableStatus=when(status) {
+                    "requested"->"Angefragt"
+                    "accepted"->"Angenommen"
+                    "declined"->"Abgelehnt"
+                    "cancelled"->"Storniert"
+                    "returned"->"Zurückgegeben"
+                    else->"Unbekannt"
+                }
                 ToolCard(
-                    "Ausleihe · "+status,
-                    DocString(loan["from"]).take(16).replace('T',' ')+" – "+
-                        DocString(loan["to"]).take(16).replace('T',' ')+
+                    "Ausleihe · "+readableStatus,
+                    loanTimeZurich(DocString(loan["from"]))+" – "+
+                        loanTimeZurich(DocString(loan["to"]))+
                         (if(owner)" · du verleihst" else " · du leihst")
                 ){
                     Text("Buchungs-ID: "+DocString(loan["id"]),
@@ -109,7 +123,7 @@ fun NativeLoanPlanner(repo:QuartinautRepository,navigate:(String)->Unit) {
                     }
                 }
             }
-            if(rows.isEmpty())item {
+            if(rows.isEmpty()&&!repo.v50Loading)item {
                 Text(if(repo.v50Error.isNotBlank())
                     "Es konnten keine Buchungen abgerufen werden."
                     else "Noch keine Ausleihanfragen. Öffne ein fremdes Leihangebot und wähle „Ausleihe anfragen“.",

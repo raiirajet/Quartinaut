@@ -430,7 +430,7 @@ private fun QuartinautApp(repo: QuartinautRepository,
                 "request-detail" -> selectedRequest?.let { doc ->
                     NativeRequestDetail(repo,doc,goBack,{repo.openRequestChat(doc){navTo("chats")}})
                 }
-                "hub-detail" -> NativeHubDetail(repo,selectedHubItem,goBack,{navTo("enh-loans")})
+                "hub-detail" -> NativeHubDetail(repo,selectedHubItem,goBack,{navTo("enh-loans")},{navTo("enh-posts")})
                 "map" -> RegionPage(repo,mapCanton,mapMunicipality,
                     {mapCanton=it;mapMunicipality=""},{mapMunicipality=it},
                     {navTo("municipal-compare")})
@@ -826,47 +826,6 @@ private fun DocumentsPage(repo: QuartinautRepository, header:String, rows:List<D
     }
 }
 @Composable
-private fun ChatsPage(repo: QuartinautRepository) {
-    var input by remember(repo.chatId) { mutableStateOf("") }
-    if(repo.chatId.isNotBlank()) {
-        Column(Modifier.fillMaxSize().padding(14.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-            TextButton(onClick=repo::closeChat) { Text("← Zur Chatübersicht") }
-            val active=repo.chats.find{it.id==repo.chatId}
-            Text(active?.str("requestTitle") ?: "Privater Chat",style=MaterialTheme.typography.titleLarge)
-            LazyColumn(modifier=Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                items(repo.messages,key={it.id}) { doc ->
-                    val mine=doc.str("senderUid") == repo.user?.uid
-                    Surface(color=if(mine) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface,
-                        shape=RoundedCornerShape(12.dp), modifier=Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(12.dp)) {
-                            Text(doc.str("text"))
-                            Text(if(mine) "Du" else "Nachricht",style=MaterialTheme.typography.labelSmall,color=Color.Gray)
-                        }
-                    }
-                }
-            }
-            Row(verticalAlignment=Alignment.CenterVertically) {
-                OutlinedTextField(input,{input=it.take(500)}, modifier=Modifier.weight(1f),
-                    label={Text("Nachricht")}, maxLines=3)
-                IconButton(onClick={repo.sendChat(input) { input = "" }},enabled=input.isNotBlank()) {
-                    Icon(Icons.Default.Send,"Senden",tint=Forest)
-                }
-            }
-        }
-    } else {
-        Column(Modifier.fillMaxSize().padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
-            SectionTitle("Private Chats","Nur die beiden Teilnehmenden haben Zugriff.")
-            LazyColumn(verticalArrangement=Arrangement.spacedBy(10.dp)) {
-                items(repo.chats,key={it.id}) { chat ->
-                    Panel(chat.str("requestTitle").ifBlank{"Unterhaltung"},chat.str("lastMessagePreview"),
-                        chat.str("lastMessageAt").take(10)) {repo.openChat(chat)}
-                }
-                if(repo.chats.isEmpty()) item {Text("Noch keine privaten Chats vorhanden.")}
-            }
-        }
-    }
-}
-@Composable
 private fun ProfilePage(repo: QuartinautRepository, go:(String)->Unit) = ScrollPage {
     SectionTitle(repo.displayName(), "Dein Quartinaut-Konto")
     Panel("Meine Gemeinde",repo.area(), "Kanton " + repo.canton())
@@ -1017,8 +976,8 @@ private fun V50Page(repo: QuartinautRepository, page:String,go:(String)->Unit) {
                         }
                         Text("Status: "+readableStatus)
                         if(page=="v50loans") {
-                            Text("Zeitraum: "+DocString(entry["from"]).take(16).replace('T',' ')+
-                                " – "+DocString(entry["to"]).take(16).replace('T',' '),
+                            Text("Zeitraum: "+loanTimeZurich(DocString(entry["from"]))+
+                                " – "+loanTimeZurich(DocString(entry["to"])),
                                 style=MaterialTheme.typography.bodySmall)
                         }
                         val id=DocString(entry["id"])

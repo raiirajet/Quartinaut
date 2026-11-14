@@ -203,7 +203,7 @@ fun NativeCreateHubPage(
                         supportingText={Text(description.length.toString()+" / 1200 Zeichen")})
                     if(kind in listOf("market","lend")) {
                         OutlinedTextField(price,{price=it;error=""},
-                            modifier=Modifier.fillMaxWidth(),label={Text("Preis in CHF (0 = kostenlos)")},
+                            modifier=Modifier.fillMaxWidth(),label={Text(if(kind=="lend") "Preis pro Ausleihtag in CHF (0 = kostenlos)" else "Preis in CHF (0 = kostenlos)")},
                             singleLine=true)
                         if(!priceValid)Text("Bitte einen Betrag von 0 bis 100'000 CHF mit maximal zwei Nachkommastellen eingeben.",
                             color=Color(0xFFFFB4AB),
@@ -245,7 +245,7 @@ fun NativeCreateHubPage(
                         style=MaterialTheme.typography.titleLarge)
                     Text(description.trim(),color=MaterialTheme.colorScheme.onSurface)
                     if(kind in listOf("market","lend"))
-                        Text("Preis: CHF "+price.trim(),color=green)
+                        Text(if(kind=="lend") "CHF "+price.trim()+" / Tag" else "Preis: CHF "+price.trim(),color=green)
                     if(date.isNotBlank())
                         Text("Termin: "+localDate,color=MaterialTheme.colorScheme.onSurface)
                     if(venue.isNotBlank())
@@ -315,7 +315,8 @@ fun NativeCreateHubPage(
 @Composable
 fun NativeHubDetail(
     repo: QuartinautRepository, item: Map<String,Any?>,
-    onClose: () -> Unit, onShowLoans: () -> Unit
+    onClose: () -> Unit, onShowLoans: () -> Unit,
+    onManagePosts: () -> Unit
 ) {
     val id=DocString(item["id"])
     val kind=DocString(item["kind"])
@@ -345,11 +346,11 @@ fun NativeHubDetail(
     }
     val loanStartInstant=loanFrom.atTime(loanFromHour,0).atZone(zurich).toInstant()
     val loanEndInstant=loanTo.atTime(loanToHour,0).atZone(zurich).toInstant()
-    val loanAvailability=DocString(item["availability"]).lowercase()
-    val loanAvailable=loanAvailability !in listOf("reserved","unavailable","lent","closed")
+    val loanAvailability=DocString(item["availability"]).trim().lowercase()
+    val loanAvailable=loanAvailability=="available"
     val loanValid=loanStartInstant.isAfter(Instant.now()) &&
         loanEndInstant.isAfter(loanStartInstant) &&
-        loanEndInstant.isBefore(Instant.now().plus(180,ChronoUnit.DAYS))
+        !loanEndInstant.isAfter(loanStartInstant.plus(180,ChronoUnit.DAYS))
     val dateFormat=java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy")
     var holdMinutes by remember(id) { mutableIntStateOf(60) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
@@ -404,7 +405,8 @@ fun NativeHubDetail(
                         "reserved"->"Reserviert"
                         "unavailable"->"Nicht verfügbar"
                         "lent"->"Ausgeliehen"
-                        else->DocString(item["availability"]).ifBlank{"Nicht angegeben"}
+                        "completed","closed"->"Abgeschlossen"
+                        else->"Unbekannt / nicht verfügbar"
                     }
                     Text("Verfügbarkeit: "+availability)
                 }
@@ -508,9 +510,13 @@ fun NativeHubDetail(
         if(owner) {
             Text("Das ist dein eigener Quartier+-Eintrag. Du kannst deinen eigenen Artikel nicht ausleihen.",
                 style=MaterialTheme.typography.bodySmall)
-            if(kind=="lend") OutlinedButton(onClick=onShowLoans,
-                modifier=Modifier.fillMaxWidth()) {
-                Text("Meine Ausleihanfragen und Rückgaben")
+            if(kind=="lend") {
+                OutlinedButton(onClick=onManagePosts,modifier=Modifier.fillMaxWidth()) {
+                    Text("Eigenes Leihangebot in „Meine Beiträge“ verwalten")
+                }
+                OutlinedButton(onClick=onShowLoans,modifier=Modifier.fillMaxWidth()) {
+                    Text("Meine Ausleihanfragen und Rückgaben")
+                }
             }
         }
         if(published && kind !in listOf("issue","calendar")) {

@@ -90,6 +90,8 @@ class QuartinautRepository(context: Context) {
         private set
     var enhancementError by mutableStateOf("")
         private set
+    var enhancementReady by mutableStateOf(false)
+        private set
     var communitySettings by mutableStateOf<Map<String,Any?>>(emptyMap())
         private set
     var v50Items by mutableStateOf<List<Map<String,Any?>>>(emptyList())
@@ -141,7 +143,7 @@ class QuartinautRepository(context: Context) {
                 serverChatReady = false; serverChatLoading = false; serverChatActive = false
                 hubItems = emptyList(); v50Items = emptyList(); v50Error = ""; v50Loading=false
                 offlineHubItems=emptyList();offlineCacheDate=""
-                enhancedItems=emptyList();enhancementLoading=false;enhancementError=""
+                enhancedItems=emptyList();enhancementLoading=false;enhancementError="";enhancementReady=false
                 chatId = ""
                 dashboardBackground = null
                 dashboardBackgroundStatus = "checking"
@@ -455,7 +457,7 @@ class QuartinautRepository(context: Context) {
                 } }
             }.addOnFailureListener { e ->
                 v50Loading=false
-                v50Error = e.localizedMessage ?: "Der Buchungsdienst konnte nicht geladen werden."
+                v50Error = callableDiagnostic(e, "Der Buchungsdienst konnte nicht geladen werden.")
                 syncIssues = syncIssues + ("Ausleih-/Reservationsdienst" to v50Error)
             }
     }
@@ -467,7 +469,7 @@ class QuartinautRepository(context: Context) {
             .addOnCompleteListener {
                 busy = false
                 if (!it.isSuccessful) {
-                    v50Error = it.exception?.localizedMessage ?: "Aktion fehlgeschlagen."
+                    v50Error = callableDiagnostic(it.exception, "Aktion fehlgeschlagen.")
                     message = "Die Buchung wurde nicht gespeichert: " + v50Error
                     syncIssues = syncIssues + ("Ausleih-/Reservationsdienst" to v50Error)
                 } else {
@@ -522,29 +524,6 @@ class QuartinautRepository(context: Context) {
         // the server's validation path and triggers production permission errors.
         startServerRequestChat(request,onOpen)
     }
-    fun openChat(chat: DocumentSnapshot) {
-        serverChatActive=false
-        activeChatListener?.remove()
-        activeChatListener = null
-        chatId = chat.id
-        messages = emptyList()
-        val uid = user?.uid ?: return
-        val openedChatId = chat.id
-        activeChatListener = db.collection("chatMessages")
-            .whereEqualTo("chatId", openedChatId)
-            .orderBy("createdAt", Query.Direction.ASCENDING)
-            .limit(250)
-            .addSnapshotListener { snapshots, error ->
-                if(user?.uid != uid || chatId != openedChatId) return@addSnapshotListener
-                if(error != null) {
-                    message = error.localizedMessage ?: "Chatnachrichten konnten nicht geladen werden."
-                    return@addSnapshotListener
-                }
-                messages = (snapshots?.documents ?: emptyList()).filter {
-                    (it.get("participants") as? List<*>)?.contains(uid) == true
-                }
-            }
-    }
     fun closeChat() {
         activeChatListener?.remove()
         activeChatListener = null
@@ -552,33 +531,6 @@ class QuartinautRepository(context: Context) {
         messages = emptyList()
         serverMessages=emptyList()
         serverChatActive=false
-    }
-    fun sendChat(text: String, onSent: () -> Unit = {}) {
-        val uid = user?.uid ?: return
-        val chat = chats.find { it.id == chatId } ?: return
-        if (text.isBlank()) return
-        val participants = (chat.get("participants") as? List<*>)?.map { DocString(it) } ?: return
-        val recipient = participants.firstOrNull { it != uid } ?: return
-        val id = "msg_" + UUID.randomUUID().toString().replace("-", "")
-        val now = isoNow()
-        val data = hashMapOf<String, Any>(
-            "id" to id, "chatId" to chat.id, "requestId" to chat.str("requestId"),
-            "requestTitle" to chat.str("requestTitle"), "requestOwnerUid" to chat.str("requestOwnerUid"),
-            "senderUid" to uid, "recipientUid" to recipient,
-            "participants" to participants, "participantLabels" to (chat.get("participantLabels") ?: emptyMap<String, String>()),
-            "text" to text.trim().take(500), "createdAt" to now, "readAt" to "", "deliveryStatus" to "sent")
-        db.collection("chatMessages").document(id).set(data).addOnCompleteListener {
-            if (!it.isSuccessful) message = it.exception?.localizedMessage ?: "Nachricht fehlgeschlagen."
-            else {
-                onSent()
-                db.collection("chats").document(chat.id).update(mapOf("lastMessageAt" to now,
-                    "lastMessagePreview" to text.take(120), "lastSenderUid" to uid,
-                    "readBy." + uid to now)).addOnFailureListener { e ->
-                    message = "Nachricht gesendet, aber Vorschau konnte nicht synchronisiert werden: " +
-                        (e.localizedMessage ?: "Netzwerkfehler")
-                }
-            }
-        }
     }
     /**
      * Calls existing protected callable APIs. The Android client never writes
@@ -800,6 +752,11 @@ class QuartinautRepository(context: Context) {
             (value as? Map<*, *>)?.entries?.associate { DocString(it.key) to it.value }
         } ?: emptyList()
     }
+    private fun callableDiagnostic(error: Exception?, fallback: String): String {
+        val code=(error as? com.google.firebase.functions.FirebaseFunctionsException)?.code?.name
+        val detail=error?.localizedMessage?.takeIf { it.isNotBlank() } ?: fallback
+        return if(code!=null) "Firebase $code: $detail" else detail
+    }
     private fun chatApiUnavailable(error: Exception?): Boolean {
         return error is com.google.firebase.functions.FirebaseFunctionsException &&
             (error.code == com.google.firebase.functions.FirebaseFunctionsException.Code.NOT_FOUND ||
@@ -825,8 +782,7 @@ class QuartinautRepository(context: Context) {
                     serverChatReady=false
                     val explanation=if(chatApiUnavailable(result.exception))
                         "Der geschützte Chat-Dienst ist noch nicht auf Firebase veröffentlicht."
-                    else result.exception?.localizedMessage
-                        ?: "Chat-Dienst nicht erreichbar."
+                    else callableDiagnostic(result.exception, "Chat-Dienst nicht erreichbar.")
                     syncIssues=syncIssues + ("Privater Chat-Dienst" to explanation)
                 }
             }
@@ -853,7 +809,7 @@ class QuartinautRepository(context: Context) {
                     markServerChatRead()
                 } else {
                     syncIssues=syncIssues + ("Chatnachrichten" to
-                        (task.exception?.localizedMessage ?: "Nachrichten nicht erreichbar."))
+                        callableDiagnostic(task.exception, "Nachrichten nicht erreichbar."))
                 }
             }
     }
@@ -875,7 +831,8 @@ class QuartinautRepository(context: Context) {
                 refreshServerMessages()
                 loadServerChats()
             } else {
-                message=task.exception?.localizedMessage ?: "Nachricht konnte nicht gesendet werden."
+                message=callableDiagnostic(task.exception, "Nachricht konnte nicht gesendet werden.")
+                syncIssues=syncIssues + ("Private Chats" to message)
             }
         }
     }
@@ -910,7 +867,8 @@ class QuartinautRepository(context: Context) {
                 onSent();refreshServerMessages();loadServerChats()
             } else {
                 objectRef.delete()
-                message=task.exception?.localizedMessage ?: "Chatbild konnte nicht gesendet werden."
+                message=callableDiagnostic(task.exception, "Chatbild konnte nicht gesendet werden.")
+                syncIssues=syncIssues + ("Private Chats" to message)
             }
         }
     }
@@ -937,7 +895,10 @@ class QuartinautRepository(context: Context) {
             if(user?.uid!=uid)return@addOnCompleteListener
             busy=false
             if(task.isSuccessful) {loadServerChats();refreshServerMessages()}
-            else message=task.exception?.localizedMessage ?: "Chat-Einstellung konnte nicht gespeichert werden."
+            else {
+                message=callableDiagnostic(task.exception, "Chat-Einstellung konnte nicht gespeichert werden.")
+                syncIssues=syncIssues + ("Private Chats" to message)
+            }
         }
     }
 
@@ -954,7 +915,10 @@ class QuartinautRepository(context: Context) {
             if(user?.uid!=uid)return@addOnCompleteListener
             busy=false
             if(task.isSuccessful) {message="Meldung wurde sicher übermittelt.";onDone()}
-            else message=task.exception?.localizedMessage ?: "Meldung konnte nicht übermittelt werden."
+            else {
+                message=callableDiagnostic(task.exception, "Meldung konnte nicht übermittelt werden.")
+                syncIssues=syncIssues + ("Private Chats" to message)
+            }
         }
     }
 
@@ -965,6 +929,10 @@ class QuartinautRepository(context: Context) {
         functions.getHttpsCallable("quartinautPrivateChats")
             .call(mapOf("action" to "read","chatId" to requestedChat))
             .addOnSuccessListener {if(user?.uid==uid)loadServerChats()}
+            .addOnFailureListener { e ->
+                if(user?.uid==uid)syncIssues=syncIssues + ("Chat-Lesestatus" to
+                    callableDiagnostic(e, "Lesestatus konnte nicht aktualisiert werden."))
+            }
     }
     fun startServerRequestChat(request:DocumentSnapshot,onOpen:()->Unit) {
         val uid=user?.uid ?:return
@@ -983,7 +951,8 @@ class QuartinautRepository(context: Context) {
                     loadServerChats()
                 }
             } else {
-                message=result.exception?.localizedMessage ?: "Chat konnte nicht eröffnet werden."
+                message=callableDiagnostic(result.exception, "Chat konnte nicht eröffnet werden.")
+                syncIssues=syncIssues + ("Private Chats" to message)
             }
         }
     }
@@ -1000,6 +969,7 @@ class QuartinautRepository(context: Context) {
         val uid=user?.uid ?: return
         if(!active())return
         enhancementLoading=true
+        enhancementReady=false
         enhancementError=""
         functions.getHttpsCallable("quartinautEnhancements")
             .call(args + ("action" to action))
@@ -1007,14 +977,16 @@ class QuartinautRepository(context: Context) {
                 if(user?.uid!=uid)return@addOnCompleteListener
                 enhancementLoading=false
                 if(!task.isSuccessful) {
+                    enhancementReady=false
                     val error=task.exception
                     enhancementError=if(
                         error is com.google.firebase.functions.FirebaseFunctionsException &&
                         error.code==com.google.firebase.functions.FirebaseFunctionsException.Code.NOT_FOUND
-                    ) "Erweiterungsdienst noch nicht veröffentlicht. Der neue Firebase-Code muss zuerst bereitgestellt werden."
-                    else error?.localizedMessage ?: "Erweiterung derzeit nicht verfügbar."
+                    ) "Firebase NOT_FOUND: Erweiterungsdienst noch nicht veröffentlicht."
+                    else callableDiagnostic(error, "Erweiterung derzeit nicht verfügbar.")
                     syncIssues=syncIssues + ("Erweiterungen" to enhancementError)
                 } else {
+                    enhancementReady=true
                     syncIssues=syncIssues - "Erweiterungen"
                     val payload=task.result?.data as? Map<*,*> ?: emptyMap<String,Any?>()
                     onDone(payload.entries.associate { DocString(it.key) to it.value })
@@ -1033,6 +1005,10 @@ class QuartinautRepository(context: Context) {
     fun updateMyPost(collection:String,id:String, action:String,
                      args:Map<String,Any?> = emptyMap(),
                      completed:()->Unit = {}) {
+        if(!enhancementReady || enhancementLoading) {
+            message="Beitragsverwaltung momentan nur lesbar. Bitte später erneut versuchen."
+            return
+        }
         enhancement(action,args + mapOf("collection" to collection,"id" to id)) {
             message="Beitrag wurde aktualisiert."
             loadHub()

@@ -185,7 +185,7 @@ fun NativeRadarScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
             "description" to doc.str("text"),"kind" to "request",
             "area" to doc.str("area"),"cantonCode" to doc.str("cantonCode"))
     }
-    val localFallback=repo.enhancementError.isNotBlank()
+    val localFallback=!repo.enhancementReady
     val localOrServer=if(localFallback)localPublicItems else repo.enhancedItems
     val shown=localOrServer.filter { row ->
         val kind=DocString(row["kind"])
@@ -244,10 +244,9 @@ fun NativeRadarScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
             }
         }
         if(repo.enhancementLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
-        if(repo.enhancementError.isNotBlank())
-            Text("Der erweiterte Radar-Dienst ist noch nicht erreichbar. " +
-                "Es werden nur die bereits geladenen öffentlichen Quartinaut-Beiträge angezeigt; " +
-                "keine vollständige oder live aktualisierte Suche.",
+        if(localFallback)
+            Text("Lokaler Fallback – unvollständig und schreibgeschützt. " +
+                "Nur bereits geladene öffentliche Beiträge; keine vollständige oder live aktualisierte Suche.",
                 color=PlusMuted,style=MaterialTheme.typography.bodySmall)
         LazyColumn(verticalArrangement=Arrangement.spacedBy(10.dp)) {
             items(shown) { row ->
@@ -263,7 +262,8 @@ fun NativeRadarScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
                 }
             }
             if(shown.isEmpty()&&!repo.enhancementLoading)item {
-                Text("Keine passenden Beiträge. Wechsle zum ganzen Kanton oder entferne Filter.",
+                Text(if(localFallback) "Lokal sind derzeit keine passenden öffentlichen Beiträge geladen; der Radar-Dienst ist nicht bestätigt erreichbar."
+                    else "Keine passenden Beiträge. Wechsle zum ganzen Kanton oder entferne Filter.",
                     color=PlusMuted)
             }
         }
@@ -279,7 +279,7 @@ fun NativeMyPostsScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
     var nextStatus by remember {mutableStateOf("")}
     LaunchedEffect(Unit) {repo.loadEnhancementList("posts.mine")}
     val uid=repo.user?.uid.orEmpty()
-    val readOnly=repo.enhancementError.isNotBlank()
+    val readOnly=!repo.enhancementReady || repo.enhancementLoading || repo.enhancementError.isNotBlank()
     val ownHub=repo.hubItems.filter {
         it["isMine"]==true || DocString(it["ownerUid"])==uid
     }
@@ -356,13 +356,17 @@ fun NativeMyPostsScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
                 }
             }
             if(visiblePosts.isEmpty())item {
-                Text(if(readOnly)"Keine eigenen Beiträge im bereits geladenen Datenbestand."
+                Text(if(readOnly)"Keine eigenen Beiträge im lokalen Datenbestand geladen. Dies ist kein vollständiger Serverabgleich."
                     else "Noch keine eigenen Beiträge gefunden.",color=PlusMuted)
             }
         }
     }
     if(editing!=null) {
         val row=editing!!
+        val rawEditPrice=editingPrice.trim().replace(',','.')
+        val editPriceValid=DocString(row["kind"]) !in listOf("lend","market") ||
+            (rawEditPrice.matches(Regex("""[0-9]+(\.[0-9]{1,2})?""")) &&
+                (rawEditPrice.toDoubleOrNull()?.let { it in 0.0..100000.0 } == true))
         AlertDialog(onDismissRequest={editing=null},
             title={Text("Beitrag bearbeiten")},
             text={
@@ -373,7 +377,7 @@ fun NativeMyPostsScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
                         label={Text("Beschreibung")},minLines=3)
                     if(DocString(row["kind"]) in listOf("market","lend"))
                         OutlinedTextField(editingPrice,{editingPrice=it},
-                            label={Text("Preis CHF")})
+                            label={Text(if(DocString(row["kind"])=="lend") "Preis pro Ausleihtag in CHF (0 = kostenlos)" else "Preis in CHF (0 = kostenlos)")})
                     Text("Änderungen an veröffentlichten Beiträgen müssen neu geprüft werden.",
                         style=MaterialTheme.typography.bodySmall)
                 }
@@ -386,10 +390,10 @@ fun NativeMyPostsScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
                         "title" to editingTitle.trim(),
                         "description" to editingBody.trim())
                     if(DocString(row["kind"]) in listOf("market","lend"))
-                        args["priceChf"]=editingPrice.replace(',','.').toDoubleOrNull() ?: -1.0
+                        args["priceChf"]=rawEditPrice.toDoubleOrNull() ?: -1.0
                     repo.updateMyPost(collection,DocString(row["id"]),"post.edit",args)
                     editing=null
-                },enabled=editingTitle.trim().length in 5..100 &&
+                },enabled=!readOnly && editPriceValid && editingTitle.trim().length in 5..100 &&
                     editingBody.trim().length in 12..1200) {Text("Speichern")}
             },
             dismissButton={TextButton(onClick={editing=null}) {Text("Abbrechen")}})
@@ -407,7 +411,7 @@ fun NativeMyPostsScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
                 repo.updateMyPost(collection,DocString(row["id"]),"post.status",
                     mapOf("status" to serverStatus))
                 statusTarget=null
-            }) {Text("Bestätigen")}},
+            },enabled=!readOnly) {Text("Bestätigen")}},
             dismissButton={TextButton(onClick={statusTarget=null}){Text("Abbrechen")}})
     }
 }
