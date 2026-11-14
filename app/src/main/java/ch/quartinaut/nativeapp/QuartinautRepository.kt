@@ -1058,6 +1058,10 @@ class QuartinautRepository(context: Context) {
         }
         val previous=myPostsItems
         val oldLoaded=myPostsLoaded
+        // Ignore responses from reads started before this write; they contain
+        // stale pre-edit values and used to reset the UI unexpectedly.
+        myPostsRequestSequence++
+        myPostsLoading=false
         val kind=if(collection=="requests")"request" else ""
         myPostsLoaded=true
         myPostsBusyIds=myPostsBusyIds+id
