@@ -154,6 +154,20 @@ internal fun quartierNavigationRoutes(): List<String> =
 internal fun quartierSectionTitle(id: String): String =
     quartierSections.firstOrNull { it.id == id }?.title ?: "Quartier+"
 
+/** Only action titles and descriptions are indexed, never private content. */
+internal fun quartierMatchingRoutes(term: String): List<Triple<String, String, String>> {
+    val needle = term.trim()
+    if (needle.isBlank()) return emptyList()
+    return quartierSections.flatMap { section ->
+        section.subsections.flatMap { subsection ->
+            subsection.links.filter { item ->
+                (item.title + " " + item.description + " " + subsection.title)
+                    .contains(needle, ignoreCase = true)
+            }.map { item -> Triple(item.route, item.title, section.title) }
+        }
+    }.take(12)
+}
+
 @Composable
 fun NativeQuartierOverview(repo: QuartinautRepository, navigate: (String) -> Unit) {
     Column(
