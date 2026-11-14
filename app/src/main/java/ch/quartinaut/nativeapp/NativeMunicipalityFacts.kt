@@ -223,13 +223,17 @@ internal fun queryCantonWappen(canton: Region, context: Context? = null): Map<St
             safeWappenUrl(data.optString(bfs))?.let { bfs to it }
         }.toMap()
     }.getOrDefault(emptyMap())
+    val codes=canton.municipalities.mapNotNull {
+        bfsLiteral(it.bfs).takeIf(String::isNotBlank)
+    }
+    if(codes.isEmpty())return emptyMap()
     val refreshedAt=preferences?.getLong(key+"_checked_at",0L) ?: 0L
-    if(refreshedAt>0 && System.currentTimeMillis()-refreshedAt<30L*86400*1000) {
-        cantonCoatCache[canton.code]=stored
+    val completeness=stored.size.toDouble()/codes.size.coerceAtLeast(1)
+    val ttl=if(completeness>=0.85) 30L*86400*1000 else 3L*60*60*1000
+    if(refreshedAt>0 && System.currentTimeMillis()-refreshedAt<ttl) {
+        if(stored.isNotEmpty()) cantonCoatCache[canton.code]=stored
         return stored
     }
-    val codes=canton.municipalities.mapNotNull { bfsLiteral(it.bfs).takeIf(String::isNotBlank) }
-    if(codes.isEmpty())return emptyMap()
     val coats=stored.toMutableMap()
     var allChunksLoaded=true
     for(chunk in codes.chunked(40)) {
@@ -245,7 +249,7 @@ internal fun queryCantonWappen(canton: Region, context: Context? = null): Map<St
         if(rows==null) {allChunksLoaded=false;continue}
         for(i in 0 until rows.length()) {
             val row=rows.optJSONObject(i) ?: continue
-            val bfs=binding(row,"bfs") ?: continue
+            val bfs=binding(row,"bfs")?.let(::bfsLiteral) ?: continue
             val image=safeWappenUrl(binding(row,"coat")) ?: continue
             coats[bfs]=image
         }
@@ -253,14 +257,13 @@ internal fun queryCantonWappen(canton: Region, context: Context? = null): Map<St
     for(bfs in codes) {
         if(bfs !in coats) verifiedWappenFallback(bfs)?.let { coats[bfs]=it }
     }
-    // Network failures are not cached as empty complete results: retry is
-    // possible on the next view. Successful queries are reused by map/list.
-    if(allChunksLoaded && coats.size*100 >= codes.size*85) {
+    // Preserve partial verified results across app launches. A missed network
+    // query is retried within hours, not silently held as an empty 30-day cache.
+    if(coats.isNotEmpty()) {
         cantonCoatCache[canton.code]=coats
-        preferences?.edit()
-            ?.putString(key,JSONObject(coats as Map<*,*>).toString())
-            ?.putLong(key+"_checked_at",System.currentTimeMillis())
-            ?.apply()
+        preferences?.edit()?.putString(key,JSONObject(coats as Map<*,*>).toString())
+            ?.putLong(key+"_checked_at",
+                if(allChunksLoaded)System.currentTimeMillis() else 0L)?.apply()
     }
     return coats
 }
@@ -323,7 +326,17 @@ internal fun MunicipalityCoat(
             loading={Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center) {
                 CircularProgressIndicator(Modifier.size(16.dp),strokeWidth=2.dp)
             }},
-            error={Spacer(Modifier.fillMaxSize())})
+            error={
+                Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center) {
+                    Text("–",style=MaterialTheme.typography.bodySmall,
+                        color=MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            })
+    } else {
+        Box(modifier,contentAlignment=Alignment.Center) {
+            Text("–",style=MaterialTheme.typography.bodySmall,
+                color=MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
 @Volatile private var sharedWappenLoader:ImageLoader?=null
