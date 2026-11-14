@@ -228,18 +228,33 @@ fun NativeMunicipalityMap(
     var zoom by remember(canton.code) { mutableFloatStateOf(1f) }
     val coats by produceState<Map<String,Bitmap>>(initialValue=emptyMap(),canton.code) {
         wappenLoading=true
+        val displayed=java.util.Collections.synchronizedMap(mutableMapOf<String,Bitmap>())
+        val priority=canton.municipalities.sortedBy {
+            if(it.bfs==selected?.bfs) 0 else 1
+        }
         try {
-            val urls=withContext(Dispatchers.IO) { queryCantonWappen(canton,context) }
-            val priority=canton.municipalities.sortedBy {
-                if(it.bfs==selected?.bfs) 0 else 1
+            // Offline SVGs are used immediately, before any potentially slow
+            // Wikidata/SPARQL call. The map stays usable if the network fails.
+            withContext(Dispatchers.IO) {
+                for(municipality in priority) {
+                    val packaged=bundledWappenAsset(context,municipality.bfs)
+                        ?: continue
+                    val bitmap=runCatching {
+                        wappenBitmap(context,imageLoader,packaged)
+                    }.getOrNull() ?: continue
+                    displayed[municipality.bfs]=bitmap
+                    if(displayed.size<=3 || displayed.size%6==0) value=displayed.toMap()
+                }
             }
-            // Fetch only known BFS-verified URLs here. Missing ones resolve on
-            // demand in the municipality list / facts card instead of spawning
-            // hundreds of slow network requests at once.
+            value=displayed.toMap()
+            val urls=withContext(Dispatchers.IO) {
+                queryCantonWappen(canton,context)
+            }
             val semaphore=Semaphore(3)
-            val completed=java.util.Collections.synchronizedMap(mutableMapOf<String,Bitmap>())
             coroutineScope {
-                priority.filter { urls.containsKey(it.bfs) }.map { municipality ->
+                priority.filter {
+                    it.bfs !in displayed && it.bfs in urls
+                }.map { municipality ->
                     launch {
                         semaphore.withPermit {
                             val url=urls[municipality.bfs] ?: return@withPermit
@@ -247,17 +262,17 @@ fun NativeMunicipalityMap(
                                 wappenBitmap(context,imageLoader,url)
                             }.getOrNull()
                             if(bitmap!=null) {
-                                completed[municipality.bfs]=bitmap
-                                // Small batches avoid hundreds of Compose recompositions.
-                                if(completed.size % 8 == 0) value=completed.toMap()
+                                displayed[municipality.bfs]=bitmap
+                                if(displayed.size<=3 || displayed.size%6==0)
+                                    value=displayed.toMap()
                             }
                         }
                     }
                 }.joinAll()
             }
-            value=completed.toMap()
+            value=displayed.toMap()
         } catch (_:Exception) {
-            // A failed third-party image provider never terminates the map UI.
+            value=displayed.toMap()
         } finally {
             wappenLoading=false
         }
