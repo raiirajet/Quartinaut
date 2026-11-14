@@ -158,7 +158,7 @@ internal fun quartierSectionTitle(id: String): String =
 fun NativeQuartierOverview(repo: QuartinautRepository, navigate: (String) -> Unit) {
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Text("Quartier+", style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold)
@@ -173,11 +173,11 @@ fun NativeQuartierOverview(repo: QuartinautRepository, navigate: (String) -> Uni
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                 tonalElevation = 1.dp
             ) {
-                Row(Modifier.fillMaxWidth().heightIn(min = 94.dp).padding(15.dp),
+                Row(Modifier.fillMaxWidth().heightIn(min = 80.dp).padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically) {
                     Surface(shape = RoundedCornerShape(14.dp),
                         color = MaterialTheme.colorScheme.primaryContainer) {
-                        Box(Modifier.size(52.dp), contentAlignment = Alignment.Center) {
+                        Box(Modifier.size(46.dp), contentAlignment = Alignment.Center) {
                             Icon(section.icon, contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onPrimaryContainer)
                         }
@@ -226,7 +226,9 @@ fun NativeQuartierCategoryPage(
         return
     }
     var query by rememberSaveable(sectionId) { mutableStateOf("") }
-    val expanded = remember(sectionId) { mutableStateMapOf<String, Boolean>() }
+    var expanded by rememberSaveable(sectionId) {
+        mutableStateOf(section.subsections.firstOrNull()?.id.orEmpty())
+    }
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -248,9 +250,9 @@ fun NativeQuartierCategoryPage(
             }
             if (matching.isNotEmpty()) {
                 visible += matching.size
-                val open = query.isNotBlank() || (expanded[subsection.id] ?: (index == 0))
+                val open = query.isNotBlank() || expanded == subsection.id
                 QuartierAccordion(subsection.title, subsection.description, matching.size,
-                    open, { expanded[subsection.id] = !open }) {
+                    open, { expanded = if (expanded == subsection.id) "" else subsection.id }) {
                     matching.forEach { QuartierActionRow(it, navigate) }
                 }
             }
@@ -264,7 +266,7 @@ fun NativeQuartierCategoryPage(
 @Composable
 fun NativeQuartierAllFeatures(repo: QuartinautRepository, navigate: (String) -> Unit) {
     var query by rememberSaveable { mutableStateOf("") }
-    val expanded = remember { mutableStateMapOf<String, Boolean>() }
+    var expanded by rememberSaveable { mutableStateOf("") }
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -289,9 +291,9 @@ fun NativeQuartierAllFeatures(repo: QuartinautRepository, navigate: (String) -> 
             }
             if (count > 0) {
                 found += count
-                val open = query.isNotBlank() || (expanded[section.id] ?: false)
+                val open = query.isNotBlank() || expanded == section.id
                 QuartierAccordion(section.title, section.description, count, open,
-                    { expanded[section.id] = !open }) {
+                    { expanded = if (expanded == section.id) "" else section.id }) {
                     section.subsections.forEach { sub ->
                         val options = sub.links.filter {
                             query.isBlank() || (it.title + " " + it.description)
