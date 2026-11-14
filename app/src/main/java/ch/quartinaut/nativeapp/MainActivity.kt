@@ -880,35 +880,43 @@ private fun RegionPage(repo: QuartinautRepository, selectedCode: String,selected
     LazyColumn(Modifier.fillMaxSize(), contentPadding=PaddingValues(16.dp),
         verticalArrangement=Arrangement.spacedBy(10.dp)) {
         item {
-            Row(verticalAlignment=Alignment.CenterVertically,
-                horizontalArrangement=Arrangement.spacedBy(12.dp)) {
-                if(canton!=null) MunicipalityCoat(cantonCoatByCode[canton.code],
-                    canton.name,Modifier.size(width=42.dp,height=54.dp))
-                Box(Modifier.weight(1f)) {
+            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,
+                horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+                Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(2.dp)) {
                     SectionTitle(if(canton==null) "Schweiz entdecken" else canton.name,
                         if(canton==null) "26 Kantone · 2'110 Gemeinden"
-                        else "${canton.code} · ${canton.municipalities.size} Gemeinden")
+                        else canton.code+" · "+canton.municipalities.size+" Gemeinden")
                 }
+                if(canton!=null) MunicipalityCoat(cantonCoatByCode[canton.code],
+                    canton.name,Modifier.size(width=34.dp,height=43.dp),
+                    cantonCode=canton.code)
             }
         }
         item {
-            Row(horizontalArrangement=Arrangement.spacedBy(7.dp)) {
-                OutlinedButton(onClick={
-                    if(ownCanton!=null && ownMunicipality!=null) {
-                        selectCanton(ownCanton.code)
-                        selectMunicipality(ownMunicipality.bfs)
-                    }
-                },enabled=ownCanton!=null&&ownMunicipality!=null) {
-                    Text("Meine Gemeinde")
+            Column(verticalArrangement=Arrangement.spacedBy(7.dp)) {
+                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick={
+                        if(ownCanton!=null && ownMunicipality!=null) {
+                            selectCanton(ownCanton.code)
+                            selectMunicipality(ownMunicipality.bfs)
+                        }
+                    },enabled=ownCanton!=null&&ownMunicipality!=null,
+                        modifier=Modifier.weight(1f)) {Text("Meine Gemeinde",maxLines=1)}
+                    OutlinedButton(onClick={selectCanton("")},
+                        modifier=Modifier.weight(1f)) {Text("Schweiz")}
                 }
-                OutlinedButton(onClick={selectCanton("")}) {Text("Schweiz")}
+                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,
+                    horizontalArrangement=Arrangement.spacedBy(7.dp)) {
+                    OutlinedButton(onClick=navigateComparison,modifier=Modifier.weight(1f)) {
+                        Text("Gemeinden vergleichen",maxLines=1)
+                    }
+                    if(canton!=null) TextButton(onClick={selectCanton("")}) {
+                        Text("← Alle Kantone",maxLines=1)
+                    }
+                }
             }
-            OutlinedButton(onClick=navigateComparison) {Text("Gemeinden vergleichen")}
         }
         if(canton!=null) {
-            item {
-                TextButton(onClick={selectCanton("")}) { Text("← Alle Kantone") }
-            }
             if(selected!=null) {
                 item { NativeMunicipalityFactCard(selected,canton,coatByBfs[selected.bfs]) }
             }
@@ -948,7 +956,8 @@ private fun RegionPage(repo: QuartinautRepository, selectedCode: String,selected
                         verticalAlignment=Alignment.CenterVertically,
                         horizontalArrangement=Arrangement.spacedBy(12.dp)) {
                         MunicipalityCoat(cantonCoatByCode[region.code],
-                            region.name,Modifier.size(width=34.dp,height=45.dp))
+                            region.name,Modifier.size(width=34.dp,height=45.dp),
+                            cantonCode=region.code)
                         Column(Modifier.weight(1f)) {
                             Text(region.name,fontWeight=FontWeight.SemiBold)
                             Text("${region.code} · ${region.municipalities.size} Gemeinden",
@@ -969,7 +978,8 @@ private fun RegionPage(repo: QuartinautRepository, selectedCode: String,selected
                         horizontalArrangement=Arrangement.spacedBy(13.dp)) {
                         MunicipalityCoat(coatByBfs[municipality.bfs] ?:
                             verifiedWappenFallback(municipality.bfs),
-                            municipality.name,Modifier.size(width=38.dp,height=48.dp))
+                            municipality.name,Modifier.size(width=38.dp,height=48.dp),
+                            bfs=municipality.bfs)
                         Column(Modifier.weight(1f)) {
                             Text(municipality.name,fontWeight=FontWeight.SemiBold)
                             Text("Kanton ${canton.code} · Wappen/Steckbrief",

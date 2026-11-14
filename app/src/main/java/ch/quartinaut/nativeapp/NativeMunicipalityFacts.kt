@@ -4,9 +4,6 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.background
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.Icon
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -50,8 +47,12 @@ internal data class MunicipalityFacts(
 
 private val municipalityFactCache=java.util.concurrent.ConcurrentHashMap<String,MunicipalityFacts>()
 private val cantonCoatCache=java.util.concurrent.ConcurrentHashMap<String,Map<String,String>>()
+private val individualCoatCache=java.util.concurrent.ConcurrentHashMap<String,String>()
+private val coatRetryAfter=java.util.concurrent.ConcurrentHashMap<String,Long>()
+private val resolvedWappenCache=java.util.concurrent.ConcurrentHashMap<String,String>()
 // Explicitly verified legacy emblem for Flawil, BFS 3402. No guessed arms.
 private val verifiedWappenFallbacks=mapOf(
+    "3401" to "https://commons.wikimedia.org/wiki/Special:FilePath/CHE%20Degersheim%20COA.svg",
     "3402" to "https://commons.wikimedia.org/wiki/Special:FilePath/CHE%20Flawil%20COA.svg"
 )
 internal fun verifiedWappenFallback(bfs:String):String?=verifiedWappenFallbacks[bfs]
@@ -71,6 +72,94 @@ private fun readWikidataQuery(query: String): JSONObject? {
     } catch (_: Exception) { null } finally { connection.disconnect() }
 }
 
+/** Read-only Wikidata/Commons API; check the exact BFS or canton code on each candidate. */
+private fun readWikimediaApi(url: String): JSONObject? {
+    var connection:HttpURLConnection?=null
+    return try {
+        connection=(URL(url).openConnection() as HttpURLConnection).apply {
+            connectTimeout=6500;readTimeout=9000
+            setRequestProperty("Accept","application/json")
+            setRequestProperty("User-Agent","Quartinaut/5.7.5 (Swiss reference; github.com/raiirajet/Quartinaut)")
+        }
+        if(connection.responseCode!=200) null
+        else JSONObject(connection.inputStream.bufferedReader().use {it.readText()})
+    } catch (_:Exception) {null} finally {connection?.disconnect()}
+}
+private fun wikidataClaim(entity:JSONObject, property:String):List<String> {
+    val statements=entity.optJSONObject("claims")?.optJSONArray(property) ?: return emptyList()
+    return (0 until statements.length()).mapNotNull {index ->
+        val item=statements.optJSONObject(index) ?: return@mapNotNull null
+        if(item.optString("rank")=="deprecated")return@mapNotNull null
+        item.optJSONObject("mainsnak")?.optJSONObject("datavalue")?.optString("value")
+            ?.takeIf(String::isNotBlank)
+    }
+}
+private fun statementCoat(property:String, code:String):String? {
+    if(!code.matches(Regex("[0-9]{1,4}|CH-[A-Z]{2}")))return null
+    val search="haswbstatement:\"$property=$code\""
+    val api="https://www.wikidata.org/w/api.php?action=query&format=json&list=search" +
+        "&srnamespace=0&srlimit=4&srsearch="+URLEncoder.encode(search,"UTF-8")
+    val rows=readWikimediaApi(api)?.optJSONObject("query")?.optJSONArray("search")
+        ?: return null
+    for(i in 0 until rows.length()) {
+        val id=rows.optJSONObject(i)?.optString("title").orEmpty()
+        if(!id.matches(Regex("Q[0-9]+")))continue
+        val lookup="https://www.wikidata.org/w/api.php?action=wbgetentities" +
+            "&format=json&props=claims&ids="+id
+        val entity=readWikimediaApi(lookup)?.optJSONObject("entities")
+            ?.optJSONObject(id) ?: continue
+        if(code !in wikidataClaim(entity,property))continue
+        val file=wikidataClaim(entity,"P94").firstOrNull() ?: continue
+        val path="https://commons.wikimedia.org/wiki/Special:FilePath/" +
+            URLEncoder.encode(file,"UTF-8").replace("+","%20")
+        safeWappenUrl(path)?.let{return it}
+    }
+    return null
+}
+internal fun queryWappenByBfs(bfs:String):String? {
+    val code=bfsLiteral(bfs)
+    if(code.isEmpty())return null
+    verifiedWappenFallback(code)?.let{return it}
+    individualCoatCache[code]?.let{return it}
+    if(System.currentTimeMillis()<(coatRetryAfter["B"+code]?:0L))return null
+    val result=statementCoat("P771",code)
+    if(result!=null)individualCoatCache[code]=result
+    else coatRetryAfter["B"+code]=System.currentTimeMillis()+15L*60*1000
+    return result
+}
+internal fun queryCantonCoat(code:String):String? {
+    if(!code.matches(Regex("[A-Z]{2}")))return null
+    cantonInsigniaCache[code]?.let{return it}
+    if(System.currentTimeMillis()<(coatRetryAfter["C"+code]?:0L))return null
+    val result=statementCoat("P300","CH-"+code)
+    if(result!=null)cantonInsigniaCache[code]=result
+    else coatRetryAfter["C"+code]=System.currentTimeMillis()+15L*60*1000
+    return result
+}
+/** Resolve Commons SVG to a PNG thumbnail with imageinfo before passing to Coil. */
+internal fun resolveWappenImage(url:String):String {
+    resolvedWappenCache[url]?.let{return it}
+    val original=safeWappenUrl(url) ?: return url
+    val uri=Uri.parse(original)
+    val filename=when {
+        uri.host=="commons.wikimedia.org" && uri.path.orEmpty().contains("Special:FilePath/") ->
+            Uri.decode(uri.path.orEmpty().substringAfter("Special:FilePath/"))
+        uri.host=="commons.wikimedia.org" && uri.path.orEmpty().startsWith("/wiki/File:") ->
+            Uri.decode(uri.path.orEmpty().substringAfter("/wiki/File:"))
+        else->return original
+    }.replace('_',' ')
+    val query="https://commons.wikimedia.org/w/api.php?action=query&format=json" +
+        "&prop=imageinfo&iiprop=url&iiurlwidth=180&titles="+
+        URLEncoder.encode("File:"+filename,"UTF-8")
+    val pages=readWikimediaApi(query)?.optJSONObject("query")?.optJSONObject("pages")
+        ?: return original
+    val page=pages.keys().asSequence().mapNotNull {pages.optJSONObject(it)}.firstOrNull()
+    val info=page?.optJSONArray("imageinfo")?.optJSONObject(0)
+    val resolved=safeWappenUrl(info?.optString("thumburl"))
+        ?: safeWappenUrl(info?.optString("url")) ?: original
+    resolvedWappenCache[url]=resolved
+    return resolved
+}
 private fun binding(row: JSONObject, key: String): String? =
     row.optJSONObject(key)?.optString("value")?.takeIf { it.isNotBlank() }
 
@@ -211,98 +300,110 @@ internal fun querySwissCantonWappen(cantons:List<Region>): Map<String,String> {
     }.toMap()
 }
 
+/** Emblems must be sourced from an exact official BFS or canton identifier.
+ * Never draw a generic grey shield as if it were a municipality's coat. */
 @Composable
 internal fun MunicipalityCoat(
-    url:String?, name:String,
-    modifier:Modifier=Modifier
+    url:String?, name:String, modifier:Modifier=Modifier,
+    bfs:String?=null, cantonCode:String?=null
 ) {
-    if(url.isNullOrBlank()) {
-        Box(modifier.background(MaterialTheme.colorScheme.surfaceVariant,
-            RoundedCornerShape(9.dp)),contentAlignment=Alignment.Center) {
-            Icon(Icons.Default.Shield,contentDescription="Wappen von $name nicht verfügbar",
-                tint=MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier=Modifier.size(28.dp))
+    val context=LocalContext.current
+    val resolved by produceState<String?>(initialValue=null,url,bfs,cantonCode) {
+        value=withContext(Dispatchers.IO) {
+            val source=safeWappenUrl(url) ?:
+                (bfs?.let(::queryWappenByBfs) ?: cantonCode?.let(::queryCantonCoat))
+            source?.let(::resolveWappenImage)
         }
-    } else {
-        val context=LocalContext.current
-        val loader=remember(context) { wappenLoader(context) }
-        SubcomposeAsyncImage(model=url,imageLoader=loader,
+    }
+    if(resolved!=null) {
+        val loader=remember(context.applicationContext) {wappenLoader(context)}
+        SubcomposeAsyncImage(model=resolved,imageLoader=loader,
             contentDescription="Wappen von $name",modifier=modifier,
             contentScale=ContentScale.Fit,
-            loading={ Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center) {
-                CircularProgressIndicator(Modifier.size(17.dp),strokeWidth=2.dp)
+            loading={Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center) {
+                CircularProgressIndicator(Modifier.size(16.dp),strokeWidth=2.dp)
             }},
-            error={ Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center) {
-                Icon(Icons.Default.Shield,contentDescription="Wappen konnte nicht geladen werden",
-                    tint=MaterialTheme.colorScheme.onSurfaceVariant)
-            }})
+            error={Spacer(Modifier.fillMaxSize())})
     }
 }
-internal fun wappenLoader(context: Context): ImageLoader = ImageLoader.Builder(context)
-    .components { add(SvgDecoder.Factory()) }
-    .build()
-
-internal suspend fun wappenBitmap(context: Context, loader: ImageLoader, url: String): Bitmap? =
+@Volatile private var sharedWappenLoader:ImageLoader?=null
+@Synchronized
+internal fun wappenLoader(context:Context):ImageLoader {
+    sharedWappenLoader?.let{return it}
+    return ImageLoader.Builder(context.applicationContext)
+        .components {add(SvgDecoder.Factory())}
+        .build().also {sharedWappenLoader=it}
+}
+internal suspend fun wappenBitmap(context:Context,loader:ImageLoader,url:String):Bitmap? =
     withContext(Dispatchers.IO) {
-        runCatching {
-            val request=ImageRequest.Builder(context)
-                .data(url).size(96,116).allowHardware(false).build()
-            val drawable=(loader.execute(request) as? SuccessResult)?.drawable
-            drawable?.toBitmap(width=96,height=116)
-        }.getOrNull()
+        for(address in listOf(resolveWappenImage(url),url).distinct()) {
+            val image=runCatching {
+                val request=ImageRequest.Builder(context)
+                    .data(address).size(96,116).allowHardware(false).build()
+                (loader.execute(request) as? SuccessResult)?.drawable
+                    ?.toBitmap(width=96,height=116)
+            }.getOrNull()
+            if(image!=null)return@withContext image
+        }
+        null
     }
 
 @Composable
-internal fun NativeMunicipalityFactCard(municipality: Municipality, canton: Region,
-    cachedWappen: String? = null) {
+internal fun NativeMunicipalityFactCard(municipality:Municipality,canton:Region,
+    cachedWappen:String?=null) {
     val facts by produceState<MunicipalityFacts?>(initialValue=null,municipality.bfs) {
-        value=withContext(Dispatchers.IO) { queryMunicipalityFacts(municipality.bfs) }
+        value=withContext(Dispatchers.IO) {queryMunicipalityFacts(municipality.bfs)}
     }
+    val coat=facts?.coat ?: cachedWappen ?: verifiedWappenFallback(municipality.bfs)
     Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),
         shape=RoundedCornerShape(18.dp)) {
-        Row(Modifier.fillMaxWidth().padding(14.dp),verticalAlignment=Alignment.Top,
-            horizontalArrangement=Arrangement.spacedBy(14.dp)) {
-            val wappen=facts?.coat ?: cachedWappen ?: verifiedWappenFallback(municipality.bfs)
-            MunicipalityCoat(wappen,municipality.name,
-                modifier=Modifier.size(width=62.dp,height=80.dp))
-            Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(5.dp)) {
-                Text(municipality.name,fontWeight=FontWeight.Bold,
-                    style=MaterialTheme.typography.titleLarge)
-                Text("Kanton ${canton.code} · BFS-Nr. ${municipality.bfs}",
-                    style=MaterialTheme.typography.bodySmall)
-                if(facts==null) {
-                    Text("Weitere Kennzahlen werden geladen oder sind nicht verfügbar.",
+        Column(Modifier.fillMaxWidth().padding(16.dp),
+            verticalArrangement=Arrangement.spacedBy(7.dp)) {
+            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.Top,
+                horizontalArrangement=Arrangement.spacedBy(12.dp)) {
+                Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(5.dp)) {
+                    Text(municipality.name,fontWeight=FontWeight.Bold,
+                        style=MaterialTheme.typography.titleLarge)
+                    Text("Kanton "+canton.code+" · BFS-Nr. "+municipality.bfs,
                         style=MaterialTheme.typography.bodySmall)
-                } else {
-                    facts?.population?.let { inhabitants ->
-                        Text("Einwohner: ${NumberFormat.getIntegerInstance(Locale.forLanguageTag("de-CH")).format(inhabitants)}"+
-                            (facts?.populationYear?.let { " (Stand $it)" } ?: " (Jahr unbekannt)"))
-                    }
-                    facts?.area?.let { area ->
-                        Text("Fläche: ${"%.2f".format(Locale.GERMAN,area)} km²")
-                    }
-                    facts?.altitude?.let {altitude ->
-                        Text("Höhenlage: "+altitude.toInt()+" m ü. M. (Wikidata)")
-                    }
-                    facts?.postalCode?.let {postal ->
-                        Text("Postleitzahl: "+postal+" (Wikidata)")
-                    }
-                    facts?.website?.let { website ->
-                        val context=LocalContext.current
-                        TextButton(onClick={
-                            runCatching {
-                                context.startActivity(android.content.Intent(
-                                    android.content.Intent.ACTION_VIEW,Uri.parse(website)))
-                            }
-                        }) {Text("Gemeindewebsite öffnen")}
-                    }
-                    if(facts?.population==null)Text("Keine zuverlässig zuordenbare Einwohnerzahl verfügbar.",
-                        style=MaterialTheme.typography.bodySmall)
-                    Text("Wappen/Kennzahlen: Wikidata und Wikimedia Commons · nicht amtlich. " +
-                        "Aktuelle amtliche Bevölkerungsstatistik: BFS STATPOP (2025).",
-                        style=MaterialTheme.typography.labelSmall,
-                        color=MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+                MunicipalityCoat(coat,municipality.name,
+                    modifier=Modifier.size(width=62.dp,height=78.dp),bfs=municipality.bfs)
+            }
+            if(facts==null) {
+                Text("Weitere Kennzahlen werden geladen oder sind derzeit nicht verfügbar.",
+                    style=MaterialTheme.typography.bodySmall)
+            } else {
+                facts?.population?.let {inhabitants ->
+                    Text("Einwohner: "+NumberFormat.getIntegerInstance(
+                        Locale.forLanguageTag("de-CH")).format(inhabitants)+
+                        (facts?.populationYear?.let {" (Stand "+it+")"} ?: " (Jahr unbekannt)"))
+                }
+                facts?.area?.let {area ->
+                    Text("Fläche: "+"%.2f".format(Locale.GERMAN,area)+" km²")
+                }
+                facts?.altitude?.let {altitude ->
+                    Text("Höhenlage: "+altitude.toInt()+" m ü. M. (Wikidata)")
+                }
+                facts?.postalCode?.let {postal ->
+                    Text("Postleitzahl: "+postal+" (Wikidata)")
+                }
+                facts?.website?.let {website ->
+                    val context=LocalContext.current
+                    TextButton(onClick={
+                        runCatching {
+                            context.startActivity(android.content.Intent(
+                                android.content.Intent.ACTION_VIEW,Uri.parse(website)))
+                        }
+                    },contentPadding=PaddingValues(0.dp)) {Text("Gemeindewebsite öffnen")}
+                }
+                if(facts?.population==null)Text("Keine zuverlässig zuordenbare Einwohnerzahl verfügbar.",
+                    style=MaterialTheme.typography.bodySmall)
+                Spacer(Modifier.height(3.dp))
+                Text("Wappen/Kennzahlen: Wikidata und Wikimedia Commons · nicht amtlich. "+
+                    "Amtliche Bevölkerungsstatistik: BFS STATPOP (2025).",
+                    style=MaterialTheme.typography.labelSmall,
+                    color=MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }

@@ -165,15 +165,19 @@ fun NativeMunicipalityMap(
     var zoom by remember(canton.code) { mutableFloatStateOf(1f) }
     val coats by produceState<Map<String,Bitmap>>(initialValue=emptyMap(),canton.code) {
         wappenLoading=true
-        val urls=withContext(Dispatchers.IO) { queryCantonWappen(canton,context) }
-        // Progressive loading: keep the map usable while the coats arrive.
-        val semaphore=Semaphore(6)
+        val urls=withContext(Dispatchers.IO) {queryCantonWappen(canton,context)}
+        // Progressive: missing batch results are recovered from individually
+        // verified BFS statements, without blocking the interactive map.
+        val semaphore=Semaphore(5)
         coroutineScope {
-            urls.map { (bfs,url) ->
+            canton.municipalities.map {municipality ->
                 launch {
                     semaphore.withPermit {
-                        wappenBitmap(context,imageLoader,url)?.let { image ->
-                            value=value+(bfs to image)
+                        val url=urls[municipality.bfs] ?: withContext(Dispatchers.IO) {
+                            queryWappenByBfs(municipality.bfs)
+                        }
+                        if(url!=null) wappenBitmap(context,imageLoader,url)?.let {image ->
+                            value=value+(municipality.bfs to image)
                         }
                     }
                 }

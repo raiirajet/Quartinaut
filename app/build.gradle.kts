@@ -13,8 +13,8 @@ android {
         applicationId = "ch.quartinaut.nativeapp"
         minSdk = 26
         targetSdk = 35
-        versionCode = 15
-        versionName = "5.7.4-municipality-brand-calendar"
+        versionCode = 16
+        versionName = "5.7.5-wappen-map-layout"
     }
     buildTypes {
         release { isMinifyEnabled = false }
