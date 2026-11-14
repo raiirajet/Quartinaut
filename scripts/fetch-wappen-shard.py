@@ -25,17 +25,17 @@ def main():
     if len(sys.argv)!=3:
         raise SystemExit("Usage: fetch-wappen-shard.py <shard> <shard_count>")
     shard=int(sys.argv[1]); count=int(sys.argv[2])
-    if not 0<=shard<count:
-        raise SystemExit("Invalid shard id")
+    if count<2 or count%2!=0 or not 0<=shard<count:
+        raise SystemExit("Invalid shard count or ID")
     OUT.mkdir(parents=True,exist_ok=True)
     if not INDEX.is_file():
         print("No source manifest in cache yet, main job will generate it.")
         return
     urls=json.loads(INDEX.read_text(encoding="utf-8"))
     missing=[(bfs,url) for bfs,url in urls.items()
-             if bfs.isdecimal() and int(bfs)%count==shard
+             if bfs.isdecimal() and int(bfs)%(count//2)==shard%(count//2)
              and not wappen.cached_image(bfs)]
-    print(f"Shard {shard+1}/{count}: {len(missing)} BFS emblems to fetch",flush=True)
+    print(f"Shard {shard+1}/{count}: {len(missing)} BFS emblems to fetch (each has two independent worker attempts)",flush=True)
     ok=0
     for bfs,original in missing:
         parsed=urllib.parse.urlsplit(original)

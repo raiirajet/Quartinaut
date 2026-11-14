@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]
     steps:
       - uses: actions/checkout@v4
       - name: Restore Swiss coat cache
@@ -24,7 +24,7 @@ jobs:
           restore-keys: |
             wappen-assets-2026-
       - name: Fetch only this shard's missing coats
-        run: python3 scripts/fetch-wappen-shard.py ${{ matrix.shard }} 16
+        run: python3 scripts/fetch-wappen-shard.py ${{ matrix.shard }} 32
       - name: Upload fetched images
         uses: actions/upload-artifact@v4
         with:
@@ -169,4 +169,19 @@ jobs:
             echo "::notice::APK veröffentlicht: $TAG"
           else
             echo "::warning::Release konnte nicht erstellt werden; die APK bleibt als Actions-Artefakt verfügbar."
+          fi
+
+      - name: Persist all verified coats in GitHub for reproducible offline builds
+        if: github.ref == 'refs/heads/native-android-v1' && success()
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/assets/wappen
+          if git diff --cached --quiet; then
+            echo "All coat assets already committed in branch"
+          else
+            git commit -m "assets: pin BFS-verified Swiss municipality armorial for fully offline APK builds"
+            git push origin HEAD:native-android-v1
+            echo "All 2109 coats and Haute-Ajoie logo persisted in GitHub"
           fi

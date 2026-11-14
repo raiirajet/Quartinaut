@@ -339,6 +339,17 @@ def main():
         results=list(pool.map(download_coat,entries))
     successful=sum(results)
     print("Offline coat downloads: %s/%s" % (successful,len(entries)),flush=True)
+    # The two worker attempts can yield both SVG originals and PNG renders
+    # for the same BFS number. Choose a single decodable local asset per ID.
+    # Prefer the rasterized copy which needs no SVG feature support on Android.
+    duplicate_count=0
+    for bfs in expected:
+        local=[OUT/(bfs+ext) for ext in (".png",".svg",".jpg",".jpeg",".webp",".gif")]
+        candidates=[p for p in local if p.is_file() and valid_image(p.read_bytes())]
+        for extra in candidates[1:]:
+            extra.unlink()
+            duplicate_count+=1
+    print("Duplicate format variants removed:",duplicate_count,flush=True)
     logo_ok=download_logo_haute_ajoie()
     print("Haute-Ajoie official municipal logo downloaded: %s" % logo_ok,flush=True)
     present={bfs for bfs in expected if cached_image(bfs)}
