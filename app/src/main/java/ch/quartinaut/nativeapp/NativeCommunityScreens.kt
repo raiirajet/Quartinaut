@@ -151,7 +151,9 @@ fun NativeCreateHubPage(
     }
     var description by remember(uid,initialKind) { mutableStateOf(load("description","")) }
     var category by remember(uid,initialKind,kind) {
-        mutableStateOf(load("category",NativeCategories[kind]?.firstOrNull().orEmpty()))
+        val choices=NativeCategories[kind].orEmpty()
+        val saved=load("category","")
+        mutableStateOf(saved.takeIf { it in choices } ?: choices.firstOrNull().orEmpty())
     }
     var price by remember(uid,initialKind) { mutableStateOf(load("price","0")) }
     var capacity by remember(uid,initialKind) { mutableStateOf(load("capacity","0")) }
@@ -336,7 +338,7 @@ fun NativeCreateHubPage(
                         Text("Termin: "+localDate,color=MaterialTheme.colorScheme.onSurface)
                     if(venue.isNotBlank())
                         Text("Ort: "+venue,color=MaterialTheme.colorScheme.onSurface)
-                    Text("Gemeinde: "+repo.area()+" ("+repo.canton()+")",
+                    Text("Gemeinde: "+quartierAreaLabel(repo.area(),repo.canton()),
                         color=MaterialTheme.colorScheme.onSurfaceVariant)
                     HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
                     Text(when(kind){
