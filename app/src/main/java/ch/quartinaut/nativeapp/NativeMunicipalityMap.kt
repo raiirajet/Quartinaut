@@ -2,6 +2,12 @@ package ch.quartinaut.nativeapp
 
 import android.graphics.Region as AndroidRegion
 import android.graphics.Bitmap
+import android.util.JsonReader
+import android.util.JsonToken
+import android.util.JsonWriter
+import java.io.StringWriter
+import java.io.InputStreamReader
+import java.util.concurrent.ConcurrentHashMap
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.platform.LocalContext
@@ -59,6 +65,65 @@ private const val VH = 600f
 
 private data class RawFeature(val bfs: String, val rings: List<List<Offset>>)
 private data class MapMunicipality(val bfs: String, val path: Path)
+private val geometryCache = ConcurrentHashMap<String,List<MapMunicipality>>()
+
+/**
+ * Copy one JSON value at a time, rather than materialising all 2,000+
+ * municipality polygons (and their coordinates) in a single JSONObject.
+ */
+private fun copyJson(reader:JsonReader,writer:JsonWriter,depth:Int=0) {
+    require(depth<30) { "GeoJSON nesting too deep" }
+    when(reader.peek()) {
+        JsonToken.BEGIN_OBJECT -> {
+            reader.beginObject();writer.beginObject()
+            while(reader.hasNext()){
+                writer.name(reader.nextName())
+                copyJson(reader,writer,depth+1)
+            }
+            reader.endObject();writer.endObject()
+        }
+        JsonToken.BEGIN_ARRAY -> {
+            reader.beginArray();writer.beginArray()
+            while(reader.hasNext()) copyJson(reader,writer,depth+1)
+            reader.endArray();writer.endArray()
+        }
+        JsonToken.STRING -> writer.value(reader.nextString())
+        JsonToken.NUMBER -> writer.value(reader.nextString().toDoubleOrNull() ?: 0.0)
+        JsonToken.BOOLEAN -> writer.value(reader.nextBoolean())
+        JsonToken.NULL -> {reader.nextNull();writer.nullValue()}
+        else -> reader.skipValue()
+    }
+}
+private fun readCantonFeatures(connection:HttpURLConnection,ids:Set<String>):List<RawFeature> {
+    val selected=ArrayList<RawFeature>()
+    JsonReader(InputStreamReader(connection.inputStream,Charsets.UTF_8)).use { reader ->
+        reader.isLenient=false
+        reader.beginObject()
+        while(reader.hasNext()) {
+            if(reader.nextName()!="features") {
+                reader.skipValue()
+                continue
+            }
+            reader.beginArray()
+            while(reader.hasNext()) {
+                val buffer=StringWriter()
+                JsonWriter(buffer).use { writer -> copyJson(reader,writer) }
+                val feature=JSONObject(buffer.toString())
+                val id=selectGeoId(feature)
+                if(id in ids) {
+                    val geometry=feature.optJSONObject("geometry")
+                    if(geometry!=null) {
+                        val rings=readRings(geometry)
+                        if(rings.isNotEmpty()) selected.add(RawFeature(id,rings))
+                    }
+                }
+            }
+            reader.endArray()
+        }
+        reader.endObject()
+    }
+    return selected
+}
 
 private fun readRings(geometry: JSONObject): List<List<Offset>> {
     val all = mutableListOf<List<Offset>>()
@@ -74,6 +139,9 @@ private fun readRings(geometry: JSONObject): List<List<Offset>> {
             val ring = polygon.optJSONArray(i) ?: continue
             val vertices = mutableListOf<Offset>()
             for (j in 0 until ring.length()) {
+                // The original shapes are far more detailed than a phone canvas.
+                // Preserve the closing point; reduce path/clip complexity.
+                if(j % 3 != 0 && j != ring.length()-1) continue
                 val coordinate = ring.optJSONArray(j) ?: continue
                 if (coordinate.length() < 2) continue
                 val longitude = coordinate.optDouble(0, Double.NaN)
@@ -97,31 +165,24 @@ private fun selectGeoId(feature: JSONObject): String {
     return feature.optString("id").removeSuffix(".0")
 }
 private fun loadFeatures(canton: Region): List<MapMunicipality> {
-    val ids = canton.municipalities.map { it.bfs }.toSet()
-    var json: JSONObject? = null
+    geometryCache[canton.code]?.let { return it }
+    val ids=canton.municipalities.map { it.bfs }.toSet()
+    var selected=emptyList<RawFeature>()
     for(url in listOf(GEO_URL,GEO_BACKUP)) {
+        var conn:HttpURLConnection?=null
         try {
-            val conn = URL(url).openConnection() as HttpURLConnection
-            conn.connectTimeout=9000;conn.readTimeout=12000
-            try {
-                val text=conn.inputStream.bufferedReader().use { it.readText() }
-                val candidate = JSONObject(text)
-                if(candidate.optString("type")=="FeatureCollection" &&
-                   (candidate.optJSONArray("features")?.length() ?: 0) > 1900) {
-                    json=candidate;break
-                }
-            } finally { conn.disconnect() }
-        } catch (_: Exception) { /* Try alternate source */ }
-    }
-    val collection = json?.optJSONArray("features") ?: return emptyList()
-    val selected = mutableListOf<RawFeature>()
-    for(i in 0 until collection.length()) {
-        val feature=collection.optJSONObject(i) ?: continue
-        val id=selectGeoId(feature)
-        if(id !in ids) continue
-        val geometry=feature.optJSONObject("geometry") ?: continue
-        val rings=readRings(geometry)
-        if(rings.isNotEmpty()) selected.add(RawFeature(id,rings))
+            conn=(URL(url).openConnection() as HttpURLConnection).apply {
+                connectTimeout=6500
+                readTimeout=12000
+                setRequestProperty("Accept-Encoding","gzip")
+            }
+            selected=readCantonFeatures(conn,ids)
+            if(selected.isNotEmpty())break
+        } catch (_:Exception) {
+            // Network and malformed upstream geometry must not crash a map screen.
+        } finally {
+            conn?.disconnect()
+        }
     }
     if(selected.isEmpty()) return emptyList()
     var count=0; var latSum=0.0
@@ -141,7 +202,7 @@ private fun loadFeatures(canton: Region): List<MapMunicipality> {
     val scale=min((VW-48f)/spanX,(VH-48f)/spanY)
     val ox=(VW-spanX*scale)/2
     val oy=(VH-spanY*scale)/2
-    return selected.map { feature ->
+    val result=selected.map { feature ->
         val path=Path().apply { fillType=PathFillType.EvenOdd }
         for(ring in feature.rings) {
             ring.forEachIndexed { index,p ->
@@ -153,6 +214,8 @@ private fun loadFeatures(canton: Region): List<MapMunicipality> {
         }
         MapMunicipality(feature.bfs,path)
     }
+    if(result.isNotEmpty())geometryCache[canton.code]=result
+    return result
 }
 @Composable
 fun NativeMunicipalityMap(
@@ -165,28 +228,44 @@ fun NativeMunicipalityMap(
     var zoom by remember(canton.code) { mutableFloatStateOf(1f) }
     val coats by produceState<Map<String,Bitmap>>(initialValue=emptyMap(),canton.code) {
         wappenLoading=true
-        val urls=withContext(Dispatchers.IO) {queryCantonWappen(canton,context)}
-        // Progressive: missing batch results are recovered from individually
-        // verified BFS statements, without blocking the interactive map.
-        val semaphore=Semaphore(5)
-        coroutineScope {
-            canton.municipalities.map {municipality ->
-                launch {
-                    semaphore.withPermit {
-                        val url=urls[municipality.bfs] ?: withContext(Dispatchers.IO) {
-                            queryWappenByBfs(municipality.bfs)
-                        }
-                        if(url!=null) wappenBitmap(context,imageLoader,url)?.let {image ->
-                            value=value+(municipality.bfs to image)
+        try {
+            val urls=withContext(Dispatchers.IO) { queryCantonWappen(canton,context) }
+            val priority=canton.municipalities.sortedBy {
+                if(it.bfs==selected?.bfs) 0 else 1
+            }
+            // Fetch only known BFS-verified URLs here. Missing ones resolve on
+            // demand in the municipality list / facts card instead of spawning
+            // hundreds of slow network requests at once.
+            val semaphore=Semaphore(3)
+            val completed=java.util.Collections.synchronizedMap(mutableMapOf<String,Bitmap>())
+            coroutineScope {
+                priority.filter { urls.containsKey(it.bfs) }.map { municipality ->
+                    launch {
+                        semaphore.withPermit {
+                            val url=urls[municipality.bfs] ?: return@withPermit
+                            val bitmap=runCatching {
+                                wappenBitmap(context,imageLoader,url)
+                            }.getOrNull()
+                            if(bitmap!=null) {
+                                completed[municipality.bfs]=bitmap
+                                // Small batches avoid hundreds of Compose recompositions.
+                                if(completed.size % 8 == 0) value=completed.toMap()
+                            }
                         }
                     }
-                }
-            }.joinAll()
+                }.joinAll()
+            }
+            value=completed.toMap()
+        } catch (_:Exception) {
+            // A failed third-party image provider never terminates the map UI.
+        } finally {
+            wappenLoading=false
         }
-        wappenLoading=false
     }
     val regions by produceState<List<MapMunicipality>?>(initialValue=null,canton.code) {
-        value=withContext(Dispatchers.IO) { loadFeatures(canton) }
+        value=withContext(Dispatchers.IO) {
+            runCatching { loadFeatures(canton) }.getOrDefault(emptyList())
+        }
     }
     when {
         regions == null -> Box(
