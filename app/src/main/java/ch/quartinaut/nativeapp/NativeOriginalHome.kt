@@ -54,7 +54,7 @@ private val links = listOf(
     HomeLink("map","Quartierkarte","Deine Umgebung","📍","map"),
     HomeLink("swissmap","Schweizkarte","Kantone & Gemeinden","🇨🇭","map")
 )
-private val defaultQuick = listOf("need","offer","market","group")
+private val defaultQuick = listOf("need","market","calendar")
 private val priorityCatalog = listOf(
     HomeLink("inbox","Mitteilungen & Anfragen","Neue Mitteilungen und Anfragen","🔔","official"),
     HomeLink("events","Termine & Veranstaltungen","Termine aus deiner Umgebung","📅","calendar"),
@@ -87,19 +87,24 @@ private fun priorities(repo: QuartinautRepository): List<String> {
  */
 @Composable
 fun NativeOriginalHome(repo: QuartinautRepository, navigate: (String) -> Unit,
-    openRequest:(com.google.firebase.firestore.DocumentSnapshot)->Unit = {navigate("board")}) {
+    openRequest:(com.google.firebase.firestore.DocumentSnapshot)->Unit = {navigate("board")},
+    openHub:(Map<String,Any?>)->Unit = {navigate("plus")}) {
     val columns=if(LocalConfiguration.current.screenWidthDp>=600) 4 else 2
     val chosen=quickIds(repo)
     val ordered=priorities(repo)
     var showShortcuts by remember { mutableStateOf(false) }
     var showPriorities by remember { mutableStateOf(false) }
     var showOther by remember { mutableStateOf(false) }
+    var showOverview by androidx.compose.runtime.saveable.rememberSaveable {
+        mutableStateOf(false)
+    }
     val firstName=repo.displayName().trim().substringBefore(" ").ifBlank { "Nachbar" }
     Column(Modifier.fillMaxSize().background(Night).verticalScroll(rememberScrollState())
         .padding(horizontal=14.dp, vertical=16.dp),
         verticalArrangement=Arrangement.spacedBy(14.dp)) {
 
         HomeHero(repo,firstName,navigate)
+        NativeHomeInsights(repo,navigate,openHub,openRequest)
         Row(horizontalArrangement=Arrangement.spacedBy(9.dp)) {
             HomeShortcut(HomeLink("personal","Mein Quartinaut","Meine Aktivitäten","👤","personal-center"),Modifier.weight(1f)) {
                 navigate("personal-center")
@@ -131,10 +136,20 @@ fun NativeOriginalHome(repo: QuartinautRepository, navigate: (String) -> Unit,
             }
         }
 
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(25.dp))
-            .background(NightCard).border(1.dp,PanelLine,RoundedCornerShape(25.dp))
-            .padding(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
-            HomeSection("PERSÖNLICHER ÜBERBLICK","Für dich wichtig","Sortieren",{showPriorities=true})
+        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+            Text("PERSÖNLICHER ÜBERBLICK · FÜR DICH",
+                color=Quiet,modifier=Modifier.weight(1f),
+                style=MaterialTheme.typography.labelMedium)
+            TextButton(onClick={showOverview=!showOverview}) {
+                Text(if(showOverview)"Einklappen" else "Anzeigen",color=Lime)
+                Icon(if(showOverview)Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription=null,tint=Lime)
+            }
+        }
+        if(showOverview) Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
+            .background(NightCard).border(1.dp,PanelLine,RoundedCornerShape(22.dp))
+            .padding(14.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
+            HomeSection("MEINE AKTIVITÄTEN","Für dich wichtig","Sortieren",{showPriorities=true})
             ordered.take(if(columns==4)8 else 4).chunked(columns).forEach { row ->
                 Row(horizontalArrangement=Arrangement.spacedBy(9.dp)) {
                     row.forEach { id ->
@@ -162,26 +177,6 @@ fun NativeOriginalHome(repo: QuartinautRepository, navigate: (String) -> Unit,
                     color=Color(0xFFFFE1A1),style=MaterialTheme.typography.bodySmall,
                     modifier=Modifier.weight(1f))
                 Icon(Icons.Default.ChevronRight,contentDescription=null,tint=Color(0xFFFFE1A1))
-            }
-        }
-
-        HomeSection("DEINE NACHBARSCHAFT","Aktuelles aus deiner Nähe","Alle ansehen",{navigate("community-pulse")})
-        val latest=repo.requests.filter { it.str("status")=="offen" }.take(3)
-        if(latest.isEmpty()) {
-            Text("Noch keine veröffentlichten Anliegen in deiner Umgebung.",
-                color=Quiet,style=MaterialTheme.typography.bodyMedium)
-        } else {
-            latest.forEach { doc ->
-                Surface(shape=RoundedCornerShape(18.dp),color=NightCard,
-                    border=androidx.compose.foundation.BorderStroke(1.dp,PanelLine),
-                    onClick={openRequest(doc)},modifier=Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
-                        Text(doc.title(),fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.onSurface,
-                            maxLines=2,overflow=TextOverflow.Ellipsis)
-                        Text(doc.str("category")+" · "+doc.str("area"),
-                            color=Quiet,style=MaterialTheme.typography.bodySmall)
-                    }
-                }
             }
         }
 
@@ -309,7 +304,7 @@ fun NativeOriginalHome(repo: QuartinautRepository, navigate: (String) -> Unit,
 private fun HomeHero(repo: QuartinautRepository, firstName: String,
                      navigate:(String)->Unit) {
     val shape=RoundedCornerShape(28.dp)
-    Box(Modifier.fillMaxWidth().height(254.dp).clip(shape)
+    Box(Modifier.fillMaxWidth().height(232.dp).clip(shape)
         .border(1.dp,PanelLine,shape)) {
         val bitmap=repo.dashboardBackground
         if(bitmap==null) {
@@ -356,7 +351,7 @@ private fun HomeHero(repo: QuartinautRepository, firstName: String,
                         Icon(Icons.Default.LocationOn,null,tint=Color.White,
                             modifier=Modifier.size(16.dp))
                         Spacer(Modifier.width(5.dp))
-                        Text(repo.area().ifBlank{"Deine Gemeinde"}+
+                        Text(repo.area().substringBefore(" (").ifBlank{"Deine Gemeinde"}+
                             (if(repo.canton().isNotBlank())" ("+repo.canton()+")" else ""),
                             color=Color.White,style=MaterialTheme.typography.bodySmall,
                             maxLines=1,overflow=TextOverflow.Ellipsis)
@@ -411,7 +406,7 @@ private fun HomeSection(kicker:String,title:String,button:String,onClick:()->Uni
 }
 @Composable
 private fun HomeShortcut(card:HomeLink,modifier:Modifier,onClick:()->Unit) {
-    Surface(onClick=onClick,modifier=modifier.heightIn(min=112.dp),
+    Surface(onClick=onClick,modifier=modifier.heightIn(min=92.dp),
         color=NightCard,shape=RoundedCornerShape(22.dp),
         border=androidx.compose.foundation.BorderStroke(1.dp,PanelLine)) {
         Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(5.dp)) {
@@ -427,7 +422,7 @@ private fun HomeShortcut(card:HomeLink,modifier:Modifier,onClick:()->Unit) {
 @Composable
 private fun HomePriority(card:HomeLink,repo:QuartinautRepository,
                          modifier:Modifier,onClick:()->Unit) {
-    Surface(onClick=onClick,modifier=modifier.heightIn(min=105.dp),
+    Surface(onClick=onClick,modifier=modifier.heightIn(min=90.dp),
         color=MaterialTheme.colorScheme.surfaceVariant,shape=RoundedCornerShape(18.dp),
         border=androidx.compose.foundation.BorderStroke(1.dp,PanelLine)) {
         Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(7.dp)) {
