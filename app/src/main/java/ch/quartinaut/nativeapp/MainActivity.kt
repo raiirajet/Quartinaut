@@ -290,7 +290,7 @@ private fun QuartinautApp(repo: QuartinautRepository,
         "request-detail" -> "Anliegen"
         "create-request" -> "Anliegen erstellen"
         "create-offer" -> "Hilfe anbieten"
-        else -> "Quartinaut"
+        else -> if(page.startsWith("hub-section:")) quartierSectionTitle(page.substringAfter(":")) else "Quartinaut"
     }
     Scaffold(
         // Android 15/16 enforce edge-to-edge. The previous build let the
@@ -363,7 +363,8 @@ private fun QuartinautApp(repo: QuartinautRepository,
                             page in listOf("board","market","lend","group","calendar","official-calendar",
                                 "enhancements","enh-radar","enh-posts","enh-assist","enh-loans",
                                 "enh-clubs","enh-trust","enh-calendar","enh-qr","enh-map",
-                                "enh-offline","enh-favorites","community-pulse","municipal-compare"))
+                                "enh-offline","enh-favorites","community-pulse","municipal-compare") ||
+                                (route=="plus" && page.startsWith("hub-section:")))
                         val selectedColor=if(active) bottomActive else Color.Transparent
                         Column(Modifier.weight(1f).fillMaxHeight()
                             .padding(horizontal=2.dp)
@@ -412,6 +413,9 @@ private fun QuartinautApp(repo: QuartinautRepository,
                 "plus" -> HubPage(repo, navTo)
                 "chats" -> NativePrivateChatsPage(repo)
                 "enhancements" -> NativeExtrasDirectory(repo,navTo)
+                "hub-section:entdecken", "hub-section:erstellen", "hub-section:meine",
+                "hub-section:gemeinde", "hub-section:sicherheit" ->
+                    NativeQuartierCategoryPage(page.substringAfter(":"),navTo)
                 "enh-posts" -> NativeMyPostsScreen(repo,navTo)
                 "enh-radar" -> NativeRadarScreen(repo,navTo)
                 "enh-assist" -> NativeSmartListing(repo,navTo)
@@ -740,46 +744,8 @@ private fun CreateRequestPage(repo: QuartinautRepository, go: (String) -> Unit,
 }
 
 @Composable
-private fun HubPage(repo: QuartinautRepository, go:(String)->Unit) = ScrollPage {
-    SectionTitle("Quartier+", "Alles für deine Gemeinde – auf einer Plattform.")
-    Feature("Alle 12 Quartinaut-Erweiterungen",
-        "Radar, Favoriten, Inserate, Ausleihe, QR, Vereine, Kalender und mehr",
-        {Icon(Icons.Default.Widgets,null,tint=Forest)}) {go("enhancements")}
-    Feature("Meine Beiträge","Beitragsstatus und eigene Angebote verwalten",
-        {Icon(Icons.Default.EditNote,null,tint=Forest)}) {go("enh-posts")}
-    Feature("Quartinaut Radar","Persönliche Neuigkeiten aus deiner Umgebung",
-        {Icon(Icons.Default.Radar,null,tint=Forest)}) {go("enh-radar")}
-    Feature("Meine Favoriten","Gemerkte Inserate und Angebote",
-        {Icon(Icons.Default.FavoriteBorder,null,tint=Forest)}) {go("enh-favorites")}
-    Feature("Marktplatz","Verkaufen, verschenken und tauschen",
-        {Icon(Icons.Default.Storefront,null,tint=Forest)}) { go("market") }
-    Feature("Leihbörse","Werkzeuge und andere Dinge ausleihen",
-        {Icon(Icons.Default.Handyman,null,tint=Forest)}) { go("lend") }
-    Feature("Vereine & Gruppen","Entdecke deine Gemeinschaft",
-        {Icon(Icons.Default.Groups,null,tint=Forest)}) { go("group") }
-    Feature("Offizielle Termine & Feiertage","Märkte, Veranstaltungen und Feiertage mit Quellen",
-        {Icon(Icons.Default.Verified,null,tint=Forest)}) { go("official-calendar") }
-    Feature("Gemeindekalender","Termine und Entsorgung",
-        {Icon(Icons.Default.Event,null,tint=Forest)}) { go("calendar") }
-    Feature("Schweizkarte","Kantone und Gemeinden erkunden",
-        {Icon(Icons.Default.Map,null,tint=Forest)}) { go("map") }
-    Feature("Reservationsverwaltung","Marktplatz-Reservierungen",
-        {Icon(Icons.Default.EventAvailable,null,tint=Forest)}) { go("v50market") }
-    Feature("Ausleih-Kalender","Anfragen und Rückgaben",
-        {Icon(Icons.Default.CalendarToday,null,tint=Forest)}) { go("v50loans") }
-    Feature("Vereinsanmeldungen","Teilnahmen und Wartelisten",
-        {Icon(Icons.Default.HowToReg,null,tint=Forest)}) { go("v50associations") }
-    Feature("Verloren & Gefunden","Vermisste und gefundene Gegenstände",
-        {Icon(Icons.Default.Search,null,tint=Forest)}) { go("lost") }
-    Feature("Quartieraktionen","Aktionen und Freiwilligenarbeit",
-        {Icon(Icons.Default.VolunteerActivism,null,tint=Forest)}) { go("project") }
-    Feature("Mängel melden","Probleme in deiner Gemeinde dokumentieren",
-        {Icon(Icons.Default.ReportProblem,null,tint=Forest)}) { go("issue") }
-    Feature("Gemeinde-Alarme","Wichtige Warnungen",
-        {Icon(Icons.Default.Warning,null,tint=Forest)}) { go("alerts") }
-    Feature("Offizielle Mitteilungen","Nachrichten aus deiner Gemeinde",
-        {Icon(Icons.Default.Campaign,null,tint=Forest)}) { go("official") }
-    OutlinedButton(onClick=repo::loadHub,modifier=Modifier.fillMaxWidth()) { Text("Quartier+ aktualisieren") }
+private fun HubPage(repo: QuartinautRepository, go:(String)->Unit) {
+    NativeQuartierOverview(repo,go)
 }
 @Composable
 private fun HubItemsPage(repo:QuartinautRepository,kind:String,go:(String)->Unit,
