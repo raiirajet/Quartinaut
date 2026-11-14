@@ -62,10 +62,12 @@ fun NativeHomeInsights(repo:QuartinautRepository, navigate:(String)->Unit,
             (area.isNotBlank() && doc.str("area").substringBefore(" (").trim()
                 .equals(area,ignoreCase=true)))
     }
-    val suggestions=available.sortedByDescending { row ->
-        (if(near(row)) 4 else 0) +
-        (if(DocString(row["kind"]) in interests) 3 else 0)
-    }.take(3)
+    // Interests are a real filter, not merely a weak sorting hint.
+    val matched=available.filter { row -> DocString(row["kind"]) in interests }
+    val suggestions=matched.sortedWith(
+        compareByDescending<Map<String,Any?>> { near(it) }
+            .thenByDescending { DocString(it["createdAt"]) }
+    ).take(3)
     Column(verticalArrangement=Arrangement.spacedBy(11.dp)) {
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -114,8 +116,15 @@ fun NativeHomeInsights(repo:QuartinautRepository, navigate:(String)->Unit,
             }
         }
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-            Text("Für dich entdeckt",modifier=Modifier.weight(1f),
-                style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.SemiBold)
+            Column(Modifier.weight(1f)) {
+                Text("Für dich entdeckt",
+                    style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.SemiBold)
+                Text(interestOptions.filter { it.first in interests }
+                    .joinToString(" · ") { it.second }.ifBlank { "Keine Themen ausgewählt" },
+                    style=MaterialTheme.typography.labelSmall,
+                    color=MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines=2)
+            }
             TextButton(onClick={editing=true}) {
                 Icon(Icons.Default.Tune,contentDescription=null,modifier=Modifier.size(18.dp))
                 Spacer(Modifier.width(5.dp))
@@ -158,12 +167,15 @@ fun NativeHomeInsights(repo:QuartinautRepository, navigate:(String)->Unit,
                 color=MaterialTheme.colorScheme.surfaceVariant,
                 modifier=Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(7.dp)) {
-                    Text("Keine passenden veröffentlichten Angebote geladen",
+                    Text(if(interests.isEmpty()) "Wähle mindestens ein Thema"
+                        else "Keine aktuellen Einträge in deinen Interessengebieten",
                         fontWeight=FontWeight.SemiBold)
-                    Text("Passe deine Interessen an oder entdecke neue Beiträge.",
+                    Text(if(interests.isEmpty())
+                        "Über «Interessen» bestimmst du, welche Themen hier angezeigt werden."
+                        else "Es sind momentan keine veröffentlichten Beiträge zu deinen ausgewählten Themen geladen.",
                         color=MaterialTheme.colorScheme.onSurfaceVariant,
                         style=MaterialTheme.typography.bodySmall)
-                    TextButton(onClick={navigate("plus")}) {Text("Quartier+ entdecken")}
+                    TextButton(onClick={editing=true}) {Text("Interessen anpassen")}
                 }
             }
         }
