@@ -1,0 +1,6 @@
+{
+  "projects": {
+    "default": "demo-quartinaut-rules",
+    "production": "quartinaut"
+  }
+}

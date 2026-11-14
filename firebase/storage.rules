@@ -1,0 +1,68 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && (
+          request.auth.token.get('admin', false) == true
+          || request.auth.token.get('role', '') in ['admin', 'area_admin']
+        );
+    }
+
+    function isChatParticipant(chatId) {
+      return signedIn()
+        && firestore.exists(/databases/(default)/documents/chats/$(chatId))
+        && request.auth.uid in firestore.get(
+          /databases/(default)/documents/chats/$(chatId)
+        ).data.participants;
+    }
+
+    match /chat-media/{chatId}/{senderUid}/{fileName} {
+      allow read: if isChatParticipant(chatId);
+      allow create: if isOwner(senderUid)
+        && isChatParticipant(chatId)
+        && resource == null
+        && request.resource != null
+        && request.resource.size > 0
+        && request.resource.size <= 2500000
+        && request.resource.contentType == 'image/jpeg'
+        && fileName.matches('^msg_[A-Za-z0-9_-]{8,150}\\.jpg$')
+        && request.resource.metadata.chatId == chatId
+        && request.resource.metadata.senderUid == senderUid
+        && request.resource.metadata.messageId + '.jpg' == fileName;
+      // Uploads are immutable. The uploader may remove an orphaned or sent
+      // object; administrators may remove moderated evidence.
+      allow delete: if isOwner(senderUid) || isAdmin();
+      allow update: if false;
+    }
+
+    match /verification-photos/{uid}/{photoFile} {
+      // Verification evidence is immutable after upload. A replacement must
+      // use a new verification request and therefore a new object name.
+      allow write: if (
+          isOwner(uid)
+          && resource == null
+          && request.resource != null
+          && request.resource.size < 900000
+          && request.resource.contentType == 'image/jpeg'
+          && photoFile.matches('^[A-Za-z0-9_-]+\\.jpg$')
+        ) || (
+          request.resource == null
+          && (isAdmin() || isOwner(uid))
+        );
+      allow read: if isAdmin();
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

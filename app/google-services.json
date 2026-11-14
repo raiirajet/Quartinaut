@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "815175119171",
+    "project_id": "quartinaut",
+    "storage_bucket": "quartinaut.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:815175119171:android:2ae4bed9a9393de5e23ff6",
+        "android_client_info": {
+          "package_name": "ch.quartinaut.nativeapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "815175119171-47mfvnm16c5tcmk8onp3dgtjt1ig0d06.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBO4Kzx1Uoj5AjV6BOjWbDUuXCHiFE2VyU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "815175119171-47mfvnm16c5tcmk8onp3dgtjt1ig0d06.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,13 @@
+{
+  "functions": [
+    {
+      "source": "functions/appearance",
+      "codebase": "quartinaut-appearance",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log"
+      ]
+    }
+  ]
+}

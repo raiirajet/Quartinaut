@@ -1,0 +1,13 @@
+{
+  "functions": [
+    {
+      "source": "functions/enhancements",
+      "codebase": "quartinaut-enhancements",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log"
+      ]
+    }
+  ]
+}

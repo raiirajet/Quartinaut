@@ -1,0 +1,236 @@
+package ch.quartinaut.nativeapp
+
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+
+private val HomeLabels = linkedMapOf(
+    "home" to "Übersicht", "hub" to "Quartier+",
+    "bulletin" to "Schwarzes Brett", "events" to "Gemeindetermine",
+    "inbox" to "Mitteilungen", "chats" to "Chats"
+)
+private val Topics = linkedMapOf(
+    "chats" to "Private Chats","alerts" to "Gemeinde-Alarme",
+    "help" to "Nachbarschaftshilfe","events" to "Veranstaltungen",
+    "groups" to "Vereine & Gruppen","market" to "Marktplatz",
+    "lending" to "Ausleihen","municipality" to "Gemeindenachrichten"
+)
+
+@Composable
+fun NativeSettingsScreen(repo: QuartinautRepository,mode: String,
+                         updateMode: (String) -> Unit, navigate: (String) -> Unit) {
+    val context=LocalContext.current
+    val notificationPermission=rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if(granted)repo.enablePush()
+        else repo.showMessage("Ohne Benachrichtigungsfreigabe kann Android keine Pushmeldungen anzeigen.")
+    }
+    LaunchedEffect(repo.user?.uid) { repo.loadCommunitySettings() }
+    val saved=repo.communitySettings
+    var home by remember { mutableStateOf("home") }
+    var digest by remember { mutableStateOf("off") }
+    var quiet by remember { mutableStateOf(false) }
+    val topics=remember { mutableStateListOf("chats","alerts","help") }
+    LaunchedEffect(saved) {
+        home=DocString(saved["homeView"]).ifBlank{"home"}
+        digest=DocString(saved["digest"]).ifBlank{"off"}
+        quiet=saved["quietHours"] == true
+        val savedTopics=(saved["topics"] as? List<*>)?.filterIsInstance<String>()
+        if(savedTopics!=null) {topics.clear();topics.addAll(savedTopics)}
+    }
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+        verticalArrangement=Arrangement.spacedBy(13.dp)) {
+        Text("Einstellungen",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold)
+        Text("Darstellung",style=MaterialTheme.typography.titleMedium)
+        Text("Vier Farbdesigns und automatische Anpassung · inklusive Systemleisten",
+            style=MaterialTheme.typography.bodySmall)
+        listOf(
+            Triple("system","Automatisch · System","Android folgt automatisch Hell oder Dunkel"),
+            Triple("light","Hell · Weiss","Helle Flächen, dunkle Schrift"),
+            Triple("green","Grün · Quartinaut","Grüne Flächen und natürliche Akzente"),
+            Triple("dark","Dunkel · Tiefschwarz","Schwarze Flächen und grüne Symbole"),
+            Triple("red","Schweiz · Wappenrot","Rot nach Schweizer Flagge mit grünen Navigationssymbolen")
+        ).forEach { (key,title,description) ->
+            Row(Modifier.fillMaxWidth().clickable { updateMode(key) }
+                .padding(vertical=7.dp),verticalAlignment=Alignment.CenterVertically) {
+                RadioButton(selected=mode==key,onClick={updateMode(key)})
+                val preview=when(key){
+                    "light" -> androidx.compose.ui.graphics.Color.White
+                    "green" -> androidx.compose.ui.graphics.Color(0xFF173E31)
+                    "dark" -> androidx.compose.ui.graphics.Color(0xFF030504)
+                    "red" -> androidx.compose.ui.graphics.Color(0xFFD52B1E)
+                    else -> MaterialTheme.colorScheme.surfaceVariant
+                }
+                Box(Modifier.size(34.dp).padding(end=7.dp)
+                    .background(preview,androidx.compose.foundation.shape.RoundedCornerShape(9.dp))
+                    .border(1.dp,MaterialTheme.colorScheme.outline,androidx.compose.foundation.shape.RoundedCornerShape(9.dp)))
+                Column(Modifier.weight(1f)) {
+                    Text(title,fontWeight=FontWeight.SemiBold)
+                    Text(description,style=MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
+        HorizontalDivider()
+        NativeDashboardBackgroundSettings(repo)
+        HorizontalDivider()
+        Text("Meine Startseite",style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
+        HomeLabels.forEach { (key,label) ->
+            Row(Modifier.fillMaxWidth().clickable {home=key},verticalAlignment=Alignment.CenterVertically) {
+                RadioButton(selected=home==key,onClick={home=key})
+                Text(label)
+            }
+        }
+        HorizontalDivider()
+        Text("Benachrichtigungsthemen",style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
+        Topics.forEach { (key,label) ->
+            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                Checkbox(checked=key in topics,onCheckedChange={checked->
+                    if(checked) { if(key !in topics)topics.add(key) }
+                    else topics.remove(key)
+                })
+                Text(label)
+            }
+        }
+        Text("Zusammenfassung",fontWeight=FontWeight.SemiBold)
+        listOf("off" to "Keine","daily" to "Täglich","weekly" to "Wöchentlich").forEach { (key,label) ->
+            Row(verticalAlignment=Alignment.CenterVertically) {
+                RadioButton(selected=digest==key,onClick={digest=key})
+                Text(label)
+            }
+        }
+        Row(verticalAlignment=Alignment.CenterVertically) {
+            Switch(checked=quiet,onCheckedChange={quiet=it})
+            Spacer(Modifier.width(12.dp))
+            Text("Ruhezeiten berücksichtigen")
+        }
+        Button(onClick={
+            repo.saveCommunitySettings(mapOf(
+                "homeView" to home,"topics" to topics.toList(),
+                "digest" to digest,"quietHours" to quiet))
+        },enabled=!repo.busy,modifier=Modifier.fillMaxWidth()) {Text("Einstellungen speichern")}
+        OutlinedButton(onClick={
+            if(Build.VERSION.SDK_INT < 33 || ContextCompat.checkSelfPermission(
+                    context,Manifest.permission.POST_NOTIFICATIONS
+                )==PackageManager.PERMISSION_GRANTED
+            ) repo.enablePush()
+            else notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        },enabled=!repo.busy,modifier=Modifier.fillMaxWidth()) {
+            Text("Pushmeldungen auf diesem Gerät aktivieren")
+        }
+        Text("Die Freigabe gilt nur für dieses Gerät und kann in Android jederzeit widerrufen werden.",
+            style=MaterialTheme.typography.bodySmall)
+        HorizontalDivider()
+        NativeAppUpdateArea(compact=false)
+        HorizontalDivider()
+        Text("Barrierefreiheit",style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
+        Text("Quartinaut berücksichtigt die Android-Schriftgrösse und unterstützt die Bedienung über beschriftete Schaltflächen.",
+            style=MaterialTheme.typography.bodySmall)
+        OutlinedButton(onClick={
+            runCatching {context.startActivity(android.content.Intent(
+                android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS))}
+                .onFailure {repo.showMessage("Android-Bedienhilfen konnten nicht geöffnet werden.")}
+        },modifier=Modifier.fillMaxWidth()) {Text("Android-Bedienhilfen öffnen")}
+        TextButton(onClick={navigate("diagnostics")}) {
+            Text("Verbindungsdiagnose · Firebase-Zugriff prüfen")
+        }
+        TextButton(onClick={navigate("help")}) { Text("Hilfe und Datenschutz") }
+    }
+}
+@Composable
+fun NativeAdminScreen(repo: QuartinautRepository, navigate: (String) -> Unit) {
+    if(!repo.isAdmin()) {
+        Text("Dieser Bereich ist nur für freigeschaltete Administrationskonten zugänglich.",
+            modifier=Modifier.padding(24.dp))
+        return
+    }
+    val queue=repo.hubItems.filter { DocString(it["status"])=="pending" }
+    val published=repo.hubItems.count {DocString(it["status"])=="published"}
+    val requestsOpen=repo.requests.count {it.str("status")=="offen"}
+    val alertsLoaded=repo.alerts.size
+    Column(Modifier.fillMaxSize().padding(16.dp),
+        verticalArrangement=Arrangement.spacedBy(10.dp)) {
+        Text("Verwaltung",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold)
+        Text("Sensible Aktionen werden serverseitig auf deine Administrationsrechte geprüft.")
+        Text("Status der geladenen Daten",style=MaterialTheme.typography.titleMedium,
+            fontWeight=FontWeight.SemiBold)
+        Row(horizontalArrangement=Arrangement.spacedBy(7.dp)) {
+            listOf("Zu prüfen" to queue.size,"Veröffentlicht" to published,
+                "Anliegen" to requestsOpen).forEach { (label,amount)->
+                Card(Modifier.weight(1f),colors=CardDefaults.cardColors(
+                    containerColor=MaterialTheme.colorScheme.surfaceVariant)) {
+                    Column(Modifier.padding(8.dp)) {
+                        Text(amount.toString(),style=MaterialTheme.typography.titleLarge)
+                        Text(label,style=MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
+        }
+        Text("Geladene Warnungen: "+alertsLoaded+" · Verbindungsprobleme: "+
+            repo.syncIssues.size,style=MaterialTheme.typography.bodySmall)
+        if(repo.syncIssues.isNotEmpty()) OutlinedButton(onClick={navigate("diagnostics")}) {
+            Text("Verbindungsdiagnose öffnen")
+        }
+        Text("Die Zahlen zeigen ausschliesslich Datensätze, die dein Gerät bereits laden durfte – keine globale Benutzer- oder Moderationsstatistik.",
+            style=MaterialTheme.typography.bodySmall)
+        Row(horizontalArrangement=Arrangement.spacedBy(9.dp)) {
+            AssistChip(onClick=repo::loadHub,label={Text("Quartier+-Warteschlange")})
+            AssistChip(onClick={navigate("official")},label={Text("Mitteilungen")})
+        }
+        Text("Zur Prüfung ("+queue.size+")",fontWeight=FontWeight.SemiBold)
+        LazyColumn(verticalArrangement=Arrangement.spacedBy(9.dp)) {
+            items(queue) { item ->
+                Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)) {
+                    Column(Modifier.fillMaxWidth().padding(14.dp),
+                        verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                        Text(DocString(item["title"]),fontWeight=FontWeight.Bold)
+                        Text(DocString(item["description"]))
+                        val id=DocString(item["id"])
+                        Row {
+                            OutlinedButton(onClick={repo.communityAction("approve",mapOf("id" to id))},
+                                enabled=!repo.busy) {Text("Freigeben")}
+                            Spacer(Modifier.width(8.dp))
+                            TextButton(onClick={repo.communityAction("reject",mapOf("id" to id))},
+                                enabled=!repo.busy) {Text("Ablehnen")}
+                        }
+                    }
+                }
+            }
+            if(queue.isEmpty()) item {
+                Text("Keine ausstehenden Quartier+-Einträge in dieser Ansicht.")
+            }
+        }
+    }
+}
+@Composable
+fun NativeHelpScreen() {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+        verticalArrangement=Arrangement.spacedBy(14.dp)) {
+        Text("Hilfe & Informationen",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold)
+        Text("Quartinaut verbindet Bewohnerinnen, Bewohner, Vereine und Gemeinden.")
+        Text("Nachbarschaftshilfe",fontWeight=FontWeight.Bold)
+        Text("Auf dem Schwarzen Brett kannst du Hilfe suchen oder anbieten. Kontakte laufen in privaten Chats.")
+        Text("Quartier+",fontWeight=FontWeight.Bold)
+        Text("Dinge leihen oder verkaufen, Gruppen beitreten und lokale Aktionen entdecken.")
+        Text("Privatsphäre",fontWeight=FontWeight.Bold)
+        Text("Fotos und Nachrichten sind durch Firebase-Sicherheitsregeln und geschützte Serverfunktionen begrenzt. Die App zeigt nur Daten, die dein Konto lesen darf.")
+        Text("Offizielle Regeln",fontWeight=FontWeight.Bold)
+        Text("Nutzungsbedingungen, Datenschutz und Impressum werden im Webprojekt geführt. Vollständige native Rechtstextanzeigen müssen vor einer öffentlichen App-Store-Veröffentlichung ergänzt werden.")
+        Text("Quartinaut Native Android · Entwicklung aus dem Webstand 5.4",
+            style=MaterialTheme.typography.bodySmall)
+    }
+}

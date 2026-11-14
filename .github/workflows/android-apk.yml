@@ -1,0 +1,115 @@
+name: Android native debug APK
+on:
+  push:
+    branches: [native-android-v1]
+  workflow_dispatch:
+concurrency:
+  group: android-native-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Node 24
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24.12'
+      - name: SDK 35
+        run: |
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          BIN="$(find "$SDK" -type f -name sdkmanager -print -quit 2>/dev/null)"
+          echo "SDK=$SDK / sdkmanager=$BIN"
+          if [ -z "$BIN" ]; then echo "::error::Android SDK commandline tools not available"; exit 1; fi
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
+          yes | "$BIN" --sdk_root="$SDK" "platforms;android-35" "build-tools;35.0.0" || test "${PIPESTATUS[1]}" -eq 0
+      - name: Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Restore original Quartinaut 5.4 artwork and location snapshot
+        run: bash scripts/sync-original-assets.sh
+      - name: Verify private image-service code and validation tests
+        run: |
+          node --check functions/appearance/index.js
+          node --test functions/appearance/test/validation.test.js
+      - name: Verify private chat security and message validation
+        run: |
+          node --check functions/nativeChats/index.js
+          node --test functions/nativeChats/test/security.test.js
+      - name: Verify community extensions security validation
+        run: |
+          node --check functions/enhancements/index.js
+          node --test functions/enhancements/test/validators.test.js
+      - name: Validate official Swiss dates, regional scope and source evidence
+        run: python3 -m unittest discover -s scripts -p 'test_official_calendar.py' -v
+      - name: Verify Firestore and Storage rules in emulators
+        run: |
+          npm ci --prefix firebase/rules-tests
+          npx -y firebase-tools@latest emulators:exec --only firestore,storage \
+            --project demo-quartinaut-rules "npm --prefix firebase/rules-tests test"
+      - name: Assemble debug APK (native)
+        run: gradle :app:assembleDebug --no-daemon --stacktrace
+      - name: Package native Android Studio sources and original images
+        run: |
+          zip -q -r Quartinaut_Native_Quellcode.zip \
+            README.md OFFICIAL_EVENTS_DATA.md ANDROID_STATUS.md AUDIT_NATIVE_54_2026-11-13.md FIREBASE_NATIVE_FOUNDATION.md CHAT_SECURITY_AND_MEDIA.md audit .gitignore \
+            settings.gradle.kts build.gradle.kts gradle.properties firebase.json .firebaserc \
+            scripts app/build.gradle.kts app/google-services.json app/src firebase \
+            functions/appearance functions/nativeChats functions/enhancements \
+            firebase.appearance.json firebase.chats.json firebase.enhancements.json web-bridge \
+            -x 'firebase/rules-tests/node_modules/*'
+      - name: Upload native source ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: Quartinaut-Native-Quellcode
+          path: Quartinaut_Native_Quellcode.zip
+          retention-days: 30
+      - name: Upload installable APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Quartinaut-Native-Debug-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+      - name: Publish preview APK to GitHub Releases
+        if: github.ref == 'refs/heads/native-android-v1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          CODE="$(sed -nE 's/^[[:space:]]*versionCode = ([0-9]+).*/\1/p' app/build.gradle.kts | head -1)"
+          VERSION="$(sed -nE 's/^[[:space:]]*versionName = "([^"]+)".*/\1/p' app/build.gradle.kts | head -1)"
+          test -n "$CODE" && test -n "$VERSION"
+          TAG="android-v${CODE}-preview"
+          APK="Quartinaut-Android-Preview.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "$APK"
+          cat > /tmp/quartinaut-release-notes.md <<EOF
+          **Quartinaut ${VERSION} (Build ${CODE}) – Android-Testversion**
+          
+          Die APK ist für Entwicklung und Gerätetests gedacht und verwendet die vorhandene Produktions-Firebase-Konfiguration.
+          
+          **Achtung:** Diese Debug-APK wird noch nicht mit einem dauerhaft eingerichteten Release-Schlüssel signiert. Updates über bestehende Testinstallationen können an unterschiedlichen Signaturen scheitern. Deinstallation löscht lokale Appdaten und Entwürfe. Kein automatischer Austausch bestehender Installationen.
+          
+          Nach vollständigem Build- und Sicherheitstest aus Commit ${GITHUB_SHA}.
+          EOF
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "::notice::Release $TAG existiert bereits und bleibt unverändert."
+          elif gh release create "$TAG" "./$APK" \
+              --target "$GITHUB_SHA" \
+              --title "Quartinaut ${VERSION} (Android Preview)" \
+              --notes-file /tmp/quartinaut-release-notes.md \
+              --prerelease; then
+            echo "::notice::APK veröffentlicht: $TAG"
+          else
+            echo "::warning::Release konnte nicht erstellt werden; die APK bleibt als Actions-Artefakt verfügbar."
+          fi

@@ -1,0 +1,60 @@
+{
+  "score": 2,
+  "summary": "Die Regeln verwenden Default-Deny, geschützte Admin-Claims und eine strikte Trennung des users-Dokuments. Mehrere Create-/Update-Regeln besitzen jedoch keine vollständigen Schema-, Typ- und Längenprüfungen. Besonders kritisch sind die nicht an das Chat-Dokument gebundene Erstellung von chatMessages sowie Update-Regeln, die nur den neuen statt auch den bisherigen Eigentümer prüfen. Vor einer breiten nativen Veröffentlichung müssen diese Lücken mit Emulator- und Zwei-Konten-Tests geschlossen werden.",
+  "findings": [
+    {
+      "check": "Chat authorization",
+      "severity": "major",
+      "issue": "chatMessages.create akzeptiert jeden aktiven Benutzer wegen activeUser() || isChatParticipantById(chatId). participants, requestId und recipientUid werden nicht gegen das referenzierte Chat-Dokument geprüft. Dadurch sind fremde Chat-IDs, gefälschte Teilnehmerlisten und Push-Spam möglich.",
+      "recommendation": "Erstellung ausschliesslich über die geschützte Callable oder nur bei bestätigter Chat-Mitgliedschaft erlauben und participants, requestId, recipientUid sowie erlaubte Felder exakt gegen chats/{chatId} validieren."
+    },
+    {
+      "check": "Update bypass and strict schema",
+      "severity": "major",
+      "issue": "users, requests, chats, officialNotices und weitere Collections verwenden keine vollständigen hasOnly-, Typ- und Grössenprüfungen in Create und Update. Eigentümer können deshalb Zusatzfelder, überlange Inhalte oder ungültige Datentypen speichern; bei requests sind zahlreiche nicht geschützte Felder nachträglich manipulierbar.",
+      "recommendation": "Pro Collection einen Validator für Create und Update einsetzen, Pflichtfelder, erlaubte Felder, Typen, Längen, Listeninhalte, Zahlenbereiche und unveränderliche Felder prüfen."
+    },
+    {
+      "check": "Ownership hijacking on update",
+      "severity": "major",
+      "issue": "deviceTokens und bulletinFilters prüfen bei Update hauptsächlich request.resource.data.uid. Ein angemeldeter Benutzer kann ein erratbares fremdes Dokument auf die eigene UID umschreiben, weil resource.data.uid nicht zusätzlich geprüft wird.",
+      "recommendation": "Bei Updates sowohl resource.data.uid als auch request.resource.data.uid an request.auth.uid binden, UID unveränderlich machen und Dokument-IDs serverseitig oder UID-gebunden erzeugen."
+    },
+    {
+      "check": "Chat field-level integrity",
+      "severity": "major",
+      "issue": "Jeder Chatteilnehmer kann participantLabels, readBy, mutedBy, trashedBy und purgedBy als vollständige Maps oder Listen verändern. Damit kann ein Teilnehmer Zustände anderer Personen fälschen.",
+      "recommendation": "Nur den UID-spezifischen Eintrag des angemeldeten Benutzers verändern lassen oder alle Zustandsänderungen über serverseitige, transaktionale Aktionen führen."
+    },
+    {
+      "check": "Verification photo integrity",
+      "severity": "major",
+      "issue": "Storage erlaubt image/.* und sowohl Create als auch Update für den Eigentümer. Eine bereits eingereichte Verifikationsdatei kann ersetzt werden; aktive Bildformate wie SVG sind trotz .jpg-Dateiname nicht ausgeschlossen.",
+      "recommendation": "Nur image/jpeg akzeptieren, Magic Bytes serverseitig prüfen und neu kodieren, nach Einreichung direkte Updates sperren und Ersetzen nur über einen statusgebundenen Serverablauf erlauben."
+    },
+    {
+      "check": "Resource exhaustion and type safety",
+      "severity": "moderate",
+      "issue": "Viele Strings, Maps und Listen haben keine Grössen- oder Inhaltsschranken. Firestore-Dokumente können bis an das Plattformlimit aufgebläht werden.",
+      "recommendation": "Jedes String-, Listen- und Map-Feld realistisch begrenzen und grosse, nicht abgefragte Felder von der Indexierung ausnehmen."
+    },
+    {
+      "check": "Regional least privilege",
+      "severity": "moderate",
+      "issue": "alerts sind für jeden aktiven Benutzer lesbar, ohne Kanton-, Gemeinde- oder Veröffentlichungsstatusprüfung.",
+      "recommendation": "Öffentliche Alarmabfragen auf veröffentlichte Einträge im Benutzerbereich beschränken; globale Alarme explizit kennzeichnen."
+    },
+    {
+      "check": "Android trust boundary",
+      "severity": "major",
+      "issue": "Im Projekt ist nur eine Web-App registriert. Die native App verwendet deren App-ID; Android App Check, Android-SHA-Zertifikate und eine native FCM-Identität fehlen.",
+      "recommendation": "Eine eigene Android-App ch.quartinaut.nativeapp registrieren, stabile Signierung und SHA-256 hinterlegen, google-services.json einbinden, App Check aktivieren und FCM-Tokens gerätegebunden registrieren."
+    },
+    {
+      "check": "Positive controls",
+      "severity": "minor",
+      "issue": "Positiv sind Default-Deny für unbekannte Firestore-Pfade, vollständiges Default-Deny in Storage, Adminrechte aus Auth-Claims sowie die owner/admin-only Leseregel für das PII-haltige users-Dokument.",
+      "recommendation": "Diese Schutzprinzipien bei der Härtung beibehalten und mit Emulator-Regressionsprüfungen absichern."
+    }
+  ]
+}

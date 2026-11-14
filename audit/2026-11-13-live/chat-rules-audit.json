@@ -1,0 +1,18 @@
+{
+  "score": 4,
+  "summary": "Der Chat-Kandidat nutzt Default-Deny, serververwaltete Blockkanten, strikte Teilnehmerbindung, begrenzte Medienmetadaten und immutable Storage-Uploads. In den geprüften Chatpfaden wurde kein kritischer oder schwerwiegender Berechtigungsfehler gefunden. Vor einem breiten Rollout bleibt eine Legacy-Kompatibilitätsprüfung erforderlich.",
+  "findings": [
+    {
+      "check": "Timestamp manipulation",
+      "severity": "minor",
+      "issue": "Bestehende Legacy-Dokumente verwenden ISO-Zeichenketten. Direkte Alt-Client-Schreibvorgänge können daher nur auf Typ und Länge, nicht auf zeitliche Nähe geprüft werden.",
+      "recommendation": "Nach bestätigter Migration alle Chat-Schreibvorgänge ausschließlich über den Callable führen und neue Zeitfelder als serverseitige Timestamps führen."
+    },
+    {
+      "check": "Storage authorization dependency",
+      "severity": "minor",
+      "issue": "Jede Chatbild-Anfrage benötigt eine Firestore-Mitgliedschaftsprüfung und damit die Storage-zu-Firestore-Regelverknüpfung.",
+      "recommendation": "Vor Produktion die erforderliche Service-Agent-Berechtigung bestätigen und Firestore-Regelzugriffe im Monitoring beobachten."
+    }
+  ]
+}
