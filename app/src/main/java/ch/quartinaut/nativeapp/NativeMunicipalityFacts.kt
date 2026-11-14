@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Icon
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -350,33 +352,32 @@ internal fun MunicipalityCoat(
     bfs:String?=null, cantonCode:String?=null
 ) {
     val context=LocalContext.current
-    val resolved by produceState<String?>(initialValue=null,url,bfs,cantonCode) {
+    val state by produceState<Pair<Boolean,Bitmap?>>(initialValue=false to null,
+        url,bfs,cantonCode) {
         value=withContext(Dispatchers.IO) {
             val local=bfs?.let {bundledWappenAsset(context,it)}
             val source=safeWappenUrl(url) ?:
                 bfs?.let {bundledWappen(context)[it] ?: queryWappenByBfs(it)}
                     ?: cantonCode?.let(::queryCantonCoat)
-            local ?: source?.let(::resolveWappenImage)
+            val loader=wappenLoader(context)
+            val bitmap=listOfNotNull(local,source).firstNotNullOfOrNull { address ->
+                wappenBitmap(context,loader,address)
+            }
+            true to bitmap
         }
     }
-    if(resolved!=null) {
-        val loader=remember(context.applicationContext) {wappenLoader(context)}
-        SubcomposeAsyncImage(model=resolved,imageLoader=loader,
-            contentDescription="Wappen von $name",modifier=modifier,
-            contentScale=ContentScale.Fit,
-            loading={Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center) {
-                CircularProgressIndicator(Modifier.size(16.dp),strokeWidth=2.dp)
-            }},
-            error={
-                Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center) {
-                    Text("–",style=MaterialTheme.typography.bodySmall,
-                        color=MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            })
-    } else {
-        Box(modifier,contentAlignment=Alignment.Center) {
-            Text("–",style=MaterialTheme.typography.bodySmall,
-                color=MaterialTheme.colorScheme.onSurfaceVariant)
+    Box(modifier,contentAlignment=Alignment.Center) {
+        val bitmap=state.second
+        if(bitmap!=null) {
+            Image(bitmap=bitmap.asImageBitmap(),
+                contentDescription="Wappen von $name",
+                modifier=Modifier.fillMaxSize(),contentScale=ContentScale.Fit)
+        } else if(!state.first) {
+            CircularProgressIndicator(Modifier.size(18.dp),strokeWidth=2.dp)
+        } else {
+            Text("Wappen nicht verfügbar",style=MaterialTheme.typography.labelSmall,
+                color=MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign=androidx.compose.ui.text.style.TextAlign.Center)
         }
     }
 }
