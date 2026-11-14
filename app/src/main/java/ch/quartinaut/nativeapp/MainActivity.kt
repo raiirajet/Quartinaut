@@ -446,7 +446,7 @@ private fun QuartinautApp(repo: QuartinautRepository,
                 "lost" -> HubItemsPage(repo, "lost", navTo, openHub)
                 "project" -> HubItemsPage(repo, "project", navTo, openHub)
                 "issue" -> HubItemsPage(repo, "issue", navTo, openHub)
-                "v50market", "v50loans", "v50associations" -> V50Page(repo, page)
+                "v50market", "v50loans", "v50associations" -> V50Page(repo, page, navTo)
                 "search" -> NativeUnifiedSearch(repo,navTo,openRequest,openHub) {code,bfs ->
                     navTo("map");mapCanton=code;mapMunicipality=bfs
                 }
@@ -974,12 +974,26 @@ private fun RegionPage(repo: QuartinautRepository, selectedCode: String,selected
     }
 }
 @Composable
-private fun V50Page(repo: QuartinautRepository, page:String) {
+private fun V50Page(repo: QuartinautRepository, page:String,go:(String)->Unit) {
     val action = when(page) { "v50market" -> "market.list";"v50loans" -> "loan.list"; else -> "association.list" }
     LaunchedEffect(page) { repo.loadV50(action) }
     Column(Modifier.fillMaxSize().padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
         SectionTitle(when(page){"v50market"->"Marktplatz-Reservierungen";"v50loans"->"Ausleih-Kalender";else->"Vereinsanmeldungen"})
         OutlinedButton(onClick={repo.loadV50(action)},modifier=Modifier.fillMaxWidth()) { Text("Aktualisieren") }
+        if(page=="v50loans") {
+            Text("Hier findest du Buchungsanfragen und bestätigte Ausleihen. " +
+                "Ein selbst veröffentlichtes Leihangebot erzeugt noch keine Buchung.",
+                style=MaterialTheme.typography.bodySmall,
+                color=MaterialTheme.colorScheme.onSurfaceVariant)
+            OutlinedButton(onClick={go("lend")},modifier=Modifier.fillMaxWidth()) {
+                Text("Leihangebote entdecken und Ausleihe anfragen")
+            }
+        }
+        if(repo.v50Loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+        if(repo.v50Error.isNotBlank()) {
+            Text("Buchungsdienst nicht erreichbar: "+repo.v50Error,
+                style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.error)
+        }
         LazyColumn(verticalArrangement=Arrangement.spacedBy(10.dp)) {
             items(repo.v50Items) { entry ->
                 val title=DocString(entry["title"]).ifBlank {
@@ -988,7 +1002,22 @@ private fun V50Page(repo: QuartinautRepository, page:String) {
                 Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)) {
                     Column(Modifier.fillMaxWidth().padding(14.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
                         Text(title,fontWeight=FontWeight.Bold)
-                        Text("Status: " + DocString(entry["status"]))
+                        val readableStatus=when(DocString(entry["status"])) {
+                            "requested" -> "Angefragt"
+                            "accepted" -> "Angenommen"
+                            "returned" -> "Zurückgegeben"
+                            "declined" -> "Abgelehnt"
+                            "cancelled" -> "Storniert"
+                            "waitlisted" -> "Warteliste"
+                            "confirmed" -> "Bestätigt"
+                            else -> DocString(entry["status"]).ifBlank{"Unbekannt"}
+                        }
+                        Text("Status: "+readableStatus)
+                        if(page=="v50loans") {
+                            Text("Zeitraum: "+DocString(entry["from"]).take(16).replace('T',' ')+
+                                " – "+DocString(entry["to"]).take(16).replace('T',' '),
+                                style=MaterialTheme.typography.bodySmall)
+                        }
                         val id=DocString(entry["id"])
                         val listing=DocString(entry["listingId"])
                         val status=DocString(entry["status"])
@@ -999,8 +1028,28 @@ private fun V50Page(repo: QuartinautRepository, page:String) {
                                 TextButton(onClick={repo.v50Action("market.decline",mapOf("listingId" to listing))}) { Text("Ablehnen") }
                             }
                         }
-                        if(page=="v50loans" && status=="requested" && DocString(entry["ownerUid"])==uid) {
-                            TextButton(onClick={repo.v50Action("loan.accept",mapOf("id" to id))}) { Text("Ausleihe bestätigen") }
+                        if(page=="v50loans") {
+                            val owner=DocString(entry["ownerUid"])==uid
+                            val borrower=DocString(entry["borrowerUid"])==uid
+                            if(owner&&status=="requested") {
+                                Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                                    OutlinedButton(onClick={repo.v50Action("loan.decline",mapOf("id" to id))},
+                                        enabled=!repo.busy) {Text("Ablehnen")}
+                                    Button(onClick={repo.v50Action("loan.accept",mapOf("id" to id))},
+                                        enabled=!repo.busy) {Text("Ausleihe bestätigen")}
+                                }
+                            }
+                            if(borrower&&status=="requested") {
+                                OutlinedButton(onClick={repo.v50Action("loan.cancel",mapOf("id" to id))},
+                                    enabled=!repo.busy) {Text("Anfrage stornieren")}
+                            }
+                            if(owner&&status=="accepted") {
+                                Button(onClick={repo.v50Action("loan.return",mapOf("id" to id))},
+                                    enabled=!repo.busy) {Text("Rückgabe bestätigen")}
+                            }
+                            if(status=="accepted"&&(owner||borrower)) {
+                                OutlinedButton(onClick={go("enh-qr")}) {Text("QR-Übergabe öffnen")}
+                            }
                         }
                         if(page=="v50associations" && status=="waitlisted" && DocString(entry["organizerUid"])==uid) {
                             TextButton(onClick={repo.v50Action("association.manage",mapOf("id" to id,"decision" to "confirm"))}) { Text("Von Warteliste bestätigen") }
@@ -1008,7 +1057,13 @@ private fun V50Page(repo: QuartinautRepository, page:String) {
                     }
                 }
             }
-            if(repo.v50Items.isEmpty()) item { Text("Keine Einträge geladen.") }
+            if(repo.v50Items.isEmpty() && !repo.v50Loading) item {
+                Text(when {
+                    repo.v50Error.isNotBlank() -> "Die Buchungen konnten nicht geladen werden."
+                    page=="v50loans" -> "Noch keine Ausleihanfragen. Öffne einen fremden Leihartikel und sende eine Anfrage."
+                    else -> "Noch keine Einträge vorhanden."
+                })
+            }
         }
     }
 }

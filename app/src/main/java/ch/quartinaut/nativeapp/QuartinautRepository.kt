@@ -96,6 +96,8 @@ class QuartinautRepository(context: Context) {
         private set
     var v50Error by mutableStateOf("")
         private set
+    var v50Loading by mutableStateOf(false)
+        private set
         private set
     var regions by mutableStateOf<List<Region>>(emptyList())
         private set
@@ -138,7 +140,7 @@ class QuartinautRepository(context: Context) {
                 chats = emptyList(); messages = emptyList()
                 serverChats = emptyList(); serverMessages = emptyList()
                 serverChatReady = false; serverChatLoading = false; serverChatActive = false
-                hubItems = emptyList(); v50Items = emptyList(); v50Error = ""
+                hubItems = emptyList(); v50Items = emptyList(); v50Error = ""; v50Loading=false
                 offlineHubItems=emptyList();offlineCacheDate=""
                 enhancedItems=emptyList();enhancementLoading=false;enhancementError=""
                 chatId = ""
@@ -443,14 +445,17 @@ class QuartinautRepository(context: Context) {
         if (user == null || !active()) return
         v50Items = emptyList()
         v50Error = ""
+        v50Loading = true
         functions.getHttpsCallable("quartinautV50").call(mapOf("action" to action))
             .addOnSuccessListener { result ->
+                v50Loading=false
                 val raw = result.data as? Map<*, *>
                 val items = (raw?.get("entries") ?: raw?.get("items")) as? List<*> ?: emptyList<Any>()
                 v50Items = items.mapNotNull { (it as? Map<*, *>)?.entries?.associate { e ->
                     DocString(e.key) to e.value
                 } }
             }.addOnFailureListener { e ->
+                v50Loading=false
                 v50Error = e.localizedMessage ?: "Der Buchungsdienst konnte nicht geladen werden."
                 syncIssues = syncIssues + ("Ausleih-/Reservationsdienst" to v50Error)
             }
