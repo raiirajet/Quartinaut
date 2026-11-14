@@ -135,6 +135,8 @@ fun NativeSettingsScreen(repo: QuartinautRepository,mode: String,
         Text("Die Freigabe gilt nur für dieses Gerät und kann in Android jederzeit widerrufen werden.",
             style=MaterialTheme.typography.bodySmall)
         HorizontalDivider()
+        NativeAppUpdateArea(compact=false)
+        HorizontalDivider()
         Text("Barrierefreiheit",style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
         Text("Quartinaut berücksichtigt die Android-Schriftgrösse und unterstützt die Bedienung über beschriftete Schaltflächen.",
             style=MaterialTheme.typography.bodySmall)

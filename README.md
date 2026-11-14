@@ -1,6 +1,27 @@
 # Quartinaut Native Android
 
-**Quartinaut 5.4 → Kotlin + Jetpack Compose · ohne WebView.**
+**Quartinaut Native Android 5.7.2 · Kotlin + Jetpack Compose · ohne WebView.**
+
+## Android-APK direkt herunterladen
+
+Die aktuelle installierbare **Test-APK** steht nach erfolgreichem GitHub
+Actions-Build auf der [GitHub-Releases-Seite](https://github.com/raiirajet/Quartinaut/releases)
+als `Quartinaut-Android-Preview.apk` zur Verfügung. Der `main`-Branch
+verlinkt diese Downloads. Grosse Binärdateien werden nicht im Git-Quellbaum
+versioniert.
+
+Wenn ein neuer Build mit höherem `versionCode` veröffentlicht wird,
+zeigt Quartinaut beim nächsten Öffnen **„Update verfügbar“**.
+In den Einstellungen kann die Prüfung auch manuell gestartet werden.
+
+**Wichtige Einschränkung:** Die bisherigen Debug-APKs haben noch keinen
+dauerhaft festgelegten Signaturschlüssel. Android kann deshalb eine neue
+Test-APK unter Umständen nicht über die bestehende Version installieren.
+Eine Deinstallation kann lokale Entwürfe und Appdaten löschen.
+Vor nahtlosen Updates muss die App einmalig auf eine dauerhaft stabile,
+sicher verwahrte Release-Signatur umgestellt werden.
+Es findet keine stille Installation statt.
+
 
 Eigenständige Android-App auf Grundlage des von der Eigentümerin bereitgestellten Quartinaut-5.4-Release-Kandidaten. Es handelt sich nicht um eine umverpackte Website. Produktives Hosting und Firebase-Regeln werden beim APK-Build nicht verändert.
 

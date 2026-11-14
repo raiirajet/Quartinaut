@@ -390,11 +390,13 @@ private fun QuartinautApp(repo: QuartinautRepository,
             }
         }
     ) { padding ->
+        Column(Modifier.fillMaxSize().padding(padding)) {
+            NativeAppUpdateArea(compact=true)
         val edgePixels=with(LocalDensity.current) { 32.dp.toPx() }
         val swipeDistance=with(LocalDensity.current) { 88.dp.toPx() }
         var fromEdge by remember { mutableStateOf(false) }
         var dragged by remember { mutableFloatStateOf(0f) }
-        Box(Modifier.fillMaxSize().padding(padding).pointerInput(page,mapCanton,mapMunicipality) {
+        Box(Modifier.weight(1f).fillMaxWidth().pointerInput(page,mapCanton,mapMunicipality) {
             detectHorizontalDragGestures(
                 onDragStart={ start -> fromEdge=start.x<=edgePixels;dragged=0f },
                 onDragEnd={ if(fromEdge && dragged>swipeDistance && page!="home") backAction() },
@@ -466,6 +468,7 @@ private fun QuartinautApp(repo: QuartinautRepository,
                 }
             }
             if (repo.busy) LinearProgressIndicator(Modifier.fillMaxWidth().align(Alignment.TopCenter))
+        }
         }
     }
 }
