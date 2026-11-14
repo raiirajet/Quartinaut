@@ -65,6 +65,10 @@ internal fun NativeReactionsPanel(
             })
     }
 
+    // Prefetch the existing comment-list endpoint once on opening the post.
+    // Its optional summary also refreshes the like count and user's state.
+    LaunchedEffect(kind,id) { refresh() }
+
     Column(verticalArrangement=Arrangement.spacedBy(9.dp)) {
         Text("Reaktionen & Kommentare",style=MaterialTheme.typography.titleMedium,
             fontWeight=FontWeight.SemiBold)
@@ -104,7 +108,7 @@ internal fun NativeReactionsPanel(
             }
             TextButton(onClick={
                 showComments=!showComments
-                if(showComments && comments.isEmpty())refresh()
+                if(showComments && comments.isEmpty() && !loading)refresh()
             }) {
                 Icon(Icons.Default.Comment,contentDescription=null,
                     modifier=Modifier.size(17.dp))
