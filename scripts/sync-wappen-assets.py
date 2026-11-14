@@ -7,6 +7,7 @@ Never invent an image from a municipality name. The app continues to work
 without external services if Wikidata or Commons temporarily fails.
 """
 import concurrent.futures
+import csv
 import hashlib
 import json
 import os
@@ -245,6 +246,50 @@ def download_logo_haute_ajoie():
             pass
     return False
 
+def import_legacy(valid_ids):
+    """Fill gaps from the 2018 BFS-ID-labelled archival collection.
+    Existing 2026 downloads are never overwritten. Archive art is clearly
+    attributed as older imagery; this is not proof of a 2026 heraldic revision.
+    """
+    from PIL import Image, UnidentifiedImageError
+    archive=ROOT/".cache/legacy-coats/coat of arms - 500px"
+    csv_file=ROOT/".cache/legacy-coats/imagesource.csv"
+    meta_file=OUT/"legacy-sources.json"
+    previous=json.loads(meta_file.read_text(encoding="utf-8")) if meta_file.is_file() else {}
+    if not archive.is_dir() or not csv_file.is_file():
+        print("No bundled historical BFS archive available; using existing/current sources",flush=True)
+        return previous
+    with csv_file.open(encoding="utf-8-sig",newline="") as f:
+        by_bfs={row.get("bfs",""):row.get("WappenURL","")
+                for row in csv.DictReader(f)}
+    imported=0
+    for bfs in sorted(valid_ids,key=int):
+        if cached_image(bfs):
+            continue
+        asset=archive/("thumb_"+bfs+".png")
+        source=by_bfs.get(bfs,"")
+        # The 2018 dataset explicitly maps filename to the official BFS number
+        # and records its original Wikipedia image page per entry.
+        if not asset.is_file() or not source.startswith("https://de.wikipedia.org/wiki/"):
+            continue
+        try:
+            with Image.open(asset) as image:
+                image.load()
+                if image.width<15 or image.height<15:
+                    continue
+                rendered=image.convert("RGBA")
+                rendered.thumbnail((128,128),Image.Resampling.LANCZOS)
+                tmp=OUT/(bfs+".png.part")
+                rendered.save(tmp,format="PNG",optimize=True)
+                tmp.replace(OUT/(bfs+".png"))
+                previous[bfs]=source
+                imported+=1
+        except (OSError,ValueError,UnidentifiedImageError):
+            continue
+    meta_file.write_text(json.dumps(previous,ensure_ascii=False,sort_keys=True,indent=2)+"\n",encoding="utf-8")
+    print(f"Historical BFS archive: {imported} new local coats added, {len(previous)} attributed in total",flush=True)
+    return previous
+
 def main():
     source=json.loads(SOURCE.read_text(encoding="utf-8"))
     all_ids=set()
@@ -278,9 +323,18 @@ def main():
     sources={bfs:"https://commons.wikimedia.org/wiki/File:"+urllib.parse.quote(filename.replace(" ","_"),safe="()_,.-")
              for bfs,filename in filenames.items()}
     (OUT/"sources.json").write_text(json.dumps(sources,ensure_ascii=False,separators=(",",":")),encoding="utf-8")
+    legacy_sources=import_legacy(expected)
+    # Keep the actual historical file provenance separate from current Wikidata
+    # online URLs, so the source credit corresponds to the image in the APK.
+    for bfs,url in legacy_sources.items():
+        if bfs in sources and cached_image(bfs):
+            sources[bfs]=url
+    (OUT/"sources.json").write_text(json.dumps(sources,ensure_ascii=False,separators=(",",":")),encoding="utf-8")
     entries=sorted(filenames.items(),key=lambda x:int(x[0]))
-    # Low parallelism avoids proxy throttling. This may take several minutes
-    # on a cold CI worker; workflow cache stores checked files across runs.
+    # Only remaining coats are downloaded. A 2018 archive prevents 2000+
+    # throttled Wikimedia requests, and the Actions cache saves new 2026 art.
+    entries=[entry for entry in entries if not cached_image(entry[0])]
+    print(f"Fresh online coats still needed: {len(entries)}",flush=True)
     with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
         results=list(pool.map(download_coat,entries))
     successful=sum(results)
@@ -294,6 +348,7 @@ def main():
         "municipalities":len(all_ids),
         "coats_expected":len(expected),
         "coats_present":len(present),
+        "historical_2018_fallbacks":len([x for x in legacy_sources if x in present]),
         "no_coat_communities":{NO_COAT_BFS:{"name":"Haute-Ajoie","reason":"Gemeindelogo statt eigenem Gemeindewappen","logo_bundled":logo_ok,"source":"https://hauteajoie.ch/"}},
         "source_missing":[{"bfs":id,"name":names[id],"canton":canton_by_bfs[id]} for id in sorted(missing_source,key=int)],
         "asset_missing":[{"bfs":id,"name":names[id],"canton":canton_by_bfs[id]} for id in sorted(absent,key=int)],

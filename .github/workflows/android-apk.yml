@@ -45,6 +45,14 @@ jobs:
           key: wappen-assets-2026-${{ github.run_id }}
           restore-keys: |
             wappen-assets-2026-
+      - name: Retrieve 2018 Swiss BFS-ID image archive (only historical fallback)
+        run: |
+          git clone --depth 1 --filter=blob:none --sparse \
+            https://github.com/ganti/swissZIPcoatofarms.git .cache/legacy-coats
+          git -C .cache/legacy-coats sparse-checkout set 'coat of arms - 500px'
+          git -C .cache/legacy-coats rev-parse HEAD
+      - name: Install image thumbnail conversion
+        run: python3 -m pip install --quiet --disable-pip-version-check Pillow==11.3.0
       - name: Download and bundle every valid Swiss municipal coat
         run: python3 scripts/sync-wappen-assets.py
       - name: Save partially or fully verified coats for next builds
