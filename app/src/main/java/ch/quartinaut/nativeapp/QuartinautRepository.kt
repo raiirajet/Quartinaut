@@ -989,8 +989,8 @@ class QuartinautRepository(context: Context) {
      */
     fun enhancement(
         action: String, args: Map<String,Any?> = emptyMap(),
-        onDone: (Map<String,Any?>) -> Unit = {},
-        onError: (String) -> Unit = {}
+        onError: (String) -> Unit = {},
+        onDone: (Map<String,Any?>) -> Unit = {}
     ) {
         val uid=user?.uid
         if(uid==null || !active()) {
