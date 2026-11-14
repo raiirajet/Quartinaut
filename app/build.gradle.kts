@@ -13,8 +13,8 @@ android {
         applicationId = "ch.quartinaut.nativeapp"
         minSdk = 26
         targetSdk = 35
-        versionCode = 11
-        versionName = "5.7.0-official-calendar"
+        versionCode = 12
+        versionName = "5.7.1-loans-chat-service"
     }
     buildTypes {
         release { isMinifyEnabled = false }
