@@ -55,6 +55,11 @@ def url_for(filename):
         digest[0], digest[:2], urllib.parse.quote(canonical, safe="()_,.-")
     )
 
+def file_page_for(filename):
+    return ("https://commons.wikimedia.org/wiki/Special:FilePath/" +
+            urllib.parse.quote(filename.replace(" ", "_"), safe="()_,.-"))
+
+
 def wikidata_index(valid_ids):
     # One registry-validated P771/P94 lookup; avoid per-device API throttling.
     sparql = """
@@ -83,18 +88,28 @@ def wikidata_index(valid_ids):
 
 def download_svg(entry):
     bfs, filename = entry
-    try:
-        raw = request(url_for(filename), timeout=15)
-        data = raw[:900].lower()
-        if not (b"<svg" in data or b"<?xml" in data) or b"<html" in data:
-            return False
-        if len(raw) > 250_000:
-            return False
-        destination = OUT / (bfs + ".svg")
-        destination.write_bytes(raw)
-        return True
-    except OSError:
-        return False
+    # Wikidata may refer to an older Commons filename that redirects.
+    # Special:FilePath resolves redirects; direct hashed upload is fastest
+    # when the page already has its canonical filename.
+    urls = [url_for(filename), file_page_for(filename)]
+    for url in urls:
+        for attempt in range(2):
+            try:
+                raw = request(url, timeout=16)
+                prefix = raw[:8192].lower()
+                if (b"<svg" not in prefix and b"<?xml" not in prefix) or b"<html" in prefix:
+                    break
+                if len(raw) > 250_000:
+                    break
+                (OUT / (bfs + ".svg")).write_bytes(raw)
+                return True
+            except urllib.error.HTTPError as exc:
+                if exc.code in (404, 400): break
+                if exc.code not in (429, 500, 502, 503, 504): break
+                time.sleep(1.0 + attempt)
+            except OSError:
+                if attempt == 0: time.sleep(0.5)
+    return False
 
 def main():
     source = json.loads(SOURCE.read_text(encoding="utf-8"))
@@ -114,14 +129,14 @@ def main():
     OUT.mkdir(parents=True, exist_ok=True)
     filenames = dict(VERIFIED)
     filenames.update(wikidata_index(all_ids))
-    verified = {bfs: url_for(name) for bfs, name in filenames.items() if bfs in all_ids}
+    verified = {bfs: file_page_for(name) for bfs, name in filenames.items() if bfs in all_ids}
     (OUT / "index.json").write_text(
         json.dumps(verified,ensure_ascii=False,separators=(",",":")),
         encoding="utf-8"
     )
     # SG is packaged for an immediately usable, offline-first canton map.
     images = [(bfs, filenames[bfs]) for bfs in sorted(sg_ids) if bfs in filenames]
-    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as pool:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
         loaded = sum(bool(ok) for ok in pool.map(download_svg, images))
     print("Wappen index: {} BFS entries; St. Gallen offline SVGs: {}/{}"
           .format(len(verified),loaded,len(images)))
