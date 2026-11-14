@@ -38,3 +38,32 @@ jobs:
             for label,result in pool.map(test,cases.items()):
               print(f"PROBE {label}: {result}",flush=True)
           PY
+
+      - name: Inspect 2026 BFS image match and representative direct downloads
+        run: |
+          python3 - <<'PY'
+          import sys, json, urllib.request, concurrent.futures, random, pathlib
+          sys.path.insert(0,"scripts")
+          import importlib.util
+          spec=importlib.util.spec_from_file_location("wappen","scripts/sync-wappen-assets.py")
+          w=importlib.util.module_from_spec(spec);spec.loader.exec_module(w)
+          url="https://quartinaut.web.app/assets/data/ch-locations-2026.json"
+          data=json.loads(urllib.request.urlopen(url,timeout=15).read())
+          entries=[(str(m['bfsCode']),m['name'],c['code']) for c in data["cantons"] for m in c["municipalities"]]
+          ids={i for i,n,c in entries}
+          names={i:(n,c) for i,n,c in entries}
+          idx=w.wikidata_index(ids); missing=sorted(ids-idx.keys(),key=int)
+          print("MISSING WIKIDATA BFS",[(id,*names[id]) for id in missing],flush=True)
+          sample=sorted(idx.keys(),key=int)[::40]+[b for b in ("3402","3401","1","2401","5600") if b in idx]
+          def probe(id):
+             file=idx[id]
+             url=w.url_for(file)
+             try:
+                blob=w.request(url,timeout=8)
+                return id,names[id],file,len(blob),blob[:14]
+             except Exception as e:
+                return id,names[id],file,type(e).__name__,str(e)[:100]
+          with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+            for result in pool.map(probe,sample):
+              print("SAMPLE",str(result)[:240],flush=True)
+          PY
