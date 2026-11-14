@@ -198,6 +198,7 @@ fun NativeMyPostsScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
     var editingBody by remember {mutableStateOf("")}
     var editingPrice by remember {mutableStateOf("")}
     var statusTarget by remember {mutableStateOf<Map<String,Any?>?>(null)}
+    var deletionTarget by remember {mutableStateOf<Map<String,Any?>?>(null)}
     var nextStatus by remember {mutableStateOf("")}
     LaunchedEffect(Unit) {repo.loadEnhancementList("posts.mine")}
     val uid=repo.user?.uid.orEmpty()
@@ -273,6 +274,12 @@ fun NativeMyPostsScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
                                     statusTarget=row;nextStatus=status
                                 }) {Text(label)}
                             }
+                            OutlinedButton(onClick={deletionTarget=row},
+                                enabled=!repo.enhancementLoading) {
+                                Icon(Icons.Default.DeleteOutline,contentDescription=null)
+                                Spacer(Modifier.width(6.dp))
+                                Text("Löschen",color=MaterialTheme.colorScheme.error)
+                            }
                         }
                     }
                 }
@@ -319,6 +326,30 @@ fun NativeMyPostsScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
                     editingBody.trim().length in 12..1200) {Text("Speichern")}
             },
             dismissButton={TextButton(onClick={editing=null}) {Text("Abbrechen")}})
+    }
+    deletionTarget?.let { row ->
+        val collection=if(DocString(row["kind"])=="request") "requests"
+            else "communityHubItems"
+        AlertDialog(
+            onDismissRequest={deletionTarget=null},
+            title={Text("Eigenen Beitrag entfernen?")},
+            text={Text("«"+DocString(row["title"])+"» wird aus den öffentlichen " +
+                "Ansichten entfernt. Titel, Beschreibung und hochgeladene Fotos " +
+                "werden gelöscht. Technische Referenzen für bestehende " +
+                "Ausleihen, Nachrichten oder Prüfungen bleiben erhalten. " +
+                "Dieser Schritt lässt sich nicht rückgängig machen.")},
+            confirmButton={TextButton(onClick={
+                val id=DocString(row["id"])
+                deletionTarget=null
+                repo.updateMyPost(collection,id,"post.delete")
+            },enabled=!readOnly && !repo.enhancementLoading) {
+                Text("Inhalt endgültig entfernen",
+                    color=MaterialTheme.colorScheme.error)
+            }},
+            dismissButton={TextButton(onClick={deletionTarget=null}) {
+                Text("Abbrechen")
+            }}
+        )
     }
     statusTarget?.let{ row ->
         val collection=if(DocString(row["kind"])=="request")
