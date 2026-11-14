@@ -109,6 +109,13 @@ fun NativeOriginalHome(repo: QuartinautRepository, navigate: (String) -> Unit,
             }
         }
 
+        OutlinedButton(onClick={navigate("official-calendar")},
+            modifier=Modifier.fillMaxWidth().heightIn(min=48.dp)) {
+            Icon(Icons.Default.EventAvailable,contentDescription=null)
+            Spacer(Modifier.width(8.dp))
+            Text("Offizielle Termine & Feiertage mit Quellen")
+        }
+
         HomeSection("SCHNELLZUGRIFFE","Direkt loslegen","Anpassen",{showShortcuts=true})
         Column(verticalArrangement=Arrangement.spacedBy(9.dp)) {
             chosen.chunked(columns).forEach { row ->
@@ -206,7 +213,8 @@ fun NativeOriginalHome(repo: QuartinautRepository, navigate: (String) -> Unit,
                 HomeLink("settings","Dashboard-Hintergrund","Dein Foto festlegen","🖼️","settings"),
                 HomeLink("enhancements","Alle Erweiterungen","Radar, QR, Vereinszentrale und mehr","🧩","enhancements"),
                 HomeLink("enh-posts","Meine Beiträge","Beitragsstatus und Angebote","📝","enh-posts"),
-                HomeLink("alerts","Gemeinde-Alarme","Wichtige Nachrichten","🔔","alerts")
+                HomeLink("alerts","Gemeinde-Alarme","Wichtige Nachrichten","🔔","alerts"),
+                HomeLink("official-calendar","Offizielle Termine","Feiertage und Veranstaltungen mit Quellen","🇨🇭","official-calendar")
             ).forEach { card ->
                 HomeShortcut(card,Modifier.fillMaxWidth()) { navigate(card.route) }
             }

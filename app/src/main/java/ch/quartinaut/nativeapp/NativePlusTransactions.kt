@@ -221,7 +221,7 @@ fun NativeClubCenter(repo:QuartinautRepository,navigate:(String)->Unit) {
     }
 }
 @Composable
-fun NativeCalendarPlus(repo:QuartinautRepository) {
+fun NativeCalendarPlus(repo:QuartinautRepository,navigate:(String)->Unit) {
     val context=LocalContext.current
     LaunchedEffect(Unit){repo.loadV50("calendar.list")}
     var hours by remember {mutableIntStateOf(24)}
@@ -232,6 +232,8 @@ fun NativeCalendarPlus(repo:QuartinautRepository) {
             style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold)
         Text("Termine und Veranstaltungen aus den in Quartinaut geladenen Daten.",
             color=TMute)
+        OutlinedButton(onClick={navigate("official-calendar")},
+            modifier=Modifier.fillMaxWidth()) {Text("🇨🇭 Offizielle Schweizer Termine und Feiertage")}
         OutlinedButton(onClick={repo.loadV50("calendar.list")}){Text("Kalender aktualisieren")}
         LazyColumn(verticalArrangement=Arrangement.spacedBy(10.dp)) {
             items(repo.v50Items.sortedBy{DocString(it["date"])}){event->

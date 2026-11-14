@@ -265,6 +265,7 @@ private fun QuartinautApp(repo: QuartinautRepository,
         "lend" -> "Leihbörse"
         "group" -> "Vereine & Gruppen"
         "calendar" -> "Gemeindetermine"
+        "official-calendar" -> "Offizielle Termine"
         "v50market" -> "Reservierungen"
         "v50loans" -> "Ausleih-Kalender"
         "v50associations" -> "Anmeldungen"
@@ -359,7 +360,7 @@ private fun QuartinautApp(repo: QuartinautRepository,
                     verticalAlignment=Alignment.CenterVertically) {
                     routes.forEach { (route,label,asset) ->
                         val active=page==route || (route=="plus" &&
-                            page in listOf("board","market","lend","group","calendar",
+                            page in listOf("board","market","lend","group","calendar","official-calendar",
                                 "enhancements","enh-radar","enh-posts","enh-assist","enh-loans",
                                 "enh-clubs","enh-trust","enh-calendar","enh-qr","enh-map",
                                 "enh-offline","enh-favorites","community-pulse","municipal-compare"))
@@ -416,7 +417,7 @@ private fun QuartinautApp(repo: QuartinautRepository,
                 "enh-map" -> NativeMapPlus(repo,navTo)
                 "enh-clubs" -> NativeClubCenter(repo,navTo)
                 "enh-trust" -> NativeTrustScreen(repo,navTo)
-                "enh-calendar" -> NativeCalendarPlus(repo)
+                "enh-calendar" -> NativeCalendarPlus(repo,navTo)
                 "enh-qr" -> NativeQRHandover(repo)
                 "enh-offline" -> NativeOfflineScreen(repo,navTo)
                 "enh-favorites" -> NativeFavoriteScreen(repo,navTo)
@@ -441,6 +442,7 @@ private fun QuartinautApp(repo: QuartinautRepository,
                 "lend" -> HubItemsPage(repo, "lend", navTo, openHub)
                 "group" -> HubItemsPage(repo, "group", navTo, openHub)
                 "calendar" -> HubItemsPage(repo, "calendar", navTo, openHub)
+                "official-calendar" -> NativeOfficialCalendarScreen(repo,navTo)
                 "lost" -> HubItemsPage(repo, "lost", navTo, openHub)
                 "project" -> HubItemsPage(repo, "project", navTo, openHub)
                 "issue" -> HubItemsPage(repo, "issue", navTo, openHub)
@@ -752,6 +754,8 @@ private fun HubPage(repo: QuartinautRepository, go:(String)->Unit) = ScrollPage 
         {Icon(Icons.Default.Handyman,null,tint=Forest)}) { go("lend") }
     Feature("Vereine & Gruppen","Entdecke deine Gemeinschaft",
         {Icon(Icons.Default.Groups,null,tint=Forest)}) { go("group") }
+    Feature("Offizielle Termine & Feiertage","Märkte, Veranstaltungen und Feiertage mit Quellen",
+        {Icon(Icons.Default.Verified,null,tint=Forest)}) { go("official-calendar") }
     Feature("Gemeindekalender","Termine und Entsorgung",
         {Icon(Icons.Default.Event,null,tint=Forest)}) { go("calendar") }
     Feature("Schweizkarte","Kantone und Gemeinden erkunden",
@@ -789,6 +793,8 @@ private fun HubItemsPage(repo:QuartinautRepository,kind:String,go:(String)->Unit
     Column(Modifier.padding(16.dp), verticalArrangement=Arrangement.spacedBy(10.dp)) {
         SectionTitle(labels[kind] ?: "Quartier+", "Veröffentlichte Einträge aus dem Quartinaut-Backend")
         OutlinedTextField(query,{query=it},label={Text("Suchen")},singleLine=true,modifier=Modifier.fillMaxWidth())
+        if(kind=="calendar") OutlinedButton(onClick={go("official-calendar")},
+            modifier=Modifier.fillMaxWidth()) {Text("🇨🇭 Offizielle Schweizer Termine & Feiertage")}
         if(kind=="market") OutlinedButton(onClick={go("v50market")}) { Text("Meine Reservierungen") }
         if(kind=="lend") OutlinedButton(onClick={go("v50loans")}) { Text("Meine Ausleihen") }
         if(kind=="group") OutlinedButton(onClick={go("v50associations")}) { Text("Meine Anmeldungen") }

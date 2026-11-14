@@ -203,6 +203,8 @@ fun NativeCommunityPulse(repo:QuartinautRepository,navigate:(String)->Unit,
     val events=repo.hubItems.filter {it["kind"]=="calendar" && it["status"]=="published"}
     Column(Modifier.fillMaxSize().padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
         V6Header("Gemeinde aktuell", "Was in "+repo.area()+" und Umgebung geschieht")
+        OutlinedButton(onClick={navigate("official-calendar")},
+            modifier=Modifier.fillMaxWidth()) {Text("Amtliche Termine & Feiertage mit Quellen öffnen")}
         Text("Quelle: bereits in Quartinaut geladene Mitteilungen und Beiträge. Keine Live-Daten aus externen Amtsportalen.",
             color=MaterialTheme.colorScheme.onSurfaceVariant,style=MaterialTheme.typography.bodySmall)
         Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(7.dp)) {
@@ -274,6 +276,8 @@ fun NativeCalendarPlanner(repo:QuartinautRepository,navigate:(String)->Unit) {
         V6Header("Meine Termine", "Gemeindetermine entdecken und in deinen Kalender übernehmen")
         Text("Terminzeiten werden in der Kalender-App von dir bestätigt. Quartinaut setzt keine erfundenen Anfangszeiten.",
             style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+        OutlinedButton(onClick={navigate("official-calendar")},
+            modifier=Modifier.fillMaxWidth()) {Text("Offizieller Quellenkalender Schweiz")}
         OutlinedTextField(keyword,{keyword=it},label={Text("Termine durchsuchen")},
             singleLine=true,modifier=Modifier.fillMaxWidth())
         OutlinedButton(onClick={navigate("v50associations")}) {Text("Meine Vereinsanmeldungen")}

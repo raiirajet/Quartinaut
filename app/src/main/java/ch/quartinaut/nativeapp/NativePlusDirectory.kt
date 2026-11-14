@@ -47,6 +47,7 @@ private val allExtensions=listOf(
     PlusRoute("community-pulse","Gemeinde aktuell","Mitteilungen und Beiträge zusammengefasst","📣"),
     PlusRoute("municipal-compare","Gemeinden vergleichen","Zwei Schweizer Gemeinden gegenüberstellen","🏘️"),
     PlusRoute("calendar-planner","Meine Termine","Termine in Android-Kalender übernehmen","📅"),
+    PlusRoute("official-calendar","Offizielle Termine","Bestätigte öffentliche Termine und Feiertage · Quellen","🇨🇭"),
     PlusRoute("safety-center","Sicherheit","Vertrauen, Meldungen und Privatsphäre","🛡️"),
     PlusRoute("search","Alles durchsuchen","Beiträge, Gemeinden und Mitteilungen","🔎")
 )
@@ -62,7 +63,7 @@ fun NativeExtrasDirectory(repo:QuartinautRepository,navigate:(String)->Unit) {
     val groups=linkedMapOf(
         "Für mich" to listOf("personal-center","enh-favorites","enh-posts","chats","enh-trust"),
         "Entdecken & Inserieren" to listOf("search","create","enh-assist","enh-radar","enh-map","municipal-compare"),
-        "Gemeinde & Vereine" to listOf("community-pulse","enh-clubs","enh-calendar","calendar-planner","enh-loans","enh-qr"),
+        "Gemeinde & Vereine" to listOf("official-calendar","community-pulse","enh-clubs","enh-calendar","calendar-planner","enh-loans","enh-qr"),
         "Schutz & Offline" to listOf("safety-center","enh-offline")
     )
     Column(Modifier.fillMaxSize().background(PlusBg).verticalScroll(rememberScrollState())
