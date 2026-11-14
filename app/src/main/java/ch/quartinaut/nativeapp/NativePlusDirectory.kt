@@ -202,7 +202,7 @@ fun NativeMyPostsScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
     var nextStatus by remember {mutableStateOf("")}
     LaunchedEffect(repo.user?.uid) {repo.loadEnhancementList("posts.mine")}
     val uid=repo.user?.uid.orEmpty()
-    val readOnly=!repo.enhancementReady
+    val readOnly=!repo.enhancementReady || !repo.myPostsLoaded
     val ownHub=repo.hubItems.filter {
         it["isMine"]==true || DocString(it["ownerUid"])==uid
     }
@@ -316,6 +316,15 @@ fun NativeMyPostsScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
                                     modifier=Modifier.padding(horizontal=9.dp,vertical=6.dp),
                                     color=MaterialTheme.colorScheme.onPrimaryContainer,
                                     style=MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                        if(DocString(row["id"]) in repo.myPostsBusyIds) {
+                            Row(verticalAlignment=Alignment.CenterVertically,
+                                horizontalArrangement=Arrangement.spacedBy(7.dp)) {
+                                CircularProgressIndicator(Modifier.size(14.dp),strokeWidth=2.dp)
+                                Text("Änderung wird bestätigt …",
+                                    style=MaterialTheme.typography.labelSmall,
+                                    color=PlusMuted)
                             }
                         }
                         val description=DocString(row["description"]).trim()
