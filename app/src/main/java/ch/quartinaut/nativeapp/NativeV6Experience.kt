@@ -122,27 +122,72 @@ fun NativeUnifiedSearch(repo: QuartinautRepository, navigate:(String)->Unit,
                         openRequest:(DocumentSnapshot)->Unit,
                         openHub:(Map<String,Any?>)->Unit,
                         openMunicipality:(String,String)->Unit) {
-    var query by rememberSaveable {mutableStateOf("")}
-    var scope by rememberSaveable {mutableStateOf("Alle")}
-    val scopes=listOf("Alle","Anliegen","Angebote","Gemeinden","Mitteilungen")
+    val context=LocalContext.current
+    val uid=repo.user?.uid.orEmpty()
+    val preferences=remember(context) {
+        context.getSharedPreferences("quartinaut_search_filters",android.content.Context.MODE_PRIVATE)
+    }
+    var query by rememberSaveable(uid) { mutableStateOf("") }
+    var scope by rememberSaveable(uid) {
+        mutableStateOf(preferences.getString(uid+"_scope","Alle") ?: "Alle")
+    }
+    var region by rememberSaveable(uid) {
+        mutableStateOf(preferences.getString(uid+"_region","Alle verfügbaren") ?: "Alle verfügbaren")
+    }
+    val scopes=listOf("Alle","Funktionen","Anliegen","Angebote","Gemeinden","Mitteilungen")
+    val regions=listOf("Alle verfügbaren","Meine Gemeinde","Mein Kanton")
     val q=query.trim()
-    val matches: (String)->Boolean = {text-> q.isBlank() || text.contains(q,ignoreCase=true)}
-    val requests=repo.requests.filter {it.str("status")=="offen" &&
-        matches(it.title()+" "+it.str("text")+" "+it.str("category"))}.take(if(q.isBlank())4 else 30)
+    val matches: (String)->Boolean = { value ->
+        q.isBlank() || value.contains(q,ignoreCase=true)
+    }
+    val myArea=repo.area().substringBefore(" (").trim()
+    val canton=repo.canton()
+    val myAreaKey=repo.areaKey()
+    val isLocal: (String,String,String)->Boolean = { area,areaCode,areaKey ->
+        when(region) {
+            "Meine Gemeinde" -> (areaKey.isNotBlank() && areaKey==myAreaKey) ||
+                (myArea.isNotBlank() && area.substringBefore(" (").trim()
+                    .equals(myArea, ignoreCase=true))
+            "Mein Kanton" -> (canton.isNotBlank() && areaCode.equals(canton,ignoreCase=true)) ||
+                (myArea.isNotBlank() && area.substringBefore(" (").trim()
+                    .equals(myArea,ignoreCase=true))
+            else -> true
+        }
+    }
+    val functionResults=quartierMatchingRoutes(q)
+    val requests=repo.requests.filter {
+        it.str("status")=="offen" &&
+        matches(it.title()+" "+it.str("text")+" "+it.str("category")) &&
+        isLocal(it.str("area"),it.str("cantonCode"),it.str("areaKey"))
+    }.take(if(q.isBlank())4 else 30)
     val hubs=repo.hubItems.filter {
         (DocString(it["status"])=="published" || it["isMine"]==true) &&
-        matches(DocString(it["title"])+" "+DocString(it["description"])+" "+DocString(it["area"]))
+        matches(DocString(it["title"])+" "+DocString(it["description"])+" "+
+            DocString(it["area"])+" "+DocString(it["category"])) &&
+        isLocal(DocString(it["area"]),DocString(it["cantonCode"]),
+            DocString(it["areaKey"]))
     }.take(if(q.isBlank())4 else 30)
-    val municipalities=repo.regions.flatMap { canton-> canton.municipalities
-        .filter { matches(it.name+" "+canton.name+" "+canton.code) }
-        .map { canton to it }
+    val municipalities=repo.regions.flatMap { c -> c.municipalities
+        .filter { municipality ->
+            matches(municipality.name+" "+c.name+" "+c.code) &&
+            (region!="Mein Kanton" || c.code==canton) &&
+            (region!="Meine Gemeinde" || municipality.name.equals(myArea,ignoreCase=true))
+        }.map { c to it }
     }.take(if(q.isBlank())4 else 30)
     val official=(repo.notices+repo.alerts).distinctBy {it.id}.filter {
-        matches(it.title()+" "+it.str("text"))
+        matches(it.title()+" "+it.str("text")+" "+it.str("description")) &&
+        isLocal(it.str("area"),it.str("cantonCode"),it.str("areaKey"))
     }.take(if(q.isBlank())4 else 30)
-    Column(Modifier.fillMaxSize().padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
-        V6Header("Alles durchsuchen","Anliegen, Angebote, Gemeinden und Mitteilungen")
-        OutlinedTextField(query,{query=it.take(90)},label={Text("Wonach suchst du?")},
+    val totalVisible=(if(scope in listOf("Alle","Funktionen"))functionResults.size else 0)+
+        (if(scope in listOf("Alle","Anliegen"))requests.size else 0)+
+        (if(scope in listOf("Alle","Angebote"))hubs.size else 0)+
+        (if(scope in listOf("Alle","Gemeinden"))municipalities.size else 0)+
+        (if(scope in listOf("Alle","Mitteilungen"))official.size else 0)
+    Column(Modifier.fillMaxSize().padding(16.dp),
+        verticalArrangement=Arrangement.spacedBy(10.dp)) {
+        V6Header("Alles durchsuchen", "Funktionen, Beiträge, Angebote und Gemeinden")
+        OutlinedTextField(value=query,onValueChange={query=it.take(90)},
+            label={Text("Wonach suchst du?")},
             leadingIcon={Icon(Icons.Default.Search,contentDescription=null)},
             singleLine=true,modifier=Modifier.fillMaxWidth(),
             trailingIcon={if(query.isNotEmpty()) IconButton(onClick={query=""}) {
@@ -150,45 +195,101 @@ fun NativeUnifiedSearch(repo: QuartinautRepository, navigate:(String)->Unit,
         Row(Modifier.horizontalScroll(rememberScrollState()),
             horizontalArrangement=Arrangement.spacedBy(7.dp)) {
             scopes.forEach { option ->
-                FilterChip(selected=scope==option,onClick={scope=option},label={Text(option)})
+                FilterChip(selected=scope==option,onClick={
+                    scope=option
+                    preferences.edit().putString(uid+"_scope",option).apply()
+                },label={Text(option)})
             }
         }
-        LazyColumn(verticalArrangement=Arrangement.spacedBy(9.dp),
-            contentPadding=PaddingValues(bottom=20.dp)) {
-            if(scope in listOf("Alle","Anliegen")) {
-                item{Text("Anliegen (${requests.size})",fontWeight=FontWeight.SemiBold)}
-                items(requests,key={"r:"+it.id}) { doc->
-                    V6Tile(doc.title(),doc.str("text").take(145),"Schwarzes Brett · "+doc.str("area")) {
-                        openRequest(doc)
+        Row(verticalAlignment=Alignment.CenterVertically,
+            horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+            Icon(Icons.Default.Place,contentDescription=null,
+                tint=MaterialTheme.colorScheme.primary)
+            Text("Umgebung",style=MaterialTheme.typography.labelMedium,
+                color=MaterialTheme.colorScheme.onSurfaceVariant)
+            Box {
+                var menuOpen by remember {mutableStateOf(false)}
+                OutlinedButton(onClick={menuOpen=true}) {
+                    Text(region)
+                    Icon(Icons.Default.ArrowDropDown,contentDescription=null)
+                }
+                DropdownMenu(expanded=menuOpen,onDismissRequest={menuOpen=false}) {
+                    regions.forEach { option ->
+                        DropdownMenuItem(text={Text(option)},onClick={
+                            region=option
+                            preferences.edit().putString(uid+"_region",option).apply()
+                            menuOpen=false
+                        })
                     }
                 }
             }
+        }
+        Text(if(q.isBlank()) "Vorschau der verfügbaren Einträge" else
+            "$totalVisible angezeigte Treffer für „$q“",
+            color=MaterialTheme.colorScheme.onSurfaceVariant,
+            style=MaterialTheme.typography.bodySmall)
+        LazyColumn(verticalArrangement=Arrangement.spacedBy(9.dp),
+            contentPadding=PaddingValues(bottom=20.dp)) {
+            if(scope in listOf("Alle","Funktionen") && q.isNotBlank()) {
+                item {Text("App-Funktionen ("+functionResults.size+")",
+                    fontWeight=FontWeight.SemiBold)}
+                items(functionResults,key={"f:"+it.first}) { result ->
+                    V6Tile(result.second,"Direkt zur Funktion",result.third) {
+                        navigate(result.first)
+                    }
+                }
+            }
+            if(scope in listOf("Alle","Anliegen")) {
+                item{Text("Anliegen ("+requests.size+")",fontWeight=FontWeight.SemiBold)}
+                items(requests,key={"r:"+it.id}) { doc ->
+                    V6Tile(doc.title(),doc.str("text").take(145),
+                        "Schwarzes Brett · "+doc.str("area")) {openRequest(doc)}
+                }
+            }
             if(scope in listOf("Alle","Angebote")) {
-                item{Text("Angebote und Veranstaltungen (${hubs.size})",fontWeight=FontWeight.SemiBold)}
-                items(hubs) { item->
-                    V6Tile(DocString(item["title"]),DocString(item["description"]).take(145),
-                        DocString(item["kind"])+" · "+DocString(item["area"])) {openHub(item)}
+                item{Text("Angebote & Veranstaltungen ("+hubs.size+")",
+                    fontWeight=FontWeight.SemiBold)}
+                items(hubs) { item ->
+                    V6Tile(DocString(item["title"]),
+                        DocString(item["description"]).take(145),
+                        DocString(item["kind"])+" · "+DocString(item["area"])) {
+                        openHub(item)
+                    }
                 }
             }
             if(scope in listOf("Alle","Gemeinden")) {
-                item {Text("Gemeinden (${municipalities.size})",fontWeight=FontWeight.SemiBold)}
-                items(municipalities) { (canton,municipality)->
-                    V6Tile(municipality.name,"Kanton "+canton.name,"Gemeindesteckbrief") {
-                        openMunicipality(canton.code,municipality.bfs)
+                item {Text("Gemeinden ("+municipalities.size+")",
+                    fontWeight=FontWeight.SemiBold)}
+                items(municipalities) { (c,municipality) ->
+                    V6Tile(municipality.name,"Kanton "+c.name,"Gemeindesteckbrief") {
+                        openMunicipality(c.code,municipality.bfs)
                     }
                 }
             }
             if(scope in listOf("Alle","Mitteilungen")) {
-                item {Text("Mitteilungen (${official.size})",fontWeight=FontWeight.SemiBold)}
-                items(official,key={"n:"+it.id}) {doc ->
+                item {Text("Mitteilungen ("+official.size+")",
+                    fontWeight=FontWeight.SemiBold)}
+                items(official,key={"n:"+it.id}) { doc ->
                     V6Tile(doc.title(),doc.str("text").take(145),
-                        "Aus Quartinaut-Mitteilungen · "+doc.str("area")) {
+                        "Quartinaut-Mitteilungen · "+doc.str("area")) {
                         navigate("community-pulse")
                     }
                 }
             }
-            if(requests.isEmpty() && hubs.isEmpty() && municipalities.isEmpty() && official.isEmpty()) {
-                item {Text("Keine Ergebnisse für diese Suche. Versuche einen anderen Begriff.")}
+            if(totalVisible==0) item {
+                Surface(color=MaterialTheme.colorScheme.surfaceVariant,
+                    shape=RoundedCornerShape(18.dp),modifier=Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                        Text("Keine passenden Ergebnisse",fontWeight=FontWeight.SemiBold)
+                        Text("Prüfe Suchbegriff und Umgebung oder wähle «Alle»." ,
+                            color=MaterialTheme.colorScheme.onSurfaceVariant)
+                        TextButton(onClick={
+                            query="";scope="Alle";region="Alle verfügbaren"
+                            preferences.edit().putString(uid+"_scope",scope)
+                                .putString(uid+"_region",region).apply()
+                        }) {Text("Filter zurücksetzen")}
+                    }
+                }
             }
         }
     }
