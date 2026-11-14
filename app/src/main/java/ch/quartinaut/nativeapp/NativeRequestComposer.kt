@@ -131,7 +131,7 @@ fun NativeRequestComposer(
                         Text(value,color=MaterialTheme.colorScheme.onSurface)
                     }
                 }
-                Text("Gültig in deiner Gemeinde: "+repo.area()+" ("+repo.canton()+")",
+                Text("Gültig in deiner Gemeinde: "+quartierAreaLabel(repo.area(),repo.canton()),
                     color=CreateText,style=MaterialTheme.typography.bodySmall)
             }
             Button(onClick={step=1},modifier=Modifier.fillMaxWidth().height(52.dp)) {
@@ -194,7 +194,7 @@ fun NativeRequestComposer(
                 Row(verticalAlignment=Alignment.CenterVertically) {
                     Icon(Icons.Default.LocationOn,null,tint=CreateAccent)
                     Spacer(Modifier.width(7.dp))
-                    Text(repo.area()+" ("+repo.canton()+")",color=CreateText)
+                    Text(quartierAreaLabel(repo.area(),repo.canton()),color=CreateText)
                 }
                 Text("Dein Beitrag erscheint nach den geltenden Freigaberegeln. Bei noch ausstehender Prüfung bleibt er zunächst für dich sichtbar.",
                     color=CreateText,style=MaterialTheme.typography.bodySmall)
