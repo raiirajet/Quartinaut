@@ -372,7 +372,7 @@ fun NativeMunicipalityMap(
                     }
                 }
             }
-            Text("Gemeindegrenzen 2025 · BFS-Verzeichnis 2026 · Wappen: Wikimedia Commons" +
+            Text("Gemeindegrenzen 2025 · BFS-Verzeichnis 2026 · Wappen: Wikimedia Commons / Haute-Ajoie: offizielles Gemeindelogo" +
                 " · "+coats.size+"/"+features.size+" Wappen geladen" +
                 (if(wappenLoading) " (weitere werden geladen …)" else
                     if(coats.size<features.size) " (fehlende online nicht verfügbar oder nicht zugeordnet)" else ""),

@@ -13,8 +13,8 @@ android {
         applicationId = "ch.quartinaut.nativeapp"
         minSdk = 26
         targetSdk = 35
-        versionCode = 24
-        versionName = "5.9.2-kantonswappen-offline"
+        versionCode = 25
+        versionName = "5.9.3-gemeindewappen-offline"
     }
     buildTypes {
         release { isMinifyEnabled = false }

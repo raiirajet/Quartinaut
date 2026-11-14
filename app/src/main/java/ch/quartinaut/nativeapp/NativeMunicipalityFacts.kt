@@ -387,12 +387,12 @@ internal fun MunicipalityCoat(
         val bitmap=state.second
         if(bitmap!=null) {
             Image(bitmap=bitmap.asImageBitmap(),
-                contentDescription="Wappen von $name",
+                contentDescription=if(bfs=="6809") "Offizielles Gemeindelogo von $name" else "Wappen von $name",
                 modifier=Modifier.fillMaxSize(),contentScale=ContentScale.Fit)
         } else if(!state.first) {
             CircularProgressIndicator(Modifier.size(18.dp),strokeWidth=2.dp)
         } else {
-            Text("Wappen nicht verfügbar",style=MaterialTheme.typography.labelSmall,
+            Text(if(bfs=="6809") "Gemeindelogo nicht verfügbar" else "Wappen nicht verfügbar",style=MaterialTheme.typography.labelSmall,
                 color=MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign=androidx.compose.ui.text.style.TextAlign.Center)
         }
