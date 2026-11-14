@@ -86,6 +86,15 @@ class QuartinautRepository(context: Context) {
         private set
     var enhancedItems by mutableStateOf<List<Map<String,Any?>>>(emptyList())
         private set
+    var myPostsItems by mutableStateOf<List<Map<String,Any?>>>(emptyList())
+        private set
+    var myPostsLoaded by mutableStateOf(false)
+        private set
+    var myPostsLoading by mutableStateOf(false)
+        private set
+    var myPostsBusyIds by mutableStateOf<Set<String>>(emptySet())
+        private set
+    private var myPostsRequestSequence=0L
     var enhancementLoading by mutableStateOf(false)
         private set
     var enhancementError by mutableStateOf("")
@@ -144,6 +153,8 @@ class QuartinautRepository(context: Context) {
                 hubItems = emptyList(); v50Items = emptyList(); v50Error = ""; v50Loading=false
                 offlineHubItems=emptyList();offlineCacheDate=""
                 enhancedItems=emptyList();enhancementLoading=false;enhancementError="";enhancementReady=false
+                myPostsItems=emptyList();myPostsLoaded=false;myPostsLoading=false
+                myPostsBusyIds=emptySet();myPostsRequestSequence++
                 chatId = ""
                 dashboardBackground = null
                 dashboardBackgroundStatus = "checking"
@@ -978,27 +989,33 @@ class QuartinautRepository(context: Context) {
      */
     fun enhancement(
         action: String, args: Map<String,Any?> = emptyMap(),
-        onDone: (Map<String,Any?>) -> Unit = {}
+        onDone: (Map<String,Any?>) -> Unit = {},
+        onError: (String) -> Unit = {}
     ) {
-        val uid=user?.uid ?: return
-        if(!active())return
+        val uid=user?.uid
+        if(uid==null || !active()) {
+            onError("Bitte anmelden.")
+            return
+        }
         enhancementLoading=true
-        enhancementReady=false
         enhancementError=""
+        // A parallel read must not temporarily revoke already-confirmed
+        // write permissions for a completely unrelated post.
         functions.getHttpsCallable("quartinautEnhancements")
             .call(args + ("action" to action))
             .addOnCompleteListener { task ->
                 if(user?.uid!=uid)return@addOnCompleteListener
                 enhancementLoading=false
                 if(!task.isSuccessful) {
-                    enhancementReady=false
                     val error=task.exception
-                    enhancementError=if(
+                    val diagnostic=if(
                         error is com.google.firebase.functions.FirebaseFunctionsException &&
                         error.code==com.google.firebase.functions.FirebaseFunctionsException.Code.NOT_FOUND
                     ) "Firebase NOT_FOUND: Erweiterungsdienst noch nicht veröffentlicht."
-                    else callableDiagnostic(error, "Erweiterung derzeit nicht verfügbar.")
-                    syncIssues=syncIssues + ("Erweiterungen" to enhancementError)
+                    else callableDiagnostic(error,"Erweiterung derzeit nicht verfügbar.")
+                    enhancementError=diagnostic
+                    syncIssues=syncIssues + ("Erweiterungen" to diagnostic)
+                    onError(diagnostic)
                 } else {
                     enhancementReady=true
                     syncIssues=syncIssues - "Erweiterungen"
@@ -1008,27 +1025,72 @@ class QuartinautRepository(context: Context) {
             }
     }
     fun loadEnhancementList(action: String, params: Map<String,Any?> = emptyMap()) {
-        enhancedItems=emptyList()
-        enhancement(action,params) { result ->
+        val isPosts=action=="posts.mine"
+        val ticket=if(isPosts) ++myPostsRequestSequence else 0L
+        if(isPosts) myPostsLoading=true
+        // Preserve the last successful result while another request is running.
+        enhancement(action,params,onDone={ result ->
             val entries=result["items"] as? List<*> ?: emptyList<Any>()
-            enhancedItems=entries.mapNotNull { row ->
+            val fresh=entries.mapNotNull { row ->
                 (row as? Map<*,*>)?.entries?.associate { DocString(it.key) to it.value }
             }
-        }
+            if(isPosts) {
+                if(ticket==myPostsRequestSequence) {
+                    myPostsItems=fresh
+                    myPostsLoaded=true
+                    myPostsLoading=false
+                }
+            } else enhancedItems=fresh
+        },onError={
+            if(isPosts && ticket==myPostsRequestSequence) {
+                myPostsLoading=false
+                // Keep existing cards; the retry action remains accessible.
+            }
+        })
     }
-    fun updateMyPost(collection:String,id:String, action:String,
+    fun updateMyPost(collection:String,id:String,action:String,
                      args:Map<String,Any?> = emptyMap(),
-                     completed:()->Unit = {}) {
-        if(!enhancementReady || enhancementLoading) {
-            message="Beitragsverwaltung momentan nur lesbar. Bitte später erneut versuchen."
-            return
+                     completed:()->Unit = {},
+                     failed:(String)->Unit = {}) {
+        if(!enhancementReady || id in myPostsBusyIds) {
+            val reason="Beitragsverwaltung nicht bereit. Bitte erneut versuchen."
+            message=reason;failed(reason);return
         }
-        enhancement(action,args + mapOf("collection" to collection,"id" to id)) {
-            message="Beitrag wurde aktualisiert."
-            loadHub()
-            loadEnhancementList("posts.mine")
-            completed()
+        val previous=myPostsItems
+        val oldLoaded=myPostsLoaded
+        val kind=if(collection=="requests")"request" else ""
+        myPostsLoaded=true
+        myPostsBusyIds=myPostsBusyIds+id
+        myPostsItems=myPostsItems.mapNotNull { row ->
+            val matches=DocString(row["id"])==id &&
+                (kind.isBlank() || DocString(row["kind"])==kind)
+            if(!matches)row else when(action) {
+                "post.delete" -> null
+                "post.status" -> row + ("status" to args["status"])
+                "post.edit" -> row + mapOf(
+                    "title" to args["title"],
+                    "description" to args["description"])
+                else -> row
+            }
         }
+        // The server is authoritative. Roll back if its validation fails.
+        enhancement(action,args + mapOf("collection" to collection,"id" to id),
+            onDone={
+                myPostsBusyIds=myPostsBusyIds-id
+                message=if(action=="post.delete")"Beitrag entfernt."
+                    else "Beitrag aktualisiert."
+                completed()
+                // Refresh only the owner's lightweight list, not every
+                // map, marketplace, calendar and community collection.
+                loadEnhancementList("posts.mine")
+            },
+            onError={ reason ->
+                myPostsBusyIds=myPostsBusyIds-id
+                myPostsItems=previous
+                myPostsLoaded=oldLoaded
+                message=reason
+                failed(reason)
+            })
     }
     fun uploadPostPhoto(
         namespace:String,token:String,index:Int,base64:String,
