@@ -174,7 +174,7 @@ private fun loadFeatures(canton: Region): List<MapMunicipality> {
             conn=(URL(url).openConnection() as HttpURLConnection).apply {
                 connectTimeout=6500
                 readTimeout=12000
-                setRequestProperty("Accept-Encoding","gzip")
+                setRequestProperty("Accept","application/geo+json,application/json")
             }
             selected=readCantonFeatures(conn,ids)
             if(selected.isNotEmpty())break
