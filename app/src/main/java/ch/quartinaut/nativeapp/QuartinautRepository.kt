@@ -570,18 +570,29 @@ class QuartinautRepository(context: Context) {
         }
     }
 
+    /**
+     * Social actions have their own completion callback and do not occupy
+     * the app-wide busy state. Different likes, lists and drafts must not
+     * inadvertently block unrelated screens.
+     */
     fun reactionAction(action: String, kind: String, id: String,
                        values: Map<String,Any?> = emptyMap(),
-                       success: ((Map<String,Any?>) -> Unit)? = null) {
-        busy = true
+                       success: ((Map<String,Any?>) -> Unit)? = null,
+                       failure: ((String) -> Unit)? = null) {
+        if(user==null || !active()) {
+            failure?.invoke("Bitte anmelden, um zu reagieren.")
+            return
+        }
         functions.getHttpsCallable("quartinautSocial")
             .call(values + mapOf("action" to action,"kind" to kind,"id" to id))
             .addOnCompleteListener { task ->
-                busy = false
-                if (!task.isSuccessful) message = task.exception?.localizedMessage
-                    ?: "Kommentar oder Reaktion konnte nicht geladen werden."
-                else {
-                    val entries = (task.result?.data as? Map<*, *>)?.entries ?: emptySet()
+                if(!task.isSuccessful) {
+                    val error=task.exception?.localizedMessage
+                        ?: "Kommentar oder Reaktion konnte nicht geladen werden."
+                    message=error
+                    failure?.invoke(error)
+                } else {
+                    val entries=(task.result?.data as? Map<*, *>)?.entries ?: emptySet()
                     success?.invoke(entries.associate { DocString(it.key) to it.value })
                 }
             }
