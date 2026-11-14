@@ -4,11 +4,12 @@
 
 ## Android-APK herunterladen
 
-[**Aktuelle Quartinaut-APK auf GitHub Releases herunterladen**](https://github.com/raiirajet/Quartinaut/releases)
+[**Quartinaut 5.7.2 – APK direkt herunterladen**](https://github.com/raiirajet/Quartinaut/releases/download/android-v13-preview/Quartinaut-Android-Preview.apk)
+
+[**Alle Quartinaut-Versionen auf GitHub Releases**](https://github.com/raiirajet/Quartinaut/releases)
 
 Für die Installation auf Android den neuesten Eintrag **Android Preview** öffnen und
-die Datei `Quartinaut-Android-Preview.apk` herunterladen. Wenn noch kein Release
-angezeigt wird, steht die zuletzt erfolgreich erstellte Testversion unter
+die Datei `Quartinaut-Android-Preview.apk` herunterladen. Falls der Release-Download einmal nicht erreichbar ist, steht die letzte erfolgreich erstellte Testversion unter
 [GitHub Actions – Android-APK (Build 43561632244)](https://github.com/raiirajet/Quartinaut/actions/runs/43561632244)
 als Artefakt `Quartinaut-Native-Debug-APK` zur Verfügung.
 
