@@ -103,7 +103,7 @@ def main():
     sg_ids = set()
     for canton in cantons:
         for municipality in canton["municipalities"]:
-            bfs = str(municipality.get("bfs", municipality.get("id", "")))
+            bfs = str(municipality.get("bfsCode", ""))
             if not re.fullmatch(r"[0-9]{1,4}", bfs):
                 continue
             all_ids.add(bfs)
