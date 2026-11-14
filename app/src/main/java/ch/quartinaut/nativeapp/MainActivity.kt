@@ -47,31 +47,42 @@ private val Amber = Color(0xFFB77F20)
 private val SwissScheme = lightColorScheme(
     primary = Forest, onPrimary = Color.White, secondary = Amber,
     background = Color(0xFFF7FAF8), surface = Color.White,
-    surfaceVariant = SoftGreen, onSurface = Color(0xFF183127)
+    surfaceVariant = SoftGreen, onSurface = Color(0xFF183127),
+    onSurfaceVariant = Color(0xFF4A6256),
+    outline = Color(0xFFB9C9BF), outlineVariant = Color(0xFFDCE8E0),
+    primaryContainer = Color(0xFFE5F3E9), onPrimaryContainer = Forest
 )
 
 private val SwissGreenScheme = darkColorScheme(
     primary=Color(0xFF8DDEAC), onPrimary=Color(0xFF103624),
     background=Color(0xFF123525), surface=Color(0xFF1E4733),
     onBackground=Color.White, onSurface=Color.White,
-    surfaceVariant=Color(0xFF29533B), onSurfaceVariant=Color(0xFFDBEFE1)
+    surfaceVariant=Color(0xFF29533B), onSurfaceVariant=Color(0xFFDBEFE1),
+    outlineVariant=Color(0xFF416B51),
+    primaryContainer=Color(0xFF29533B), onPrimaryContainer=Color.White
 )
 private val SwissBlackScheme = darkColorScheme(
     primary=Color(0xFF91E6B4), onPrimary=Color(0xFF04190E),
     background=Color(0xFF030504), surface=Color(0xFF111715),
     onBackground=Color.White, onSurface=Color(0xFFE7F4EA),
-    surfaceVariant=Color(0xFF202A24), onSurfaceVariant=Color(0xFFB6CABD)
+    surfaceVariant=Color(0xFF202A24), onSurfaceVariant=Color(0xFFCBDCCF),
+    outlineVariant=Color(0xFF324339),
+    primaryContainer=Color(0xFF183325), onPrimaryContainer=Color(0xFFE7F4EA)
 )
 private val SwissRedScheme = lightColorScheme(
     primary=Color(0xFFD52B1E), onPrimary=Color.White,
     background=Color(0xFFFFF7F6), surface=Color.White,
     onBackground=Color(0xFF411E1B), onSurface=Color(0xFF411E1B),
-    surfaceVariant=Color(0xFFFCE8E6), onSurfaceVariant=Color(0xFF6F4541)
+    surfaceVariant=Color(0xFFFCE8E6), onSurfaceVariant=Color(0xFF694A45),
+    outlineVariant=Color(0xFFEBD1CE),
+    primaryContainer=Color(0xFFFCE8E6), onPrimaryContainer=Color(0xFF75291F)
 )
 private val SwissDarkScheme = darkColorScheme(
     primary = Color(0xFF87D5AE), onPrimary = Color(0xFF123624),
     background=Color(0xFF101C16), surface=Color(0xFF1D2D24),
-    surfaceVariant=Color(0xFF294739)
+    surfaceVariant=Color(0xFF294739), onSurfaceVariant=Color(0xFFD8E6DC),
+    outlineVariant=Color(0xFF3A6150),
+    primaryContainer=Color(0xFF294739), onPrimaryContainer=Color.White
 )
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -119,7 +130,14 @@ class MainActivity : ComponentActivity() {
                 }
                 window.decorView.setBackgroundColor(bars.toArgb())
             }
-            MaterialTheme(colorScheme = scheme) {
+            MaterialTheme(
+                colorScheme = scheme,
+                shapes = Shapes(
+                    small = RoundedCornerShape(12.dp),
+                    medium = RoundedCornerShape(18.dp),
+                    large = RoundedCornerShape(24.dp)
+                )
+            ) {
                 Box(Modifier.fillMaxSize().background(bars)) {
                     QuartinautApp(repository,mode,displayMode) { next ->
                         mode=next
@@ -301,7 +319,7 @@ private fun QuartinautApp(repo: QuartinautRepository,
         containerColor=MaterialTheme.colorScheme.background,
         topBar={
             Surface(color=toolbarBackground,shadowElevation=2.dp) {
-                Row(Modifier.fillMaxWidth().height(70.dp).padding(horizontal=12.dp),
+                Row(Modifier.fillMaxWidth().height(64.dp).padding(horizontal=12.dp),
                     verticalAlignment=Alignment.CenterVertically) {
                     if(page!="home") {
                         IconButton(onClick=backAction,modifier=Modifier.size(44.dp)) {
@@ -310,7 +328,7 @@ private fun QuartinautApp(repo: QuartinautRepository,
                         }
                         Spacer(Modifier.width(5.dp))
                     }
-                    QuartinautLogo(modifier=Modifier.size(52.dp))
+                    QuartinautLogo(modifier=Modifier.size(44.dp))
                     Spacer(Modifier.width(9.dp))
                     Text(if(page=="home") "Quartinaut" else title,
                         color=toolbarForeground,style=MaterialTheme.typography.titleLarge,
@@ -617,17 +635,30 @@ private fun Panel(title: String, body: String, foot: String = "", onClick: (() -
 }
 @Composable
 private fun Feature(label: String, explanation: String, icon: @Composable () -> Unit, action: () -> Unit) {
-    Surface(Modifier.fillMaxWidth().clickable(onClick = action), shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp) {
-        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(44.dp).background(SoftGreen, RoundedCornerShape(12.dp)),
+    Surface(
+        onClick = action,
+        modifier = Modifier.fillMaxWidth().heightIn(min = 78.dp),
+        shape = RoundedCornerShape(19.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Row(Modifier.padding(horizontal = 13.dp, vertical = 11.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(46.dp)
+                .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(13.dp)),
                 contentAlignment = Alignment.Center) { icon() }
             Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(label, fontWeight = FontWeight.Bold)
-                Text(explanation, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+            Column(Modifier.weight(1f), verticalArrangement=Arrangement.spacedBy(3.dp)) {
+                Text(label, fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.titleMedium)
+                Text(explanation, style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
-            Icon(Icons.Default.ChevronRight, null, tint = Forest)
+            Spacer(Modifier.width(6.dp))
+            Icon(Icons.Default.ChevronRight, contentDescription = "Öffnen",
+                tint = MaterialTheme.colorScheme.primary)
         }
     }
 }
