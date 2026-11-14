@@ -22,7 +22,10 @@ SOURCE = ROOT / "app/src/main/assets/q-original/ch-locations-2026.json"
 OUT = ROOT / "app/src/main/assets/wappen"
 UA = "Quartinaut/5.8 (https://github.com/raiirajet/Quartinaut; noncommercial civic reference)"
 # Only explicitly checked Commons filenames are added without SPARQL.
-VERIFIED = {"3401": "CHE Degersheim COA.svg", "3402": "CHE Flawil COA.svg"}
+VERIFIED = {"311": "CHE Schüpfen BE COA.svg", "3401": "CHE Degersheim COA.svg", "3402": "CHE Flawil COA.svg"}
+# Haute-Ajoie (6809) has no common coat of arms: the five constituent
+# villages retain their own. See https://hauteajoie.ch/ and RFJ 03.10.2022.
+NO_COAT_BFS = "6809"
 
 def request(url, timeout=22):
     req = urllib.request.Request(url, headers={
@@ -143,97 +146,164 @@ def thumbnail_index(filenames):
     print("Commons thumbnails: {}/{} BFS images".format(len(results),len(filenames)))
     return results
 
-def download_coat(entry):
-    bfs, filename, image = entry
-    extension = Path(filename).suffix.lower()
-    # A tiny PNG thumbnail is preferred over an arbitrary large SVG original.
-    urls = list(dict.fromkeys([image, url_for(filename), file_page_for(filename)]))
-    for url in urls:
-        try:
-            raw = request(url, timeout=6)
-            if len(raw)>150_000: continue
-            header = raw[:8192].lower()
-            if raw.startswith(b"\x89PNG"):
-                final_ext = ".png"
-            elif raw.startswith(b"\xff\xd8"):
-                final_ext = ".jpg"
-            elif raw.startswith(b"RIFF") and b"WEBP" in raw[:16]:
-                final_ext = ".webp"
-            elif b"<svg" in header and b"<html" not in header:
-                final_ext = ".svg"
-            elif raw.startswith(b"GIF8"):
-                final_ext = ".gif"
-            else:
-                continue
-            (OUT / (bfs + final_ext)).write_bytes(raw)
+def valid_image(raw):
+    """Reject HTML, empty responses and garbage rather than packaging broken assets."""
+    if not raw or len(raw)>1_200_000:
+        return None
+    if raw.startswith(b"\x89PNG\r\n\x1a\n") and len(raw)>32:
+        return ".png"
+    if raw.startswith(b"\xff\xd8\xff"):
+        return ".jpg"
+    if raw[:4]==b"RIFF" and raw[8:12]==b"WEBP":
+        return ".webp"
+    if raw.startswith(b"GIF8"):
+        return ".gif"
+    header=raw[:8192].lstrip().lower()
+    if b"<svg" in header and b"<html" not in header and b"<!doctype html" not in header:
+        return ".svg"
+    return None
+
+def cached_image(bfs):
+    for ext in (".png",".svg",".jpg",".jpeg",".webp",".gif"):
+        path=OUT/(bfs+ext)
+        if path.is_file() and valid_image(path.read_bytes())==ext:
             return True
-        except OSError:
+        if path.is_file():
+            path.unlink() # Bad cached data must never pass validation.
+    return False
+
+def proxy_url(origin,host):
+    return "https://"+host+"/?"+urllib.parse.urlencode({
+        "url":origin, "w":"128", "output":"png"
+    })
+
+def download_coat(entry):
+    bfs,filename=entry
+    if cached_image(bfs):
+        return True
+    origin=url_for(filename)
+    # Wikimedia's CDN returned HTTP 429 after just 10-15 requests from a
+    # shared GitHub Actions IP (confirmed 14 Nov 2026). Instead, rasterize
+    # the *same sourced Commons file* at build-time through an image proxy.
+    # No proxy or network requests occur on the user's device for bundled art.
+    urls=[
+        proxy_url(origin,"wsrv.nl"),
+        proxy_url(origin,"images.weserv.nl"),
+        origin,
+        file_page_for(filename),
+    ]
+    for ix,url in enumerate(urls):
+        for attempt in range(2 if ix<2 else 1):
+            try:
+                raw=request(url,timeout=22)
+                ext=valid_image(raw)
+                if not ext:
+                    continue
+                target=OUT/(bfs+ext)
+                tmp=OUT/(bfs+ext+".part")
+                tmp.write_bytes(raw)
+                tmp.replace(target)
+                return True
+            except (OSError,ValueError) as exc:
+                if attempt==0 and ix<2:
+                    time.sleep(1.0)
+    return False
+
+def download_logo_haute_ajoie():
+    """Get the community's own mark, not an invented heraldic shield."""
+    import html.parser
+    from urllib.parse import urljoin
+    if cached_image(NO_COAT_BFS):
+        return True
+    try:
+        page=request("https://hauteajoie.ch/",timeout=18).decode("utf-8","replace")
+    except OSError:
+        return False
+    class Images(html.parser.HTMLParser):
+        def __init__(self):
+            super().__init__(); self.candidates=[]
+        def handle_starttag(self,tag,attrs):
+            if tag not in ("img","source"):
+                return
+            d=dict(attrs)
+            key=" ".join(str(d.get(k,"")) for k in ("src","data-src","alt","class")).lower()
+            if "logo" in key:
+                for k in ("data-src","src"):
+                    if d.get(k):self.candidates.append(urljoin("https://hauteajoie.ch/",d[k]))
+    parsed=Images();parsed.feed(page)
+    for link in parsed.candidates:
+        u=urllib.parse.urlparse(link)
+        if u.scheme!="https" or u.hostname not in ("hauteajoie.ch","www.hauteajoie.ch"):
             continue
+        try:
+            raw=request(link,timeout=15)
+            ext=valid_image(raw)
+            if ext and len(raw)<800_000:
+                (OUT/(NO_COAT_BFS+ext)).write_bytes(raw)
+                return True
+        except OSError:
+            pass
     return False
 
 def main():
-    source = json.loads(SOURCE.read_text(encoding="utf-8"))
-    cantons = source["cantons"]
-    all_ids = set()
-    sg_ids = set()
-    for canton in cantons:
+    source=json.loads(SOURCE.read_text(encoding="utf-8"))
+    all_ids=set()
+    names={}
+    canton_by_bfs={}
+    for canton in source["cantons"]:
         for municipality in canton["municipalities"]:
-            bfs = str(municipality.get("bfsCode", ""))
-            if not re.fullmatch(r"[0-9]{1,4}", bfs):
+            bfs=str(municipality.get("bfsCode",""))
+            if not re.fullmatch(r"[0-9]{1,4}",bfs):
                 continue
             all_ids.add(bfs)
-            if canton.get("code") == "SG":
-                sg_ids.add(bfs)
-    if len(all_ids) != 2110 or len(sg_ids) < 65:
-        raise SystemExit("Unexpected municipal register; refusing guessed lookup")
-    OUT.mkdir(parents=True, exist_ok=True)
-    filenames = dict(VERIFIED)
-    filenames.update(wikidata_index(all_ids))
-    # Cover all 26 cantons: raster arms are kept alongside SVG arms.
-    thumbnails = thumbnail_index(filenames)
-    verified = {
-        bfs: thumbnails.get(bfs, file_page_for(name))
-        for bfs, name in filenames.items() if bfs in all_ids
+            names[bfs]=municipality.get("name",bfs)
+            canton_by_bfs[bfs]=canton.get("code","?")
+    if len(all_ids)!=2110 or len(source["cantons"])!=26 or NO_COAT_BFS not in all_ids:
+        raise SystemExit("Unexpected 2026 BFS register; refusing to invent or misassign coats")
+    OUT.mkdir(parents=True,exist_ok=True)
+    filenames=wikidata_index(all_ids)
+    # Explicitly checked Commons files, never generated from a place name.
+    filenames.update(VERIFIED)
+    filenames={bfs:file for bfs,file in filenames.items() if bfs in all_ids and bfs!=NO_COAT_BFS}
+    expected=all_ids-{NO_COAT_BFS}
+    missing_source=expected-filenames.keys()
+    print("Source coverage: %s/%s coat-bearing municipalities; no-coat exception: %s" %
+          (len(filenames),len(expected),names[NO_COAT_BFS]),flush=True)
+    if missing_source:
+        print("Missing verified coat source:",[(id,names[id],canton_by_bfs[id]) for id in sorted(missing_source,key=int)],flush=True)
+    # This is the online fallback only. A URL alone is never counted as a
+    # bundled image, and only offline assets pass the publication gate.
+    index={bfs:url_for(filename) for bfs,filename in filenames.items()}
+    (OUT/"index.json").write_text(json.dumps(index,ensure_ascii=False,separators=(",",":")),encoding="utf-8")
+    sources={bfs:"https://commons.wikimedia.org/wiki/File:"+urllib.parse.quote(filename.replace(" ","_"),safe="()_,.-")
+             for bfs,filename in filenames.items()}
+    (OUT/"sources.json").write_text(json.dumps(sources,ensure_ascii=False,separators=(",",":")),encoding="utf-8")
+    entries=sorted(filenames.items(),key=lambda x:int(x[0]))
+    # Low parallelism avoids proxy throttling. This may take several minutes
+    # on a cold CI worker; workflow cache stores checked files across runs.
+    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
+        results=list(pool.map(download_coat,entries))
+    successful=sum(results)
+    print("Offline coat downloads: %s/%s" % (successful,len(entries)),flush=True)
+    logo_ok=download_logo_haute_ajoie()
+    print("Haute-Ajoie official municipal logo downloaded: %s" % logo_ok,flush=True)
+    present={bfs for bfs in expected if cached_image(bfs)}
+    absent=expected-present
+    report={
+        "register_date":"2026-01-01",
+        "municipalities":len(all_ids),
+        "coats_expected":len(expected),
+        "coats_present":len(present),
+        "no_coat_communities":{NO_COAT_BFS:{"name":"Haute-Ajoie","reason":"Gemeindelogo statt eigenem Gemeindewappen","logo_bundled":logo_ok,"source":"https://hauteajoie.ch/"}},
+        "source_missing":[{"bfs":id,"name":names[id],"canton":canton_by_bfs[id]} for id in sorted(missing_source,key=int)],
+        "asset_missing":[{"bfs":id,"name":names[id],"canton":canton_by_bfs[id]} for id in sorted(absent,key=int)],
     }
-    if len(verified)<2000:
-        raise SystemExit("Insufficient verified Swiss armorial sources ("+
-                         str(len(verified))+"); refusing incomplete release")
-    (OUT / "index.json").write_text(
-        json.dumps(verified,ensure_ascii=False,separators=(",",":")),
-        encoding="utf-8"
-    )
-    provenance = {
-        bfs: "https://commons.wikimedia.org/wiki/File:" +
-             urllib.parse.quote(filename.replace(" ", "_"), safe="()_,.-")
-        for bfs,filename in filenames.items() if bfs in all_ids
-    }
-    (OUT / "sources.json").write_text(
-        json.dumps(provenance,ensure_ascii=False,separators=(",",":")),
-        encoding="utf-8"
-    )
-    # Download all 26 cantons with a fixed build-time budget. Every remaining
-    # entry has a verified online URL and is cached by Coil after first use.
-    images = [(bfs, name, verified[bfs]) for bfs,name in sorted(filenames.items())
-              if bfs in all_ids]
-    pool = concurrent.futures.ThreadPoolExecutor(max_workers=24)
-    futures = [pool.submit(download_coat,entry) for entry in images]
-    done,pending = concurrent.futures.wait(futures,timeout=160)
-    loaded = sum(bool(f.result()) for f in done if not f.exception())
-    for future in pending:future.cancel()
-    pool.shutdown(wait=False,cancel_futures=True)
-    bytype={ext:sum(Path(name).suffix.lower()==ext for name in filenames.values())
-            for ext in (".svg",".png",".jpg",".jpeg",".webp",".gif")}
-    offline_files = list(OUT.glob("*.png"))+list(OUT.glob("*.svg"))+list(OUT.glob("*.jpg"))+list(OUT.glob("*.webp"))+list(OUT.glob("*.gif"))
-    offline_bfs={p.stem for p in offline_files}
-    sg_ready=len(sg_ids.intersection(offline_bfs))
-    print("Wappen index: {}/{} BFS entries; image formats: {}".format(
-        len(verified),len(all_ids),bytype))
-    print("Offline wappen: {}/{} across 26 cantons; SG: {}/{}".format(
-        len(offline_bfs),len(verified),sg_ready,len(sg_ids)))
-    if not offline_bfs:
-        print("WARNING: Commons did not return any packaged images; online fallback remains")
-    if not (OUT / "index.json").exists():
-        raise SystemExit("Wappen manifest was not generated")
+    (OUT/"coverage-report.json").write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+    print("COVERAGE: %s/%s actual offline coat assets; missing: %s" % (len(present),len(expected),len(absent)),flush=True)
+    if absent:
+        print("FIRST MISSING ASSETS:",[(id,names[id]) for id in sorted(absent,key=int)[:25]],flush=True)
+    # Nonzero exit is enforced in the following *separate* CI verification
+    # stage so even incomplete runs can save their downloaded assets to cache.
 
-if __name__ == "__main__":
+if __name__=="__main__":
     main()
