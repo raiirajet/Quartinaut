@@ -165,7 +165,7 @@ fun NativeMunicipalityMap(
     var zoom by remember(canton.code) { mutableFloatStateOf(1f) }
     val coats by produceState<Map<String,Bitmap>>(initialValue=emptyMap(),canton.code) {
         wappenLoading=true
-        val urls=withContext(Dispatchers.IO) { queryCantonWappen(canton) }
+        val urls=withContext(Dispatchers.IO) { queryCantonWappen(canton,context) }
         // Progressive loading: keep the map usable while the coats arrive.
         val semaphore=Semaphore(6)
         coroutineScope {
@@ -266,8 +266,11 @@ fun NativeMunicipalityMap(
                 }
             }
             Text("Gemeindegrenzen 2025 · BFS-Verzeichnis 2026 · Wappen: Wikimedia Commons" +
-                (if(wappenLoading) " (Wappen werden geladen …)" else ""),
-                style=MaterialTheme.typography.labelSmall,color=Color.Gray)
+                " · "+coats.size+"/"+features.size+" Wappen geladen" +
+                (if(wappenLoading) " (weitere werden geladen …)" else
+                    if(coats.size<features.size) " (fehlende online nicht verfügbar oder nicht zugeordnet)" else ""),
+                style=MaterialTheme.typography.labelSmall,
+                color=MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

@@ -437,6 +437,7 @@ class QuartinautRepository(context: Context) {
                     (item as? Map<*, *>)?.entries?.associate { DocString(it.key) to it.value }
                 }
                 cachePublicHubItems()
+                syncIssues=syncIssues-"Quartier+"
             }.addOnFailureListener { e ->
                 syncIssues = syncIssues + ("Quartier+" to
                     (e.localizedMessage ?: "Quartier+ nicht erreichbar"))
@@ -727,7 +728,8 @@ class QuartinautRepository(context: Context) {
     fun retryFeeds() {
         val current=user ?: return
         if(profile.isEmpty() || !active())return
-        syncIssues=emptyMap()
+        // Do not erase unresolved errors before the corresponding service succeeds.
+        val retryEnhancements=("Erweiterungen" in syncIssues || enhancementError.isNotBlank())
         current.getIdToken(true).addOnCompleteListener { task ->
             if(user?.uid!=current.uid)return@addOnCompleteListener
             if(task.isSuccessful) {
@@ -737,6 +739,7 @@ class QuartinautRepository(context: Context) {
                     (role=="admin" || claims["admin"]==true)
                 startListening(current.uid)
                 loadCommunitySettings()
+                if(retryEnhancements) enhancement("posts.mine")
             } else {
                 syncIssues=syncIssues + ("Administratorrechte" to
                     (task.exception?.localizedMessage ?: "Token konnte nicht aktualisiert werden"))

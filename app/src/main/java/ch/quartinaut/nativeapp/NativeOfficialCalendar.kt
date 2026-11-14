@@ -64,6 +64,14 @@ private fun loadPublicCalendar(context:Context): PublicCalendarData = runCatchin
         .bufferedReader(Charsets.UTF_8).use {it.readText()}
     val root=JSONObject(raw)
     val arr=root.getJSONArray("items")
+    // Small independently sourced additions are bundled and validated as a
+    // separate catalogue; no Firestore write or counterfeit municipality post.
+    runCatching {
+        val supplement=context.assets.open("municipal_calendar_verified_sg.json")
+            .bufferedReader(Charsets.UTF_8).use { it.readText() }
+        val extra=JSONObject(supplement).getJSONArray("items")
+        for(i in 0 until extra.length()) arr.put(extra.getJSONObject(i))
+    }
     val rows=ArrayList<PublicAppointment>(arr.length())
     for(i in 0 until arr.length()) {
         val o=arr.optJSONObject(i) ?:continue
@@ -357,6 +365,169 @@ fun NativeOfficialCalendarScreen(repo:QuartinautRepository,navigate:(String)->Un
                 "Lokale Feiertagsregeln können innerhalb eines Kantons unterschiedlich sein.",
                 style=MaterialTheme.typography.bodySmall,
                 color=MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+/**
+ * The Gemeinde calendar merges locally bundled, source-attributed official
+ * dates with published user/municipality backend entries. Bundled references
+ * are deliberately read-only: they are not Firebase documents or purported
+ * municipality posts.
+ */
+@Composable
+fun NativeMunicipalCalendarPage(
+    repo: QuartinautRepository,
+    openItem: (Map<String,Any?>) -> Unit,
+    openAllOfficial: () -> Unit
+) {
+    val context=LocalContext.current
+    val calendar=remember(context) { loadPublicCalendar(context) }
+    val today=remember { LocalDate.now(ZoneId.of("Europe/Zurich")).toString() }
+    val myCanton=repo.canton()
+    val myTown=repo.area().substringBefore("(").trim()
+    var query by rememberSaveable { mutableStateOf("") }
+    var scope by rememberSaveable { mutableStateOf("gemeinde") }
+    var selected by remember { mutableStateOf<PublicAppointment?>(null) }
+    var showPast by rememberSaveable { mutableStateOf(false) }
+    var message by remember { mutableStateOf("") }
+    val verified=remember(calendar,scope,myCanton,myTown,query,today,showPast) {
+        calendar.rows.filter { appointment ->
+            val location=when {
+                scope=="schweiz" -> true
+                appointment.canton=="CH" -> true
+                appointment.canton!=myCanton -> false
+                scope=="kanton" -> true
+                appointment.city.isNotBlank() ->
+                    appointment.city.trim().equals(myTown,ignoreCase=true)
+                else -> appointment.region.isBlank()
+            }
+            location && appointment.calendarExact &&
+                appointment.status=="confirmed_exact_date" &&
+                appointment.from.isNotBlank() &&
+                (showPast || appointment.until.ifBlank { appointment.from }>=today) &&
+                (query.isBlank() || listOf(appointment.title,appointment.city,
+                    appointment.category,appointment.venue).joinToString(" ")
+                    .contains(query.trim(),ignoreCase=true))
+        }.sortedBy { it.from }
+    }
+    val published=repo.hubItems.filter {
+        DocString(it["kind"])=="calendar" &&
+            (DocString(it["status"])=="published" ||
+                it["isMine"]==true || it["isModerator"]==true) &&
+            (query.isBlank() || (DocString(it["title"])+" "+
+                DocString(it["description"])).contains(query.trim(),ignoreCase=true))
+    }
+    selected?.let { appointment ->
+        AlertDialog(onDismissRequest={selected=null},
+            title={Text(appointment.title)},
+            text={Column(Modifier.heightIn(max=400.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                Text(appointment.displayDate(),fontWeight=FontWeight.SemiBold)
+                Text(listOf(appointment.city,appointment.canton,appointment.category)
+                    .filter { it.isNotBlank() }.joinToString(" · "))
+                if(appointment.region.isNotBlank())
+                    Text("Regionale Geltung: ${appointment.region}")
+                Text("Quelle: ${appointment.sourceName}")
+                Text(appointment.sourceNote,style=MaterialTheme.typography.bodySmall)
+                Text("Bestätigung: ${appointment.statusText()}",
+                    color=MaterialTheme.colorScheme.primary)
+                if(appointment.sourceUrl.isNotBlank())
+                    OutlinedButton(onClick={launchVerifiedSource(context,appointment.sourceUrl) {
+                        message="Die offizielle Quelle konnte nicht geöffnet werden."
+                    }}) {Text("Originalquelle öffnen")}
+                OutlinedButton(onClick={addPublishedAppointment(context,appointment) {
+                    message="Kein Android-Kalender verfügbar."
+                }}) {Text("In meinen Kalender übernehmen")}
+            }},
+            confirmButton={TextButton(onClick={selected=null}) {Text("Schliessen")}})
+    }
+    if(message.isNotBlank()) AlertDialog(onDismissRequest={message=""},
+        title={Text("Hinweis")},text={Text(message)},
+        confirmButton={TextButton(onClick={message=""}) {Text("OK")}})
+    Column(Modifier.fillMaxSize().padding(16.dp),
+        verticalArrangement=Arrangement.spacedBy(10.dp)) {
+        Text("Gemeindekalender",style=MaterialTheme.typography.headlineSmall,
+            fontWeight=FontWeight.SemiBold)
+        Text("Quellenbelegte offizielle Termine und veröffentlichte Quartinaut-Gemeindeeinträge.",
+            style=MaterialTheme.typography.bodySmall)
+        OutlinedTextField(query,{query=it.take(100)},modifier=Modifier.fillMaxWidth(),
+            label={Text("Termin oder Ort suchen")},singleLine=true)
+        Row(Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement=Arrangement.spacedBy(7.dp)) {
+            listOf("gemeinde" to "Meine Gemeinde","kanton" to "Mein Kanton",
+                "schweiz" to "Schweiz").forEach { (key,label) ->
+                FilterChip(selected=scope==key,onClick={scope=key},label={Text(label)})
+            }
+        }
+        Row(verticalAlignment=Alignment.CenterVertically) {
+            Checkbox(checked=showPast,onCheckedChange={showPast=it})
+            Text("Vergangene Termine anzeigen",style=MaterialTheme.typography.bodySmall)
+        }
+        LazyColumn(verticalArrangement=Arrangement.spacedBy(10.dp),
+            modifier=Modifier.fillMaxSize()) {
+            item {
+                Text("Offizielle Termine · ${verified.size}",
+                    fontWeight=FontWeight.SemiBold)
+                Text("Lokal eingebettete, datierte Originalquellen (Stand ${calendar.asOf}). "+
+                    "Nicht vollständig oder live synchronisiert. "+
+                    "Kommunale und kantonale Geltung beachten.",
+                    style=MaterialTheme.typography.bodySmall,
+                    color=MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            items(verified,key={ "official-"+it.id }) { appointment ->
+                Surface(onClick={selected=appointment},
+                    shape=RoundedCornerShape(15.dp),
+                    color=MaterialTheme.colorScheme.surfaceVariant) {
+                    Column(Modifier.fillMaxWidth().padding(14.dp),
+                        verticalArrangement=Arrangement.spacedBy(4.dp)) {
+                        Text(appointment.title,fontWeight=FontWeight.SemiBold)
+                        Text(appointment.displayDate()+
+                            " · "+appointment.canton+
+                            (if(appointment.city.isNotBlank())" · "+appointment.city else ""),
+                            style=MaterialTheme.typography.bodySmall)
+                        Text("Quellenbelegt: "+appointment.sourceName,
+                            color=MaterialTheme.colorScheme.primary,
+                            style=MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
+            if(verified.isEmpty()) item {
+                Text("Keine quellenbelegten offiziellen Termine in dieser Auswahl. "+
+                    "Der lokale Kalender deckt nicht alle Gemeinden ab.",
+                    color=MaterialTheme.colorScheme.onSurfaceVariant,
+                    style=MaterialTheme.typography.bodySmall)
+            }
+            item {
+                OutlinedButton(onClick=openAllOfficial,modifier=Modifier.fillMaxWidth()) {
+                    Text("Alle offiziellen Schweizer Termine öffnen")
+                }
+                Spacer(Modifier.height(8.dp))
+                Text("Veröffentlichte Gemeinde-Einträge · ${published.size}",
+                    fontWeight=FontWeight.SemiBold)
+                Text("Aus dem Quartinaut-Backend; getrennt vom offiziellen Quellenkalender.",
+                    style=MaterialTheme.typography.bodySmall)
+            }
+            items(published,key={ "hub-"+DocString(it["id"]) }) { item ->
+                Surface(onClick={openItem(item)},
+                    shape=RoundedCornerShape(15.dp),
+                    color=MaterialTheme.colorScheme.surface) {
+                    Column(Modifier.fillMaxWidth().padding(14.dp),
+                        verticalArrangement=Arrangement.spacedBy(4.dp)) {
+                        Text(DocString(item["title"]),fontWeight=FontWeight.SemiBold)
+                        Text(DocString(item["description"]),maxLines=3,
+                            style=MaterialTheme.typography.bodySmall)
+                        Text("Quartinaut-Beitrag · "+DocString(item["area"]),
+                            color=MaterialTheme.colorScheme.primary,
+                            style=MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
+            if(published.isEmpty())item {
+                Text("Keine veröffentlichten Quartinaut-Gemeindebeiträge in dieser Auswahl. "+
+                    "Offizielle Quellen-Termine werden oben separat angezeigt.",
+                    style=MaterialTheme.typography.bodySmall,
+                    color=MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
 }

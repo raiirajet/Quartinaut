@@ -80,5 +80,38 @@ class OfficialCalendarCatalogueTests(unittest.TestCase):
         self.assertIn(('Luzerner Flohmarkt', '2027-05-01', 'LU'), keys)
 
 
+    def test_verified_municipal_supplement(self):
+        supplement = ROOT / 'app' / 'src' / 'main' / 'assets' / 'municipal_calendar_verified_sg.json'
+        with supplement.open(encoding='utf-8') as handle:
+            additional = json.load(handle)['items']
+        self.assertGreaterEqual(len(additional), 12)
+        all_ids = [r['id'] for r in self.rows + additional]
+        self.assertEqual(len(all_ids), len(set(all_ids)))
+        for row in additional:
+            self.assertEqual('confirmed_exact_date', row['status'])
+            self.assertTrue(row['calendarExact'])
+            self.assertEqual('SG', row['canton'])
+            self.assertTrue(row['sourceName'])
+            parsed = urlparse(row['sourceUrl'])
+            self.assertEqual('https', parsed.scheme)
+            self.assertTrue(parsed.hostname)
+            self.assertEqual(datetime.date.fromisoformat(row['start']),
+                             datetime.date.fromisoformat(row['end']))
+        self.assertIn(('Flawiler Lägelisnacht', '2026-11-17'),
+            {(r['title'],r['start']) for r in additional})
+        self.assertIn(('Karfreitag','2027-03-26'),
+            {(r['title'],r['start']) for r in additional})
+
+    def test_transparent_brand_resources(self):
+        import xml.etree.ElementTree as ET
+        res = ROOT / 'app' / 'src' / 'main' / 'res'
+        brand = ET.parse(res / 'drawable' / 'quartinaut_brand.xml').getroot()
+        self.assertTrue(brand.tag.endswith('vector'))
+        adaptive = ET.parse(res / 'mipmap-anydpi-v26' / 'ic_launcher.xml').getroot()
+        self.assertTrue(adaptive.tag.endswith('adaptive-icon'))
+        self.assertFalse(any('white' in str(v).lower() or '#ffffff' in str(v).lower()
+                             for elem in brand.iter() for v in elem.attrib.values()))
+
+
 if __name__ == '__main__':
     unittest.main()

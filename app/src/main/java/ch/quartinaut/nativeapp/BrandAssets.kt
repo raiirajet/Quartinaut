@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -21,7 +22,9 @@ import androidx.compose.ui.unit.dp
  */
 @Composable
 fun QuartinautLogo(modifier: Modifier = Modifier, contentScale: ContentScale = ContentScale.Fit) {
-    OriginalImage("icon-512.png",modifier,contentScale)
+    Image(painter=painterResource(R.drawable.quartinaut_brand),
+        contentDescription="Quartinaut – Schweizerkarte mit Lupe",
+        modifier=modifier,contentScale=contentScale)
 }
 @Composable
 fun OriginalNavigationIcon(name: String, modifier: Modifier = Modifier) {

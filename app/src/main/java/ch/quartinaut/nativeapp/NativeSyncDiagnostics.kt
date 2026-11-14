@@ -27,11 +27,17 @@ fun NativeSyncDiagnostics(repo: QuartinautRepository) {
         Text("Quartinaut überprüft jeden Datenbereich separat. Verweigerte Abfragen werden hier angezeigt, ohne die Startseite zu blockieren.")
         Text("Projekt: quartinaut  ·  Region: europe-west6",
             style=MaterialTheme.typography.bodySmall)
+        Text("Erweiterungsdienst: "+when {
+            repo.enhancementLoading -> "Prüfung läuft"
+            repo.enhancementReady -> "Erreichbar"
+            repo.enhancementError.isNotBlank() -> "Nicht erreichbar"
+            else -> "Noch nicht geprüft"
+        },style=MaterialTheme.typography.bodySmall)
         val issues=repo.syncIssues
         if(issues.isEmpty()) {
             Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                 Icon(Icons.Default.CheckCircle,null,tint=Color(0xFF2F8754))
-                Text("Keine abgelehnten Datenabfragen gemeldet.")
+                Text("Keine aktuellen Fehler bei den bisher geprüften Diensten. Nicht geprüfte Dienste sind damit nicht bestätigt.")
             }
         } else {
             issues.forEach { (source, detail) ->
@@ -55,6 +61,8 @@ fun NativeSyncDiagnostics(repo: QuartinautRepository) {
                 }
             }
         }
+        Text("Fehlermeldungen bleiben bestehen, bis der betroffene Dienst erfolgreich antwortet.",
+            style=MaterialTheme.typography.bodySmall)
         Button(onClick=repo::retryFeeds,enabled=!repo.busy,
             modifier=Modifier.fillMaxWidth()) { Text("Datenbereiche erneut laden") }
         Text("Ein Fehler in einem optionalen Bereich muss nicht bedeuten, dass dein Konto gesperrt ist.",

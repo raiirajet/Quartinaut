@@ -30,6 +30,8 @@ assert len(cantons)==26, "Expected 26 cantons"
 assert sum(len(c["municipalities"]) for c in cantons)==2110, "Unexpected BFS snapshot"
 print("Verified official Quartinaut icon set and 26 cantons / 2110 municipalities")
 PY
-# Produce the launcher icon from Quartinaut's original PNG.
-mkdir -p "$ROOT/app/src/main/res/mipmap-nodpi"
-cp "$DEST/icon-512.png" "$ROOT/app/src/main/res/mipmap-nodpi/ic_launcher.png"
+# The transparent vector launcher now lives in res/mipmap-anydpi-v26.
+# Legacy PNGs may survive on incremental workspaces and must not override it.
+rm -f "$ROOT/app/src/main/res/mipmap-nodpi/ic_launcher.png"
+test -s "$ROOT/app/src/main/res/drawable/quartinaut_brand.xml"
+test -s "$ROOT/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml"

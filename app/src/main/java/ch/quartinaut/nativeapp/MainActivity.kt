@@ -443,7 +443,7 @@ private fun QuartinautApp(repo: QuartinautRepository,
                 "market" -> HubItemsPage(repo, "market", navTo, openHub)
                 "lend" -> HubItemsPage(repo, "lend", navTo, openHub)
                 "group" -> HubItemsPage(repo, "group", navTo, openHub)
-                "calendar" -> HubItemsPage(repo, "calendar", navTo, openHub)
+                "calendar" -> NativeMunicipalCalendarPage(repo,openHub,{navTo("official-calendar")})
                 "official-calendar" -> NativeOfficialCalendarScreen(repo,navTo)
                 "lost" -> HubItemsPage(repo, "lost", navTo, openHub)
                 "project" -> HubItemsPage(repo, "project", navTo, openHub)
@@ -852,8 +852,20 @@ private fun RegionPage(repo: QuartinautRepository, selectedCode: String,selected
     selectCanton: (String)->Unit, selectMunicipality: (String)->Unit,
     navigateComparison: ()->Unit) {
     var search by remember(selectedCode) { mutableStateOf("") }
+    val screenContext=LocalContext.current
     val canton=repo.regions.firstOrNull { it.code==selectedCode }
     val selected=canton?.municipalities?.firstOrNull { it.bfs==selectedBfs }
+    val cantonCoatByCode by produceState<Map<String,String>>(initialValue=emptyMap(),repo.regions) {
+        value=kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            querySwissCantonWappen(repo.regions)
+        }
+    }
+    val coatByBfs by produceState<Map<String,String>>(initialValue=emptyMap(),canton?.code) {
+        value=if(canton==null) emptyMap() else
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                queryCantonWappen(canton,screenContext)
+            }
+    }
     val ownCanton=repo.regions.firstOrNull {it.code==repo.canton()}
     val ownMunicipality=ownCanton?.municipalities?.firstOrNull {
         it.name.equals(repo.area().substringBefore("(").trim(),ignoreCase=true)
@@ -868,9 +880,16 @@ private fun RegionPage(repo: QuartinautRepository, selectedCode: String,selected
     LazyColumn(Modifier.fillMaxSize(), contentPadding=PaddingValues(16.dp),
         verticalArrangement=Arrangement.spacedBy(10.dp)) {
         item {
-            SectionTitle(if(canton==null) "Schweiz entdecken" else canton.name,
-                if(canton==null) "26 Kantone · 2'110 Gemeinden"
-                else "${canton.code} · ${canton.municipalities.size} Gemeinden")
+            Row(verticalAlignment=Alignment.CenterVertically,
+                horizontalArrangement=Arrangement.spacedBy(12.dp)) {
+                if(canton!=null) MunicipalityCoat(cantonCoatByCode[canton.code],
+                    canton.name,Modifier.size(width=42.dp,height=54.dp))
+                Box(Modifier.weight(1f)) {
+                    SectionTitle(if(canton==null) "Schweiz entdecken" else canton.name,
+                        if(canton==null) "26 Kantone · 2'110 Gemeinden"
+                        else "${canton.code} · ${canton.municipalities.size} Gemeinden")
+                }
+            }
         }
         item {
             Row(horizontalArrangement=Arrangement.spacedBy(7.dp)) {
@@ -891,7 +910,7 @@ private fun RegionPage(repo: QuartinautRepository, selectedCode: String,selected
                 TextButton(onClick={selectCanton("")}) { Text("← Alle Kantone") }
             }
             if(selected!=null) {
-                item { NativeMunicipalityFactCard(selected,canton) }
+                item { NativeMunicipalityFactCard(selected,canton,coatByBfs[selected.bfs]) }
             }
             item {
                 NativeMunicipalityMap(canton,selected) { selectMunicipality(it.bfs) }
@@ -922,14 +941,42 @@ private fun RegionPage(repo: QuartinautRepository, selectedCode: String,selected
         }
         if(canton==null) {
             items(filteredCantons,key={it.code}) { region ->
-                Panel(region.name,region.code,"${region.municipalities.size} Gemeinden") {
-                    selectCanton(region.code)
+                Surface(onClick={selectCanton(region.code)},
+                    shape=RoundedCornerShape(14.dp),
+                    color=MaterialTheme.colorScheme.surface) {
+                    Row(Modifier.fillMaxWidth().padding(10.dp),
+                        verticalAlignment=Alignment.CenterVertically,
+                        horizontalArrangement=Arrangement.spacedBy(12.dp)) {
+                        MunicipalityCoat(cantonCoatByCode[region.code],
+                            region.name,Modifier.size(width=34.dp,height=45.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(region.name,fontWeight=FontWeight.SemiBold)
+                            Text("${region.code} · ${region.municipalities.size} Gemeinden",
+                                style=MaterialTheme.typography.labelSmall)
+                        }
+                        Icon(Icons.Default.ChevronRight,contentDescription="Kanton öffnen")
+                    }
                 }
             }
         } else {
             items(filteredMunicipalities,key={it.bfs}) { municipality ->
-                Panel(municipality.name,canton.code,"Gemeindesteckbrief öffnen") {
-                    selectMunicipality(municipality.bfs)
+                Surface(onClick={selectMunicipality(municipality.bfs)},
+                    modifier=Modifier.fillMaxWidth(),
+                    shape=RoundedCornerShape(14.dp),
+                    color=MaterialTheme.colorScheme.surface) {
+                    Row(Modifier.fillMaxWidth().padding(11.dp),
+                        verticalAlignment=Alignment.CenterVertically,
+                        horizontalArrangement=Arrangement.spacedBy(13.dp)) {
+                        MunicipalityCoat(coatByBfs[municipality.bfs] ?:
+                            verifiedWappenFallback(municipality.bfs),
+                            municipality.name,Modifier.size(width=38.dp,height=48.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(municipality.name,fontWeight=FontWeight.SemiBold)
+                            Text("Kanton ${canton.code} · Wappen/Steckbrief",
+                                style=MaterialTheme.typography.labelSmall)
+                        }
+                        Icon(Icons.Default.ChevronRight,contentDescription="Steckbrief öffnen")
+                    }
                 }
             }
         }
