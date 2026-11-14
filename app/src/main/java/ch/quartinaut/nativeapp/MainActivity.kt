@@ -290,6 +290,7 @@ private fun QuartinautApp(repo: QuartinautRepository,
         "v50associations" -> "Anmeldungen"
         "search" -> "Suche"
         "settings" -> "Einstellungen"
+        "sources" -> "Quellenverweise"
         "admin" -> "Verwaltung"
         "help" -> "Hilfe & Datenschutz"
         "diagnostics" -> "Verbindungsdiagnose"
@@ -488,6 +489,7 @@ private fun QuartinautApp(repo: QuartinautRepository,
                 "calendar-planner" -> NativeCalendarPlanner(repo,navTo)
                 "safety-center" -> NativeSafetyCenter(repo,navTo)
                 "settings" -> NativeSettingsScreen(repo,mode,updateMode,navTo)
+                "sources" -> NativeSourceReferencesScreen()
                 "admin" -> NativeAdminScreen(repo,navTo)
                 "help" -> NativeHelpScreen()
                 "diagnostics" -> NativeSyncDiagnostics(repo)
