@@ -176,9 +176,26 @@ fun NativeRadarScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
     LaunchedEffect(scope,tags.toList()){
         repo.loadEnhancementList("radar.list",mapOf("scope" to scope,"tags" to tags.toList()))
     }
-    val shown=repo.enhancedItems.filter{
-        (DocString(it["title"])+" "+DocString(it["description"]))
+    val localPublicItems:List<Map<String,Any?>> = repo.hubItems.filter {
+        DocString(it["status"])=="published"
+    } + repo.requests.filter {
+        it.str("status")=="offen"
+    }.map { doc ->
+        mapOf<String,Any?>("id" to doc.id,"title" to doc.title(),
+            "description" to doc.str("text"),"kind" to "request",
+            "area" to doc.str("area"),"cantonCode" to doc.str("cantonCode"))
+    }
+    val localFallback=repo.enhancementError.isNotBlank()
+    val localOrServer=if(localFallback)localPublicItems else repo.enhancedItems
+    val shown=localOrServer.filter { row ->
+        val kind=DocString(row["kind"])
+        val area=DocString(row["area"])
+        val matchesArea=scope=="canton" ||
+            area.contains(repo.area().substringBefore("(").trim(),ignoreCase=true)
+        val matchesTags=tags.isEmpty() || kind in tags
+        val matchesText=(DocString(row["title"])+" "+DocString(row["description"]))
             .contains(text,ignoreCase=true)
+        matchesArea && matchesTags && matchesText
     }
     Column(Modifier.fillMaxSize().background(PlusBg).padding(15.dp),
         verticalArrangement=Arrangement.spacedBy(10.dp)) {
@@ -228,8 +245,10 @@ fun NativeRadarScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
         }
         if(repo.enhancementLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
         if(repo.enhancementError.isNotBlank())
-            Text(repo.enhancementError,color=Color(0xFFFFB4AB),
-                style=MaterialTheme.typography.bodySmall)
+            Text("Der erweiterte Radar-Dienst ist noch nicht erreichbar. " +
+                "Es werden nur die bereits geladenen öffentlichen Quartinaut-Beiträge angezeigt; " +
+                "keine vollständige oder live aktualisierte Suche.",
+                color=PlusMuted,style=MaterialTheme.typography.bodySmall)
         LazyColumn(verticalArrangement=Arrangement.spacedBy(10.dp)) {
             items(shown) { row ->
                 ExtraItem(DocString(row["title"]),DocString(row["description"]),
@@ -251,7 +270,7 @@ fun NativeRadarScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
     }
 }
 @Composable
-fun NativeMyPostsScreen(repo:QuartinautRepository) {
+fun NativeMyPostsScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
     var editing by remember {mutableStateOf<Map<String,Any?>?>(null)}
     var editingTitle by remember {mutableStateOf("")}
     var editingBody by remember {mutableStateOf("")}
@@ -259,16 +278,33 @@ fun NativeMyPostsScreen(repo:QuartinautRepository) {
     var statusTarget by remember {mutableStateOf<Map<String,Any?>?>(null)}
     var nextStatus by remember {mutableStateOf("")}
     LaunchedEffect(Unit) {repo.loadEnhancementList("posts.mine")}
+    val uid=repo.user?.uid.orEmpty()
+    val readOnly=repo.enhancementError.isNotBlank()
+    val ownHub=repo.hubItems.filter {
+        it["isMine"]==true || DocString(it["ownerUid"])==uid
+    }
+    val ownRequests=repo.requests.filter {it.str("uid")==uid}.map {doc ->
+        mapOf<String,Any?>(
+            "id" to doc.id,"title" to doc.title(),
+            "description" to doc.str("text"),
+            "status" to doc.str("status"),"kind" to "request"
+        )
+    }
+    val visiblePosts:List<Map<String,Any?>> =
+        if(readOnly)ownHub+ownRequests else repo.enhancedItems
     Column(Modifier.fillMaxSize().background(PlusBg).padding(16.dp),
         verticalArrangement=Arrangement.spacedBy(12.dp)) {
         ExtraHeader("Meine Beiträge","Inserate kontrollieren, überarbeiten oder abschliessen.")
         OutlinedButton(onClick={repo.loadEnhancementList("posts.mine")},
             modifier=Modifier.fillMaxWidth()) {Text("Aktualisieren")}
         if(repo.enhancementLoading)LinearProgressIndicator(Modifier.fillMaxWidth())
-        if(repo.enhancementError.isNotBlank())
-            Text(repo.enhancementError,color=Color(0xFFFFB4AB))
+        if(readOnly)
+            Text("Die erweiterte Beitragsverwaltung ist derzeit nicht verfügbar. " +
+                "Deine bereits geladenen eigenen Beiträge werden schreibgeschützt angezeigt. " +
+                "Bearbeiten, Pausieren und Archivieren benötigen den geschützten Erweiterungsdienst.",
+                color=PlusMuted,style=MaterialTheme.typography.bodySmall)
         LazyColumn(verticalArrangement=Arrangement.spacedBy(11.dp)) {
-            items(repo.enhancedItems) { row ->
+            items(visiblePosts) { row ->
                 Surface(color=PlusSurface,shape=RoundedCornerShape(18.dp),
                     border=BorderStroke(1.dp,PlusBorder)) {
                     Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(7.dp)) {
@@ -279,7 +315,17 @@ fun NativeMyPostsScreen(repo:QuartinautRepository) {
                             style=MaterialTheme.typography.labelMedium)
                         val collection=if(DocString(row["kind"])=="request")
                             "requests" else "communityHubItems"
-                        Row(Modifier.horizontalScroll(rememberScrollState()),
+                        if(readOnly) OutlinedButton(onClick={
+                            navigate(when(DocString(row["kind"])) {
+                                "request"->"board"
+                                "market"->"market"
+                                "lend"->"lend"
+                                "group"->"group"
+                                "calendar"->"calendar"
+                                else->"plus"
+                            })
+                        }) { Text("In Übersicht öffnen") }
+                        if(!readOnly) Row(Modifier.horizontalScroll(rememberScrollState()),
                             horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                             OutlinedButton(onClick={
                                 editing=row
@@ -309,8 +355,9 @@ fun NativeMyPostsScreen(repo:QuartinautRepository) {
                     }
                 }
             }
-            if(repo.enhancedItems.isEmpty())item {
-                Text("Noch keine eigenen Beiträge gefunden.",color=PlusMuted)
+            if(visiblePosts.isEmpty())item {
+                Text(if(readOnly)"Keine eigenen Beiträge im bereits geladenen Datenbestand."
+                    else "Noch keine eigenen Beiträge gefunden.",color=PlusMuted)
             }
         }
     }

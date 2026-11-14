@@ -1018,6 +1018,7 @@ class QuartinautRepository(context: Context) {
             }
     }
     fun loadEnhancementList(action: String, params: Map<String,Any?> = emptyMap()) {
+        enhancedItems=emptyList()
         enhancement(action,params) { result ->
             val entries=result["items"] as? List<*> ?: emptyList<Any>()
             enhancedItems=entries.mapNotNull { row ->

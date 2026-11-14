@@ -410,7 +410,7 @@ private fun QuartinautApp(repo: QuartinautRepository,
                 "plus" -> HubPage(repo, navTo)
                 "chats" -> NativePrivateChatsPage(repo)
                 "enhancements" -> NativeExtrasDirectory(repo,navTo)
-                "enh-posts" -> NativeMyPostsScreen(repo)
+                "enh-posts" -> NativeMyPostsScreen(repo,navTo)
                 "enh-radar" -> NativeRadarScreen(repo,navTo)
                 "enh-assist" -> NativeSmartListing(repo,navTo)
                 "enh-loans" -> NativeLoanPlanner(repo,navTo)

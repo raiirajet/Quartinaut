@@ -389,11 +389,22 @@ fun NativeHubDetail(
         Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)) {
             Column(Modifier.padding(17.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
                 Text(DocString(item["description"]))
-                if(item["priceChf"]!=null) Text("CHF " + DocString(item["priceChf"]),
+                if(item["priceChf"]!=null) Text(
+                    "CHF " + DocString(item["priceChf"]) +
+                        (if(kind=="lend")" / Tag" else ""),
                     color=MaterialTheme.colorScheme.primary,fontWeight=FontWeight.Bold)
                 if(DocString(item["venue"]).isNotBlank()) Text("Ort: "+DocString(item["venue"]))
                 if(DocString(item["startsAt"]).isNotBlank()) Text("Termin: "+DocString(item["startsAt"]))
-                if(kind in listOf("lend","market","lost")) Text("Verfügbarkeit: "+DocString(item["availability"]))
+                if(kind in listOf("lend","market","lost")) {
+                    val availability=when(DocString(item["availability"]).lowercase()) {
+                        "available"->"Verfügbar"
+                        "reserved"->"Reserviert"
+                        "unavailable"->"Nicht verfügbar"
+                        "lent"->"Ausgeliehen"
+                        else->DocString(item["availability"]).ifBlank{"Nicht angegeben"}
+                    }
+                    Text("Verfügbarkeit: "+availability)
+                }
                 if(kind in listOf("group","project")) Text(
                     "Mitglieder: "+DocString(item["memberCount"])+
                     " / "+DocString(item["capacity"]).ifBlank{"unbegrenzt"})
