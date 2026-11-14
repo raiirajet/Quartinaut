@@ -13,8 +13,8 @@ android {
         applicationId = "ch.quartinaut.nativeapp"
         minSdk = 26
         targetSdk = 35
-        versionCode = 22
-        versionName = "5.9.0-beitraege-wappen-ch"
+        versionCode = 23
+        versionName = "5.9.1-quellenverweise"
     }
     buildTypes {
         release { isMinifyEnabled = false }
