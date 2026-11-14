@@ -64,14 +64,56 @@ async function postMine(ctx) {
  const [req,item]=await Promise.all([
    requests.where('uid','==',ctx.uid).limit(140).get(),
    hub.where('ownerUid','==',ctx.uid).limit(140).get()]);
- return [...req.docs.map(d=>asDoc(d,'request')),
-   ...item.docs.map(d=>asDoc(d,d.data().kind))]
+ return [...req.docs.filter(d=>d.data().status!=='gelöscht').map(d=>asDoc(d,'request')),
+   ...item.docs.filter(d=>d.data().status!=='deleted').map(d=>asDoc(d,d.data().kind))]
    .sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))).slice(0,180);
 }
 async function managePost(ctx,data){
  const {ref,value,collection}=await postRef(ctx,data);
  const action=data.action;
  const updates={updatedAt:now()};
+ if(action==='post.delete') {
+   // Remove published content, but retain an unlisted reference for any
+   // historical private conversations or completed transactions.
+   if(['deleted','gelöscht'].includes(value.status))return {ok:true,deleted:true};
+   if(collection==='communityHubItems' && ['market','lend'].includes(value.kind)) {
+     const [loans,holds]=await Promise.all([
+       db.collection('loanReservations').where('listingId','==',ref.id).limit(80).get(),
+       db.collection('marketplaceHolds').where('listingId','==',ref.id).limit(80).get()
+     ]);
+     const active=['requested','accepted','active','pending','reserved','held'];
+     if(loans.docs.some(x=>active.includes(x.data().status)) ||
+        holds.docs.some(x=>active.includes(x.data().status)))
+       error('failed-precondition','Aktive Ausleihen oder Reservationen zuerst abschliessen.');
+   }
+   const paths=Array.isArray(value.photoPaths)?value.photoPaths:[];
+   await db.runTransaction(async tx=>{
+     const latest=await tx.get(ref);
+     if(!latest.exists || (collection==='requests'?latest.data().uid:latest.data().ownerUid)!==ctx.uid)
+       error('permission-denied','Eigener Beitrag nicht mehr vorhanden.');
+     if(latest.data().updatedAt!==value.updatedAt)
+       error('aborted','Beitrag wurde inzwischen geändert. Bitte neu laden.');
+     tx.update(ref,{
+       title:'Gelöschter Beitrag',text:'',description:'',
+       photoPaths:[],venue:'',category:'',
+       status:collection==='requests'?'gelöscht':'deleted',
+       availability:'unavailable',deletedAt:now(),updatedAt:now()
+     });
+   });
+   const ownedPath=(path)=>{
+     if(typeof path!=='string')return false;
+     const parts=path.split('/');
+     return parts.length===5 && parts[0]==='post-photos' &&
+       ['requests','community','groups'].includes(parts[1]) &&
+       parts[2]===ctx.uid && /^[A-Za-z0-9_-]{1,128}$/.test(parts[3]) &&
+       ['0.jpg','1.jpg','2.jpg'].includes(parts[4]);
+   };
+   await Promise.all(paths.filter(ownedPath).map(path=>
+     bucket.file(path).delete({ignoreNotFound:true}).catch(e=>
+       console.error('[Quartinaut photo cleanup]',e?.code||'storage-error'))
+   ));
+   return {ok:true,deleted:true,retainedReference:true};
+ }
  if(action==='post.edit') {
    if(!['wartet_freigabe','offen','pending','published','paused'].includes(value.status))
      error('failed-precondition','Abgeschlossene Beiträge können nicht mehr bearbeitet werden.');
@@ -308,7 +350,7 @@ exports.quartinautEnhancements=onCall(options,async request=>{
   switch(d.action){
     case 'radar.list':return {ok:true,...await radar(ctx,d)};
     case 'posts.mine':return {ok:true,items:await postMine(ctx)};
-    case 'post.edit':case 'post.status':return await managePost(ctx,d);
+    case 'post.edit':case 'post.status':case 'post.delete':return await managePost(ctx,d);
     case 'favorite.toggle':return await setFavorite(ctx,d);
     case 'favorites.list':return {ok:true,items:await listFavorites(ctx)};
     case 'trust.profile':return {ok:true,profile:await trust(ctx,d)};
