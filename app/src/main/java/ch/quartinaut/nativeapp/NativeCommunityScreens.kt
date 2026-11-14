@@ -40,22 +40,61 @@ private val FieldGreen = Color(0xFF195A42)
 
 @Composable
 fun NativeNewChooser(onSelect: (String) -> Unit) {
+    var opened by androidx.compose.runtime.saveable.rememberSaveable {
+        mutableStateOf("Inserate & Gegenstände")
+    }
+    val sections = listOf(
+        "Inserate & Gegenstände" to listOf("market","lend","lost"),
+        "Vereine & Gemeinde" to listOf("group","project","issue","calendar")
+    )
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement=Arrangement.spacedBy(12.dp)) {
         Text("Was möchtest du erstellen?",
             style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold)
-        Text("Wähle den passenden Bereich. Neue Beiträge werden wie in Quartinaut Web geprüft.")
-        ItemAction("Schwarzes Brett","Hilfe suchen oder anbieten", Icons.Default.Handshake) {onSelect("create-request")}
-        NativeKinds.forEach { (kind,label) ->
-            ItemAction(label,when(kind) {
-                "market" -> "Artikel verkaufen, verschenken oder tauschen"
-                "lend" -> "Gegenstände zur Ausleihe anbieten"
-                "lost" -> "Etwas verloren oder gefunden?"
-                "group" -> "Eine Gemeinschaft oder einen Verein vorstellen"
-                "project" -> "Eine lokale Aktion organisieren"
-                "issue" -> "Mängel in der Gemeinde melden"
-                else -> "Gemeindetermin eintragen (mit Berechtigung)"
-            }, Icons.Default.AddCircleOutline) { onSelect("hub-create:$kind") }
+        Text("Wähle eine Aufgabe. Deine Eingaben bleiben bei Unterbrechungen lokal gespeichert.",
+            color=MaterialTheme.colorScheme.onSurfaceVariant)
+        ItemAction("Hilfe suchen","Ein Anliegen oder Hilfegesuch erstellen",
+            Icons.Default.Handshake) { onSelect("create-request") }
+        ItemAction("Hilfe anbieten","Nachbarn und Gemeinde unterstützen",
+            Icons.Default.VolunteerActivism) { onSelect("create-offer") }
+        sections.forEach { (section,kinds) ->
+            Surface(shape=RoundedCornerShape(18.dp),
+                color=MaterialTheme.colorScheme.surface,
+                border=BorderStroke(1.dp,MaterialTheme.colorScheme.outlineVariant)) {
+                Column {
+                    Row(Modifier.fillMaxWidth().clickable {
+                        opened=if(opened==section) "" else section
+                    }.heightIn(min=60.dp).padding(14.dp),
+                        verticalAlignment=Alignment.CenterVertically) {
+                        Text(section,modifier=Modifier.weight(1f),
+                            style=MaterialTheme.typography.titleMedium,
+                            fontWeight=FontWeight.SemiBold)
+                        Text(kinds.size.toString(),color=MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.width(8.dp))
+                        Icon(if(opened==section) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription=if(opened==section) "Einklappen" else "Ausklappen")
+                    }
+                    if(opened==section) {
+                        HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
+                        Column(Modifier.padding(10.dp),
+                            verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                            kinds.forEach { kind ->
+                                ItemAction(NativeKinds[kind] ?: kind,when(kind) {
+                                    "market" -> "Verkaufen, verschenken oder tauschen"
+                                    "lend" -> "Gegenstände zum Ausleihen"
+                                    "lost" -> "Verlorene und gefundene Gegenstände"
+                                    "group" -> "Einen Verein vorstellen"
+                                    "project" -> "Eine Quartieraktion organisieren"
+                                    "issue" -> "Mängel und Probleme melden"
+                                    else -> "Gemeindetermin (Berechtigung erforderlich)"
+                                },Icons.Default.AddCircleOutline) {
+                                    onSelect("hub-create:$kind")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -84,26 +123,61 @@ fun NativeCreateHubPage(
 ) {
     val green=MaterialTheme.colorScheme.primary
     val bg=MaterialTheme.colorScheme.surface
-    var step by remember { mutableIntStateOf(0) }
+    val uid=repo.user?.uid.orEmpty()
+    var step by androidx.compose.runtime.saveable.rememberSaveable(uid,initialKind) {
+        mutableIntStateOf(0)
+    }
     BackHandler(enabled=step>0) { step-- }
-    var kind by remember(initialKind) {
-        mutableStateOf(initialKind.takeIf{it in NativeKinds} ?: "market")
-    }
     val draftContext=LocalContext.current
-    var title by remember(initialKind,repo.user?.uid) {
-        val prefs=draftContext.getSharedPreferences("quartinaut_smart_drafts",
+    val draftPrefs=remember(draftContext) {
+        draftContext.getSharedPreferences("quartinaut_hub_drafts",
             android.content.Context.MODE_PRIVATE)
-        val key="title_"+repo.user?.uid+"_"+initialKind
-        val preset=prefs.getString(key,"").orEmpty()
-        prefs.edit().remove(key).apply()
-        mutableStateOf(preset.take(100))
     }
-    var description by remember { mutableStateOf("") }
-    var category by remember(kind) { mutableStateOf(NativeCategories[kind]?.firstOrNull().orEmpty()) }
-    var price by remember { mutableStateOf("0") }
-    var capacity by remember { mutableStateOf("0") }
-    var venue by remember { mutableStateOf("") }
-    var localDate by remember { mutableStateOf("") }
+    val draftKey="hub_"+uid+"_"+initialKind
+    val load: (String,String)->String = { field,default ->
+        if(uid.isBlank()) default else draftPrefs.getString(draftKey+"_"+field,default) ?: default
+    }
+    var kind by remember(uid,initialKind) {
+        mutableStateOf(load("kind",initialKind.takeIf{it in NativeKinds} ?: "market"))
+    }
+    var title by remember(uid,initialKind) {
+        val saved=load("title","")
+        val smartPrefs=draftContext.getSharedPreferences("quartinaut_smart_drafts",
+            android.content.Context.MODE_PRIVATE)
+        val smartKey="title_"+uid+"_"+initialKind
+        val smart=smartPrefs.getString(smartKey,"").orEmpty()
+        if(saved.isBlank() && smart.isNotBlank()) smartPrefs.edit().remove(smartKey).apply()
+        mutableStateOf(saved.ifBlank { smart }.take(100))
+    }
+    var description by remember(uid,initialKind) { mutableStateOf(load("description","")) }
+    var category by remember(uid,initialKind,kind) {
+        mutableStateOf(load("category",NativeCategories[kind]?.firstOrNull().orEmpty()))
+    }
+    var price by remember(uid,initialKind) { mutableStateOf(load("price","0")) }
+    var capacity by remember(uid,initialKind) { mutableStateOf(load("capacity","0")) }
+    var venue by remember(uid,initialKind) { mutableStateOf(load("venue","")) }
+    var localDate by remember(uid,initialKind) { mutableStateOf(load("localDate","")) }
+    val draftFields=listOf("title","description","kind","category","price","capacity","venue","localDate")
+    val clearDraft: ()->Unit = {
+        val editor=draftPrefs.edit()
+        draftFields.forEach { field -> editor.remove(draftKey+"_"+field) }
+        editor.apply()
+    }
+    LaunchedEffect(uid,initialKind,title,description,kind,category,price,capacity,venue,localDate) {
+        if(uid.isNotBlank() && (title.isNotBlank() || description.isNotBlank())) {
+            kotlinx.coroutines.delay(550)
+            draftPrefs.edit()
+                .putString(draftKey+"_title",title)
+                .putString(draftKey+"_description",description)
+                .putString(draftKey+"_kind",kind)
+                .putString(draftKey+"_category",category)
+                .putString(draftKey+"_price",price)
+                .putString(draftKey+"_capacity",capacity)
+                .putString(draftKey+"_venue",venue)
+                .putString(draftKey+"_localDate",localDate)
+                .apply()
+        }
+    }
     var expanded by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
     var confirmed by remember { mutableStateOf(false) }
@@ -151,6 +225,18 @@ fun NativeCreateHubPage(
         Text("Schritt "+(step+1)+" von 3 · "+
             when(step){0->"Bereich und Titel";1->"Beschreibung und Angaben";else->"Vorschau & Freigabe"},
             color=MaterialTheme.colorScheme.onSurfaceVariant,style=MaterialTheme.typography.bodySmall)
+        if(title.isNotBlank() || description.isNotBlank()) {
+            Row(verticalAlignment=Alignment.CenterVertically) {
+                Text("Entwurf lokal gespeichert · Fotos nicht enthalten",
+                    modifier=Modifier.weight(1f),
+                    color=MaterialTheme.colorScheme.onSurfaceVariant,
+                    style=MaterialTheme.typography.bodySmall)
+                TextButton(onClick={
+                    clearDraft();title="";description="";price="0";capacity="0"
+                    venue="";localDate="";step=0;confirmed=false
+                }) { Text("Verwerfen") }
+            }
+        }
         LinearProgressIndicator(progress={ (step+1)/3f },
             modifier=Modifier.fillMaxWidth(),color=green)
         Surface(shape=RoundedCornerShape(22.dp),color=bg,
@@ -301,7 +387,10 @@ fun NativeCreateHubPage(
                                     "capacity" to (count ?: 0),
                                     "venue" to venue.trim(),"startsAt" to date,
                                     "photoPaths" to photoPaths.toList())
-                                repo.createCommunityItem(data,onCompleted,operationId)
+                                repo.createCommunityItem(data,{
+                                    clearDraft()
+                                    onCompleted()
+                                },operationId)
                             }
                         }
                     }
