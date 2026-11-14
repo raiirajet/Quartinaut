@@ -200,9 +200,9 @@ fun NativeMyPostsScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
     var statusTarget by remember {mutableStateOf<Map<String,Any?>?>(null)}
     var deletionTarget by remember {mutableStateOf<Map<String,Any?>?>(null)}
     var nextStatus by remember {mutableStateOf("")}
-    LaunchedEffect(Unit) {repo.loadEnhancementList("posts.mine")}
+    LaunchedEffect(repo.user?.uid) {repo.loadEnhancementList("posts.mine")}
     val uid=repo.user?.uid.orEmpty()
-    val readOnly=!repo.enhancementReady || repo.enhancementLoading || repo.enhancementError.isNotBlank()
+    val readOnly=!repo.enhancementReady
     val ownHub=repo.hubItems.filter {
         it["isMine"]==true || DocString(it["ownerUid"])==uid
     }
@@ -214,7 +214,7 @@ fun NativeMyPostsScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
         )
     }
     val visiblePosts:List<Map<String,Any?>> =
-        (if(repo.enhancedItems.isNotEmpty())repo.enhancedItems else ownHub+ownRequests)
+        (if(repo.myPostsLoaded)repo.myPostsItems else ownHub+ownRequests)
         .filterNot {DocString(it["status"]) in listOf("deleted","gelöscht")}
         .distinctBy {DocString(it["kind"])+":"+DocString(it["id"])}
     val statusLabel:(String)->String={value->when(value){
@@ -241,13 +241,13 @@ fun NativeMyPostsScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
                     color=PlusMuted,style=MaterialTheme.typography.bodySmall)
             }
             IconButton(onClick={repo.loadEnhancementList("posts.mine")},
-                enabled=!repo.enhancementLoading) {
+                enabled=!repo.myPostsLoading) {
                 Icon(Icons.Default.Refresh,contentDescription="Beiträge aktualisieren",
                     tint=PlusAccent)
             }
         }
-        if(repo.enhancementLoading)LinearProgressIndicator(Modifier.fillMaxWidth())
-        if(readOnly && !repo.enhancementLoading) {
+        if(repo.myPostsLoading)LinearProgressIndicator(Modifier.fillMaxWidth())
+        if(readOnly && !repo.myPostsLoading) {
             Surface(modifier=Modifier.fillMaxWidth(),
                 shape=RoundedCornerShape(14.dp),
                 color=MaterialTheme.colorScheme.surfaceVariant) {
@@ -340,7 +340,8 @@ fun NativeMyPostsScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
                                 editingTitle=DocString(row["title"])
                                 editingBody=DocString(row["description"])
                                 editingPrice=DocString(row["priceChf"])
-                            },modifier=Modifier.weight(1f),enabled=!readOnly,
+                            },modifier=Modifier.weight(1f),
+                                enabled=!readOnly && DocString(row["id"]) !in repo.myPostsBusyIds,
                                 contentPadding=PaddingValues(horizontal=5.dp,vertical=9.dp)) {
                                 Icon(Icons.Default.Edit,contentDescription=null,
                                     modifier=Modifier.size(16.dp))
@@ -348,7 +349,8 @@ fun NativeMyPostsScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
                                 Text("Bearbeiten",maxLines=1)
                             }
                             Box {
-                                IconButton(onClick={menuOpen=true},enabled=!readOnly,
+                                IconButton(onClick={menuOpen=true},
+                                    enabled=!readOnly && DocString(row["id"]) !in repo.myPostsBusyIds,
                                     modifier=Modifier.size(44.dp)) {
                                     Icon(Icons.Default.MoreVert,
                                         contentDescription="Weitere Aktionen")
