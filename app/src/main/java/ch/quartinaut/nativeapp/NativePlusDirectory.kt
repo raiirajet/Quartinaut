@@ -214,82 +214,191 @@ fun NativeMyPostsScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
         )
     }
     val visiblePosts:List<Map<String,Any?>> =
-        if(readOnly)ownHub+ownRequests else repo.enhancedItems
-    Column(Modifier.fillMaxSize().background(PlusBg).padding(16.dp),
+        (if(repo.enhancedItems.isNotEmpty())repo.enhancedItems else ownHub+ownRequests)
+        .filterNot {DocString(it["status"]) in listOf("deleted","gelöscht")}
+        .distinctBy {DocString(it["kind"])+":"+DocString(it["id"])}
+    val statusLabel:(String)->String={value->when(value){
+        "published","offen"->"Aktiv"
+        "paused"->"Pausiert"
+        "pending","wartet_freigabe"->"In Prüfung"
+        "completed","erledigt"->"Erledigt"
+        "archived","archiviert"->"Archiviert"
+        else->value.ifBlank{"Unbekannt"}
+    }}
+    val kindLabel:(String)->String={value->when(value){
+        "request"->"Anliegen";"market"->"Marktplatz";"lend"->"Leihbörse"
+        "group"->"Verein";"project"->"Quartieraktion";"calendar"->"Veranstaltung"
+        "lost"->"Fundbüro";"issue"->"Mangelmeldung"
+        else->"Beitrag"
+    }}
+    Column(Modifier.fillMaxSize().background(PlusBg).padding(horizontal=16.dp,vertical=12.dp),
         verticalArrangement=Arrangement.spacedBy(12.dp)) {
-        ExtraHeader("Meine Beiträge","Inserate kontrollieren, überarbeiten oder abschliessen.")
-        OutlinedButton(onClick={repo.loadEnhancementList("posts.mine")},
-            modifier=Modifier.fillMaxWidth()) {Text("Aktualisieren")}
+        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Meine Beiträge",style=MaterialTheme.typography.headlineSmall,
+                    fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.onSurface)
+                Text("${visiblePosts.size} Einträge",
+                    color=PlusMuted,style=MaterialTheme.typography.bodySmall)
+            }
+            IconButton(onClick={repo.loadEnhancementList("posts.mine")},
+                enabled=!repo.enhancementLoading) {
+                Icon(Icons.Default.Refresh,contentDescription="Beiträge aktualisieren",
+                    tint=PlusAccent)
+            }
+        }
         if(repo.enhancementLoading)LinearProgressIndicator(Modifier.fillMaxWidth())
-        if(readOnly)
-            Text("Die erweiterte Beitragsverwaltung ist derzeit nicht verfügbar. " +
-                "Deine bereits geladenen eigenen Beiträge werden schreibgeschützt angezeigt. " +
-                "Bearbeiten, Pausieren und Archivieren benötigen den geschützten Erweiterungsdienst.",
-                color=PlusMuted,style=MaterialTheme.typography.bodySmall)
-        LazyColumn(verticalArrangement=Arrangement.spacedBy(11.dp)) {
-            items(visiblePosts) { row ->
-                Surface(color=PlusSurface,shape=RoundedCornerShape(18.dp),
-                    border=BorderStroke(1.dp,PlusBorder)) {
-                    Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(7.dp)) {
-                        Text(DocString(row["title"]),fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.onSurface)
-                        Text(DocString(row["description"]).take(180),color=PlusMuted)
-                        Text("Status: "+DocString(row["status"])+" · "+
-                            DocString(row["kind"]),color=PlusAccent,
-                            style=MaterialTheme.typography.labelMedium)
-                        val collection=if(DocString(row["kind"])=="request")
-                            "requests" else "communityHubItems"
-                        if(readOnly) OutlinedButton(onClick={
-                            navigate(when(DocString(row["kind"])) {
-                                "request"->"board"
-                                "market"->"market"
-                                "lend"->"lend"
-                                "group"->"group"
-                                "calendar"->"calendar"
-                                else->"plus"
-                            })
-                        }) { Text("In Übersicht öffnen") }
-                        if(!readOnly) Row(Modifier.horizontalScroll(rememberScrollState()),
+        if(readOnly && !repo.enhancementLoading) {
+            Surface(modifier=Modifier.fillMaxWidth(),
+                shape=RoundedCornerShape(14.dp),
+                color=MaterialTheme.colorScheme.surfaceVariant) {
+                Row(Modifier.padding(12.dp),verticalAlignment=Alignment.CenterVertically,
+                    horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                    Icon(Icons.Default.Info,contentDescription=null,
+                        tint=MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Verwaltung gerade nicht verfügbar. Beiträge bleiben sichtbar.",
+                        modifier=Modifier.weight(1f),color=PlusMuted,
+                        style=MaterialTheme.typography.bodySmall)
+                    TextButton(onClick={repo.loadEnhancementList("posts.mine")}) {
+                        Text("Erneut")
+                    }
+                }
+            }
+        }
+        LazyColumn(modifier=Modifier.fillMaxWidth().weight(1f),
+            verticalArrangement=Arrangement.spacedBy(12.dp),
+            contentPadding=PaddingValues(bottom=24.dp)) {
+            items(visiblePosts,key={
+                DocString(it["kind"])+":"+DocString(it["id"])
+            }) { row ->
+                val kind=DocString(row["kind"])
+                val status=DocString(row["status"])
+                val collection=if(kind=="request")"requests" else "communityHubItems"
+                var menuOpen by remember(DocString(row["id"])) {mutableStateOf(false)}
+                val viewRoute=when(kind){
+                    "request"->"board";"market"->"market";"lend"->"lend"
+                    "group"->"group";"project"->"project";"calendar"->"calendar"
+                    "lost"->"lost";"issue"->"issue";else->"plus"
+                }
+                Surface(modifier=Modifier.fillMaxWidth(),color=PlusSurface,
+                    shape=RoundedCornerShape(20.dp),
+                    border=BorderStroke(1.dp,PlusBorder),tonalElevation=1.dp) {
+                    Column(Modifier.fillMaxWidth().padding(14.dp),
+                        verticalArrangement=Arrangement.spacedBy(10.dp)) {
+                        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,
+                            horizontalArrangement=Arrangement.spacedBy(9.dp)) {
+                            Surface(shape=RoundedCornerShape(12.dp),
+                                color=MaterialTheme.colorScheme.primaryContainer) {
+                                Box(Modifier.size(42.dp),contentAlignment=Alignment.Center) {
+                                    Icon(when(kind){
+                                        "request"->Icons.Default.Handshake
+                                        "market"->Icons.Default.Storefront
+                                        "lend"->Icons.Default.Handyman
+                                        "group"->Icons.Default.Groups
+                                        "calendar"->Icons.Default.Event
+                                        else->Icons.Default.Article
+                                    },contentDescription=null,
+                                        tint=MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier=Modifier.size(23.dp))
+                                }
+                            }
+                            Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)) {
+                                Text(DocString(row["title"]).ifBlank{"Ohne Titel"},
+                                    fontWeight=FontWeight.SemiBold,
+                                    color=MaterialTheme.colorScheme.onSurface,
+                                    style=MaterialTheme.typography.titleMedium,
+                                    maxLines=2,overflow=TextOverflow.Ellipsis)
+                                Text(kindLabel(kind),color=PlusMuted,
+                                    style=MaterialTheme.typography.labelMedium)
+                            }
+                            Surface(shape=RoundedCornerShape(12.dp),
+                                color=MaterialTheme.colorScheme.primaryContainer) {
+                                Text(statusLabel(status),
+                                    modifier=Modifier.padding(horizontal=9.dp,vertical=6.dp),
+                                    color=MaterialTheme.colorScheme.onPrimaryContainer,
+                                    style=MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                        val description=DocString(row["description"]).trim()
+                        if(description.isNotBlank()) {
+                            Text(description,maxLines=2,
+                                overflow=TextOverflow.Ellipsis,color=PlusMuted,
+                                style=MaterialTheme.typography.bodyMedium)
+                        }
+                        HorizontalDivider(color=PlusBorder)
+                        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,
                             horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                            OutlinedButton(onClick={
+                            OutlinedButton(onClick={navigate(viewRoute)},
+                                modifier=Modifier.weight(1f),
+                                contentPadding=PaddingValues(horizontal=5.dp,vertical=9.dp)) {
+                                Icon(Icons.Default.Visibility,contentDescription=null,
+                                    modifier=Modifier.size(16.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Ansehen",maxLines=1)
+                            }
+                            Button(onClick={
                                 editing=row
                                 editingTitle=DocString(row["title"])
                                 editingBody=DocString(row["description"])
                                 editingPrice=DocString(row["priceChf"])
-                            }) {Text("Bearbeiten")}
-                            listOf(
-                                "paused" to "Pausieren",
-                                "published" to "Reaktivieren",
-                                "completed" to "Erledigt",
-                                "archived" to "Archivieren"
-                            ).filter { (s,_) ->
-                                when {
-                                    collection=="requests" -> s in listOf("archived","completed")
-                                    s=="published" -> DocString(row["status"])=="paused"
-                                    s=="paused" -> DocString(row["status"])=="published"
-                                    s=="completed" -> DocString(row["kind"]) in listOf("market","lend","lost")
-                                    else -> true
-                                }
-                            }.forEach{ (status,label) ->
-                                OutlinedButton(onClick={
-                                    statusTarget=row;nextStatus=status
-                                }) {Text(label)}
+                            },modifier=Modifier.weight(1f),enabled=!readOnly,
+                                contentPadding=PaddingValues(horizontal=5.dp,vertical=9.dp)) {
+                                Icon(Icons.Default.Edit,contentDescription=null,
+                                    modifier=Modifier.size(16.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Bearbeiten",maxLines=1)
                             }
-                            OutlinedButton(onClick={deletionTarget=row},
-                                enabled=!repo.enhancementLoading) {
-                                Icon(Icons.Default.DeleteOutline,contentDescription=null)
-                                Spacer(Modifier.width(6.dp))
-                                Text("Löschen",color=MaterialTheme.colorScheme.error)
+                            Box {
+                                IconButton(onClick={menuOpen=true},enabled=!readOnly,
+                                    modifier=Modifier.size(44.dp)) {
+                                    Icon(Icons.Default.MoreVert,
+                                        contentDescription="Weitere Aktionen")
+                                }
+                                DropdownMenu(expanded=menuOpen,onDismissRequest={menuOpen=false}) {
+                                    listOf("paused" to "Pausieren",
+                                        "published" to "Reaktivieren",
+                                        "completed" to "Erledigt",
+                                        "archived" to "Archivieren")
+                                        .filter {(next,_)->
+                                            when {
+                                                collection=="requests"->next in listOf("archived","completed")
+                                                next=="published"->status=="paused"
+                                                next=="paused"->status=="published"
+                                                next=="completed"->kind in listOf("market","lend","lost")
+                                                else->true
+                                            }
+                                        }.forEach {(next,label)->
+                                            DropdownMenuItem(text={Text(label)},onClick={
+                                                statusTarget=row;nextStatus=next;menuOpen=false
+                                            })
+                                        }
+                                    HorizontalDivider()
+                                    DropdownMenuItem(
+                                        text={Text("Löschen",
+                                            color=MaterialTheme.colorScheme.error)},
+                                        leadingIcon={Icon(Icons.Default.DeleteOutline,
+                                            contentDescription=null,
+                                            tint=MaterialTheme.colorScheme.error)},
+                                        onClick={deletionTarget=row;menuOpen=false}
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
-            if(visiblePosts.isEmpty())item {
-                Text(if(readOnly)"Keine eigenen Beiträge im lokalen Datenbestand geladen. Dies ist kein vollständiger Serverabgleich."
-                    else "Noch keine eigenen Beiträge gefunden.",color=PlusMuted)
+            if(visiblePosts.isEmpty()) item {
+                Column(Modifier.fillMaxWidth().padding(vertical=30.dp),
+                    horizontalAlignment=Alignment.CenterHorizontally,
+                    verticalArrangement=Arrangement.spacedBy(10.dp)) {
+                    Icon(Icons.Default.Inventory2,contentDescription=null,
+                        tint=PlusAccent,modifier=Modifier.size(40.dp))
+                    Text("Noch keine eigenen Beiträge geladen")
+                    OutlinedButton(onClick={navigate("create")}){Text("Eintrag erstellen")}
+                }
             }
         }
     }
+
     if(editing!=null) {
         val row=editing!!
         val rawEditPrice=editingPrice.trim().replace(',','.')
