@@ -1,0 +1,40 @@
+name: Diagnostic Swiss arms sources
+on:
+  push:
+    branches: [native-android-v1]
+  workflow_dispatch:
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare Wikimedia and mirrored source fetches
+        run: |
+          python3 - <<'PY'
+          import urllib.request, urllib.error, urllib.parse, hashlib, concurrent.futures, time
+          file="CHE Flawil COA.svg"
+          name=file.replace(" ","_")
+          digest=hashlib.md5(name.encode()).hexdigest()
+          origin=f"https://upload.wikimedia.org/wikipedia/commons/{digest[0]}/{digest[:2]}/{urllib.parse.quote(name)}"
+          cases={
+            "direct":origin,
+            "wikimedia-special":"https://commons.wikimedia.org/wiki/Special:FilePath/"+urllib.parse.quote(name),
+            "commons-api":"https://commons.wikimedia.org/w/api.php?action=query&format=json&prop=imageinfo&iiprop=url&titles=File:"+urllib.parse.quote(file),
+            "wsrv-proxy":"https://wsrv.nl/?url="+urllib.parse.quote(origin,safe="")+"&w=112&output=png",
+            "weserv-proxy":"https://images.weserv.nl/?url="+urllib.parse.quote(origin,safe="")+"&w=112&output=png",
+            "wikimedia-thumbnail":f"https://upload.wikimedia.org/wikipedia/commons/thumb/{digest[0]}/{digest[:2]}/{urllib.parse.quote(name)}/112px-{urllib.parse.quote(name)}.png",
+          }
+          def test(item):
+            label,url=item
+            try:
+              request=urllib.request.Request(url,headers={"User-Agent":"Quartinaut/1.0 (contact: https://github.com/raiirajet/Quartinaut)","Accept":"image/png,image/svg+xml,application/json,*/*"})
+              with urllib.request.urlopen(request,timeout=14) as res:
+                data=res.read(550000)
+                return label,f"HTTP {res.status} bytes={len(data)} type={res.headers.get('content-type')} prefix={data[:25]!r}"
+            except Exception as e:
+              return label,f"{type(e).__name__}: {str(e)[:160]}"
+          with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
+            for label,result in pool.map(test,cases.items()):
+              print(f"PROBE {label}: {result}",flush=True)
+          PY
