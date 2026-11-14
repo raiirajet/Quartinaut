@@ -781,7 +781,7 @@ class QuartinautRepository(context: Context) {
                 } else {
                     serverChatReady=false
                     val explanation=if(chatApiUnavailable(result.exception))
-                        "Der geschützte Chat-Dienst ist noch nicht auf Firebase veröffentlicht."
+                        callableDiagnostic(result.exception, "Der geschützte Chat-Dienst ist noch nicht auf Firebase veröffentlicht.")
                     else callableDiagnostic(result.exception, "Chat-Dienst nicht erreichbar.")
                     syncIssues=syncIssues + ("Privater Chat-Dienst" to explanation)
                 }
