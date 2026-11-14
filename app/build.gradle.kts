@@ -13,8 +13,8 @@ android {
         applicationId = "ch.quartinaut.nativeapp"
         minSdk = 26
         targetSdk = 35
-        versionCode = 19
-        versionName = "5.8.2-stability-social"
+        versionCode = 20
+        versionName = "5.8.3-wappen-beitragsdesign"
     }
     buildTypes {
         release { isMinifyEnabled = false }
