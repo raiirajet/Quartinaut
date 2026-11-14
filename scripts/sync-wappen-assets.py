@@ -195,6 +195,9 @@ def main():
         bfs: thumbnails.get(bfs, file_page_for(name))
         for bfs, name in filenames.items() if bfs in all_ids
     }
+    if len(verified)<2000:
+        raise SystemExit("Insufficient verified Swiss armorial sources ("+
+                         str(len(verified))+"); refusing incomplete release")
     (OUT / "index.json").write_text(
         json.dumps(verified,ensure_ascii=False,separators=(",",":")),
         encoding="utf-8"
