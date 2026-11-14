@@ -7,7 +7,33 @@ concurrency:
   group: android-native-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  coat-prefetch:
+    name: Fetch missing Swiss coat images (shard ${{ matrix.shard }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore Swiss coat cache
+        uses: actions/cache/restore@v4
+        with:
+          path: app/src/main/assets/wappen
+          key: wappen-assets-2026-${{ github.run_id }}
+          restore-keys: |
+            wappen-assets-2026-
+      - name: Fetch only this shard's missing coats
+        run: python3 scripts/fetch-wappen-shard.py ${{ matrix.shard }} 16
+      - name: Upload fetched images
+        uses: actions/upload-artifact@v4
+        with:
+          name: coat-shard-${{ matrix.shard }}
+          path: tmp/coat-shard/
+          if-no-files-found: ignore
+          retention-days: 1
   build:
+    needs: coat-prefetch
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -45,6 +71,12 @@ jobs:
           key: wappen-assets-2026-${{ github.run_id }}
           restore-keys: |
             wappen-assets-2026-
+      - name: Merge images retrieved by independent downloader runners
+        uses: actions/download-artifact@v4
+        with:
+          pattern: coat-shard-*
+          path: app/src/main/assets/wappen
+          merge-multiple: true
       - name: Retrieve 2018 Swiss BFS-ID image archive (only historical fallback)
         run: |
           git clone --depth 1 --filter=blob:none --sparse \
