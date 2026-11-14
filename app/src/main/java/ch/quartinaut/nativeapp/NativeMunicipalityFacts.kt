@@ -183,7 +183,7 @@ private val cantonKnownWappen=mapOf(
 internal fun querySwissCantonWappen(cantons:List<Region>): Map<String,String> {
     val codes=cantons.map {it.code}.filter {it.length==2 && it.all(Char::isLetter)}
     if(codes.isEmpty())return emptyMap()
-    if(codes.all { it in cantonInsigniaCache })return codes.mapNotNull {
+    if(codes.all { cantonInsigniaCache.containsKey(it) })return codes.mapNotNull {
         cantonInsigniaCache[it]?.let {coat -> it to coat}
     }.toMap()
     val values=codes.joinToString(" ") { "\"CH-$it\"" }
@@ -203,7 +203,7 @@ internal fun querySwissCantonWappen(cantons:List<Region>): Map<String,String> {
         }
     }
     // This is an explicitly verified file, not a guessed coat of arms.
-    for(code in codes) if(code !in cantonInsigniaCache) {
+    for(code in codes) if(!cantonInsigniaCache.containsKey(code)) {
         cantonKnownWappen[code]?.let { cantonInsigniaCache[code]=it }
     }
     return codes.mapNotNull {code ->
