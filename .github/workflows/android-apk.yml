@@ -38,8 +38,23 @@ jobs:
           gradle-version: '8.9'
       - name: Restore original Quartinaut 5.4 artwork and location snapshot
         run: bash scripts/sync-original-assets.sh
-      - name: Bundle verified Swiss municipality coats for offline map
+      - name: Restore validated municipality coats from previous builds
+        uses: actions/cache/restore@v4
+        with:
+          path: app/src/main/assets/wappen
+          key: wappen-assets-2026-${{ github.run_id }}
+          restore-keys: |
+            wappen-assets-2026-
+      - name: Download and bundle every valid Swiss municipal coat
         run: python3 scripts/sync-wappen-assets.py
+      - name: Save partially or fully verified coats for next builds
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: app/src/main/assets/wappen
+          key: wappen-assets-2026-${{ github.run_id }}
+      - name: Require complete offline coats and municipal logo
+        run: python3 scripts/verify-wappen-assets.py
       - name: Verify private image-service code and validation tests
         run: |
           node --check functions/appearance/index.js
