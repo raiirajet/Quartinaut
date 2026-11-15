@@ -246,7 +246,9 @@ fun NativeOriginalHome(repo: QuartinautRepository, navigate: (String) -> Unit,
                                 if(yes&&item.id !in edit&&edit.size<8) edit.add(item.id)
                                 if(!yes&&edit.size>2) edit.remove(item.id)
                             })
-                            Text(item.emoji+" "+item.title)
+                            QuartinautIcon(item.route,Modifier.size(28.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(item.title)
                         }
                     }
                 }
@@ -422,16 +424,7 @@ private fun HomeShortcut(card:HomeLink,modifier:Modifier,onClick:()->Unit) {
         color=NightCard,shape=RoundedCornerShape(22.dp),
         border=androidx.compose.foundation.BorderStroke(1.dp,PanelLine)) {
         Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(5.dp)) {
-            val iconKey=when(card.route) {
-                "personal-center" -> "meine"
-                "community-pulse", "group" -> "gemeinde"
-                "chats" -> "messages"
-                "map" -> "entdecken"
-                "settings" -> "sicherheit"
-                else -> null
-            }
-            if(iconKey!=null) Quartinaut3DIcon(iconKey,Modifier.size(42.dp))
-            else Text(card.emoji,style=MaterialTheme.typography.headlineSmall)
+            QuartinautIcon(card.route,Modifier.size(42.dp))
             Spacer(Modifier.height(3.dp))
             Text(card.title,color=MaterialTheme.colorScheme.onSurface,
                 style=MaterialTheme.typography.titleMedium,maxLines=1)
@@ -448,7 +441,7 @@ private fun HomePriority(card:HomeLink,repo:QuartinautRepository,
         border=androidx.compose.foundation.BorderStroke(1.dp,PanelLine)) {
         Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(7.dp)) {
             Row(verticalAlignment=Alignment.CenterVertically) {
-                Text(card.emoji,style=MaterialTheme.typography.titleLarge)
+                QuartinautIcon(card.route,Modifier.size(32.dp))
                 Spacer(Modifier.weight(1f))
                 val number=when(card.id) {
                     "bulletin" -> repo.requests.count {it.str("uid")==repo.user?.uid}

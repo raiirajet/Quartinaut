@@ -397,7 +397,7 @@ private fun QuartierActionRow(link: QuartierLink, navigate: (String) -> Unit) {
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.50f)) {
         Row(Modifier.fillMaxWidth().heightIn(min = 66.dp).padding(12.dp),
             verticalAlignment = Alignment.CenterVertically) {
-            Text(link.symbol, style = MaterialTheme.typography.titleLarge)
+            QuartinautIcon(link.route, Modifier.size(38.dp))
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(link.title, fontWeight = FontWeight.Medium)

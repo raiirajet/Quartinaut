@@ -413,16 +413,9 @@ private fun QuartinautApp(repo: QuartinautRepository,
                             .semantics { selected=active; contentDescription=label },
                             verticalArrangement=Arrangement.Center,
                             horizontalAlignment=Alignment.CenterHorizontally) {
-                            Box(Modifier.size(45.dp).clip(RoundedCornerShape(15.dp))
-                                .background(if(displayMode=="dark") Color(0xFF10281B)
-                                    else Color(0xFFF5FBF7)),contentAlignment=Alignment.Center) {
-                                if(route=="chats") {
-                                    Quartinaut3DIcon("messages",
-                                        Modifier.size(if(active)42.dp else 39.dp))
-                                } else {
-                                    OriginalNavigationIcon(asset,
-                                        Modifier.size(if(active)42.dp else 39.dp))
-                                }
+                            Box(Modifier.size(45.dp).clip(RoundedCornerShape(15.dp)),
+                                contentAlignment=Alignment.Center) {
+                                QuartinautIcon(route,Modifier.size(if(active)42.dp else 39.dp))
                             }
                             Text(label,color=if(active && displayMode=="red") Forest else bottomLabel,
                                 style=MaterialTheme.typography.labelSmall,
