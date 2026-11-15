@@ -7,6 +7,8 @@ import android.util.JsonToken
 import android.util.JsonWriter
 import java.io.StringWriter
 import java.io.InputStreamReader
+import java.io.InputStream
+import android.content.Context
 import java.util.concurrent.ConcurrentHashMap
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
@@ -94,9 +96,9 @@ private fun copyJson(reader:JsonReader,writer:JsonWriter,depth:Int=0) {
         else -> reader.skipValue()
     }
 }
-private fun readCantonFeatures(connection:HttpURLConnection,ids:Set<String>):List<RawFeature> {
+private fun readCantonFeatures(stream:InputStream,ids:Set<String>):List<RawFeature> {
     val selected=ArrayList<RawFeature>()
-    JsonReader(InputStreamReader(connection.inputStream,Charsets.UTF_8)).use { reader ->
+    JsonReader(InputStreamReader(stream,Charsets.UTF_8)).use { reader ->
         reader.isLenient=false
         reader.beginObject()
         while(reader.hasNext()) {
@@ -164,11 +166,16 @@ private fun selectGeoId(feature: JSONObject): String {
     }
     return feature.optString("id").removeSuffix(".0")
 }
-private fun loadFeatures(canton: Region): List<MapMunicipality> {
+private fun loadFeatures(canton: Region, context: Context): List<MapMunicipality> {
     geometryCache[canton.code]?.let { return it }
     val ids=canton.municipalities.map { it.bfs }.toSet()
-    var selected=emptyList<RawFeature>()
-    for(url in listOf(GEO_URL,GEO_BACKUP)) {
+    // Prefer the pinned, CI-validated GeoJSON bundled in the APK.
+    var selected=runCatching {
+        context.assets.open("geo/municipality_2025.geojson").use {
+            readCantonFeatures(it,ids)
+        }
+    }.getOrDefault(emptyList())
+    if(selected.isEmpty()) for(url in listOf(GEO_URL,GEO_BACKUP)) {
         var conn:HttpURLConnection?=null
         try {
             conn=(URL(url).openConnection() as HttpURLConnection).apply {
@@ -176,10 +183,10 @@ private fun loadFeatures(canton: Region): List<MapMunicipality> {
                 readTimeout=12000
                 setRequestProperty("Accept","application/geo+json,application/json")
             }
-            selected=readCantonFeatures(conn,ids)
+            selected=conn.inputStream.use { readCantonFeatures(it,ids) }
             if(selected.isNotEmpty())break
         } catch (_:Exception) {
-            // Network and malformed upstream geometry must not crash a map screen.
+            // If old geometry is missing online, the offline BFS list remains.
         } finally {
             conn?.disconnect()
         }
@@ -247,6 +254,8 @@ fun NativeMunicipalityMap(
                 }
             }
             value=displayed.toMap()
+            // Do not contact Wikidata if all coats came from the APK.
+            if(displayed.size==canton.municipalities.size) return@produceState
             val urls=withContext(Dispatchers.IO) {
                 queryCantonWappen(canton,context)
             }
@@ -279,7 +288,7 @@ fun NativeMunicipalityMap(
     }
     val regions by produceState<List<MapMunicipality>?>(initialValue=null,canton.code) {
         value=withContext(Dispatchers.IO) {
-            runCatching { loadFeatures(canton) }.getOrDefault(emptyList())
+            runCatching { loadFeatures(canton,context) }.getOrDefault(emptyList())
         }
     }
     when {
@@ -372,7 +381,7 @@ fun NativeMunicipalityMap(
                     }
                 }
             }
-            Text("Gemeindegrenzen 2025 · BFS-Verzeichnis 2026 · Wappen: Wikimedia Commons / Haute-Ajoie: offizielles Gemeindelogo" +
+            Text("Offline-Gemeindegrenzen 2025 · BFS-Verzeichnis 2026 · Wappen: Wikimedia Commons / Haute-Ajoie: offizielles Gemeindelogo" +
                 " · "+coats.size+"/"+features.size+" Wappen geladen" +
                 (if(wappenLoading) " (weitere werden geladen …)" else
                     if(coats.size<features.size) " (fehlende online nicht verfügbar oder nicht zugeordnet)" else ""),

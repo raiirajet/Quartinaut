@@ -25,6 +25,8 @@ import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -153,10 +155,14 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun QuartinautApp(repo: QuartinautRepository,
     mode: String, displayMode: String, updateMode: (String) -> Unit) {
-    var page by remember { mutableStateOf("home") }
-    val history=remember { mutableStateListOf<String>() }
-    var mapCanton by remember { mutableStateOf("") }
-    var mapMunicipality by remember { mutableStateOf("") }
+    // Restore screen and backstack when Android recreates the Activity.
+    var page by rememberSaveable { mutableStateOf("home") }
+    val history=rememberSaveable(
+        saver=listSaver<androidx.compose.runtime.snapshots.SnapshotStateList<String>,String>(
+            save={ it.toList() }, restore={ it.toMutableStateList() })
+    ) { mutableStateListOf<String>() }
+    var mapCanton by rememberSaveable { mutableStateOf("") }
+    var mapMunicipality by rememberSaveable { mutableStateOf("") }
     var selectedHubItem by remember { mutableStateOf<Map<String,Any?>>(emptyMap()) }
     var selectedRequest by remember { mutableStateOf<DocumentSnapshot?>(null) }
     val authUser = repo.user
@@ -176,11 +182,19 @@ private fun QuartinautApp(repo: QuartinautRepository,
         }
     }
     val notice = repo.message
-    if (notice.isNotBlank()) {
-        AlertDialog(onDismissRequest = repo::clearMessage,
-            title = { Text("Quartinaut") },
-            text = { Text(notice) },
-            confirmButton = { TextButton(onClick = repo::clearMessage) { Text("Schliessen") } })
+    val snackbarHostState=remember { SnackbarHostState() }
+    val quickConfirmation=notice.startsWith("Beitrag ") ||
+        notice.startsWith("Eintrag ") || notice.startsWith("Änderung ")
+    LaunchedEffect(notice,quickConfirmation) {
+        if(notice.isNotBlank() && quickConfirmation) {
+            repo.clearMessage()
+            snackbarHostState.showSnackbar(notice,duration=SnackbarDuration.Short)
+        }
+    }
+    if(notice.isNotBlank() && !quickConfirmation) {
+        AlertDialog(onDismissRequest=repo::clearMessage,
+            title={Text("Quartinaut")},text={Text(notice)},
+            confirmButton={TextButton(onClick=repo::clearMessage){Text("Schliessen")}})
     }
     if (authUser == null) {
         LoginPage(repo)
@@ -220,6 +234,7 @@ private fun QuartinautApp(repo: QuartinautRepository,
         }
         return
     }
+    NativeWelcomeTour(authUser.uid)
     val navContext=LocalContext.current
     val navTo: (String) -> Unit = { target ->
         if(target!=page) {
@@ -313,6 +328,7 @@ private fun QuartinautApp(repo: QuartinautRepository,
         else -> if(page.startsWith("hub-section:")) quartierSectionTitle(page.substringAfter(":")) else "Quartinaut"
     }
     Scaffold(
+        snackbarHost={SnackbarHost(hostState=snackbarHostState)},
         // Android 15/16 enforce edge-to-edge. The previous build let the
         // custom header draw behind the status bar, as seen in the screenshot.
         // Reserve real system insets for BOTH header and bottom navigation.

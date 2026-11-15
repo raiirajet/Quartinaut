@@ -85,6 +85,13 @@ jobs:
           git -C .cache/legacy-coats rev-parse HEAD
       - name: Install image thumbnail conversion
         run: python3 -m pip install --quiet --disable-pip-version-check Pillow==11.3.0
+      - name: Bundle pinned 2025 Swiss municipality geometry for offline maps
+        run: |
+          mkdir -p app/src/main/assets/geo
+          curl --fail --location --retry 4 --retry-all-errors --silent --show-error \
+            'https://raw.githubusercontent.com/samkhavandi/Swiss_Geography_Look_Ups/56fc51958e8cce0e0e7c2615f3ac28aef369f7ae/geometries/municipality_2025.geojson' \
+            -o app/src/main/assets/geo/municipality_2025.geojson
+          python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d.get("type")=="FeatureCollection" and len(d.get("features",[]))>=2000, "Incomplete municipal geometry"; print("Bundled",len(d["features"]),"municipality boundaries")' app/src/main/assets/geo/municipality_2025.geojson
       - name: Download and bundle every valid Swiss municipal coat
         run: python3 scripts/sync-wappen-assets.py
       - name: Save partially or fully verified coats for next builds

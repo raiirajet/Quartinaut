@@ -34,6 +34,7 @@ private val Topics = linkedMapOf(
 fun NativeSettingsScreen(repo: QuartinautRepository,mode: String,
                          updateMode: (String) -> Unit, navigate: (String) -> Unit) {
     val context=LocalContext.current
+    var showWelcomeAgain by remember { mutableStateOf(false) }
     val notificationPermission=rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
@@ -154,7 +155,16 @@ fun NativeSettingsScreen(repo: QuartinautRepository,mode: String,
         ) {
             Text("Quellenverweise · Wappen und Gemeindedaten")
         }
+        OutlinedButton(onClick={showWelcomeAgain=true},
+            modifier=Modifier.fillMaxWidth().heightIn(min=48.dp)) {
+            Icon(Icons.Default.School,contentDescription=null)
+            Spacer(Modifier.width(8.dp))
+            Text("App-Einführung erneut ansehen")
+        }
         TextButton(onClick={navigate("help")}) { Text("Hilfe und Datenschutz") }
+    }
+    if(showWelcomeAgain) NativeWelcomeTour(repo.user?.uid.orEmpty(),forceShow=true) {
+        showWelcomeAgain=false
     }
 }
 @Composable
