@@ -441,6 +441,7 @@ class QuartinautRepository(context: Context) {
     }
     fun loadHub() {
         if (user == null || !active()) return
+        val startMs=android.os.SystemClock.elapsedRealtime()
         functions.getHttpsCallable("quartinautHub").call(mapOf("action" to "list"))
             .addOnSuccessListener { result ->
                 val raw = (result.data as? Map<*, *>)?.get("items") as? List<*> ?: emptyList<Any>()
@@ -448,19 +449,26 @@ class QuartinautRepository(context: Context) {
                     (item as? Map<*, *>)?.entries?.associate { DocString(it.key) to it.value }
                 }
                 cachePublicHubItems()
+                NativePerformanceMetrics.record(appContext,"hub",
+                    android.os.SystemClock.elapsedRealtime()-startMs,true)
                 syncIssues=syncIssues-"Quartier+"
             }.addOnFailureListener { e ->
+                NativePerformanceMetrics.record(appContext,"hub",
+                    android.os.SystemClock.elapsedRealtime()-startMs,false)
                 syncIssues = syncIssues + ("Quartier+" to
                     (e.localizedMessage ?: "Quartier+ nicht erreichbar"))
             }
     }
     fun loadV50(action: String) {
         if (user == null || !active()) return
+        val startedMs=android.os.SystemClock.elapsedRealtime()
         v50Items = emptyList()
         v50Error = ""
         v50Loading = true
         functions.getHttpsCallable("quartinautV50").call(mapOf("action" to action))
             .addOnSuccessListener { result ->
+                NativePerformanceMetrics.record(appContext,"bookings",
+                    android.os.SystemClock.elapsedRealtime()-startedMs,true)
                 v50Loading=false
                 val raw = result.data as? Map<*, *>
                 val items = (raw?.get("entries") ?: raw?.get("items")) as? List<*> ?: emptyList<Any>()
@@ -468,6 +476,8 @@ class QuartinautRepository(context: Context) {
                     DocString(e.key) to e.value
                 } }
             }.addOnFailureListener { e ->
+                NativePerformanceMetrics.record(appContext,"bookings",
+                    android.os.SystemClock.elapsedRealtime()-startedMs,false)
                 v50Loading=false
                 v50Error = callableDiagnostic(e, "Der Buchungsdienst konnte nicht geladen werden.")
                 syncIssues = syncIssues + ("Ausleih-/Reservationsdienst" to v50Error)
@@ -1025,11 +1035,15 @@ class QuartinautRepository(context: Context) {
             }
     }
     fun loadEnhancementList(action: String, params: Map<String,Any?> = emptyMap()) {
+        val startedMs=android.os.SystemClock.elapsedRealtime()
+        val metric=if(action=="posts.mine")"posts" else "extras"
         val isPosts=action=="posts.mine"
         val ticket=if(isPosts) ++myPostsRequestSequence else 0L
         if(isPosts) myPostsLoading=true
         // Preserve the last successful result while another request is running.
         enhancement(action,params,onDone={ result ->
+            NativePerformanceMetrics.record(appContext,metric,
+                android.os.SystemClock.elapsedRealtime()-startedMs,true)
             val entries=result["items"] as? List<*> ?: emptyList<Any>()
             val fresh=entries.mapNotNull { row ->
                 (row as? Map<*,*>)?.entries?.associate { DocString(it.key) to it.value }
@@ -1042,6 +1056,8 @@ class QuartinautRepository(context: Context) {
                 }
             } else enhancedItems=fresh
         },onError={
+            NativePerformanceMetrics.record(appContext,metric,
+                android.os.SystemClock.elapsedRealtime()-startedMs,false)
             if(isPosts && ticket==myPostsRequestSequence) {
                 myPostsLoading=false
                 // Keep existing cards; the retry action remains accessible.

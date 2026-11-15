@@ -306,6 +306,32 @@ def main():
     if len(all_ids)!=2110 or len(source["cantons"])!=26 or NO_COAT_BFS not in all_ids:
         raise SystemExit("Unexpected 2026 BFS register; refusing to invent or misassign coats")
     OUT.mkdir(parents=True,exist_ok=True)
+    # A complete, source-attributed 2026 armorial is committed to GitHub.
+    # Build directly from it; do not introduce a live Wikidata dependency.
+    expected=all_ids-{NO_COAT_BFS}
+    try:
+        old_index=json.loads((OUT/"index.json").read_text(encoding="utf-8"))
+        old_sources=json.loads((OUT/"sources.json").read_text(encoding="utf-8"))
+        complete=(set(old_index)==expected and set(old_sources)==expected and
+                  all(cached_image(bfs) for bfs in all_ids))
+        if complete:
+            old_legacy=OUT/"legacy-sources.json"
+            legacy_count=len(json.loads(old_legacy.read_text(encoding="utf-8"))) if old_legacy.is_file() else 0
+            report={
+                "register_date":"2026-01-01",
+                "municipalities":len(all_ids),"coats_expected":len(expected),
+                "coats_present":len(expected),"historical_2018_fallbacks":legacy_count,
+                "no_coat_communities":{NO_COAT_BFS:{
+                    "name":"Haute-Ajoie","reason":"Gemeindelogo statt eigenem Gemeindewappen",
+                    "logo_bundled":True,"source":"https://hauteajoie.ch/"}},
+                "source_missing":[],"asset_missing":[]
+            }
+            (OUT/"coverage-report.json").write_text(
+                json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+            print("Complete immutable offline armorial: 2109 coats + 1 community logo; no network",flush=True)
+            return
+    except (OSError,ValueError,TypeError):
+        pass
     filenames=wikidata_index(all_ids)
     # Explicitly checked Commons files, never generated from a place name.
     filenames.update(VERIFIED)

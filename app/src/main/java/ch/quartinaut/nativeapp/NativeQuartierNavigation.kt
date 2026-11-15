@@ -184,8 +184,20 @@ fun NativeQuartierOverview(repo: QuartinautRepository, navigate: (String) -> Uni
     ) {
         Text("Quartier+", style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold)
-        Text("Was möchtest du machen? Alle Funktionen sind nach Aufgaben getrennt.",
+        Text("Was möchtest du machen? Wähle deine Aufgabe – ohne lange Menüs.",
             color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(9.dp)) {
+            Button(onClick={navigate("create")},modifier=Modifier.weight(1f).heightIn(min=50.dp)) {
+                Icon(Icons.Default.AddCircleOutline,null,modifier=Modifier.size(18.dp))
+                Spacer(Modifier.width(5.dp))
+                Text("Erstellen",maxLines=1)
+            }
+            OutlinedButton(onClick={navigate("search")},modifier=Modifier.weight(1f).heightIn(min=50.dp)) {
+                Icon(Icons.Default.Search,null,modifier=Modifier.size(18.dp))
+                Spacer(Modifier.width(5.dp))
+                Text("Suchen",maxLines=1)
+            }
+        }
         quartierSections.forEach { section ->
             Surface(
                 onClick = { navigate("hub-section:" + section.id) },

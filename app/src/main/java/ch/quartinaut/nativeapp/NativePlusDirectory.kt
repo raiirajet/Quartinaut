@@ -231,19 +231,39 @@ fun NativeMyPostsScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
         "lost"->"Fundbüro";"issue"->"Mangelmeldung"
         else->"Beitrag"
     }}
+    var searchQuery by rememberSaveable(uid) {mutableStateOf("")}
+    var statusFilter by rememberSaveable(uid) {mutableStateOf("Alle")}
+    val filterNames=listOf("Alle","Aktiv","In Prüfung","Pausiert","Erledigt","Archiviert")
+    val filteredPosts=visiblePosts.filter { row ->
+        (statusFilter=="Alle" || statusLabel(DocString(row["status"]))==statusFilter) &&
+        (searchQuery.isBlank() || listOf(DocString(row["title"]),DocString(row["description"]),
+            kindLabel(DocString(row["kind"])),DocString(row["area"]))
+            .joinToString(" ").contains(searchQuery.trim(),ignoreCase=true))
+    }
     Column(Modifier.fillMaxSize().background(PlusBg).padding(horizontal=16.dp,vertical=12.dp),
         verticalArrangement=Arrangement.spacedBy(12.dp)) {
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text("Meine Beiträge",style=MaterialTheme.typography.headlineSmall,
                     fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.onSurface)
-                Text("${visiblePosts.size} Einträge",
+                Text("${filteredPosts.size} von ${visiblePosts.size} Einträgen",
                     color=PlusMuted,style=MaterialTheme.typography.bodySmall)
             }
             IconButton(onClick={repo.loadEnhancementList("posts.mine")},
                 enabled=!repo.myPostsLoading) {
                 Icon(Icons.Default.Refresh,contentDescription="Beiträge aktualisieren",
                     tint=PlusAccent)
+            }
+        }
+        OutlinedTextField(value=searchQuery,onValueChange={searchQuery=it.take(90)},
+            modifier=Modifier.fillMaxWidth(),singleLine=true,
+            label={Text("Meine Beiträge durchsuchen")},
+            leadingIcon={Icon(Icons.Default.Search,null)})
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement=Arrangement.spacedBy(7.dp)) {
+            filterNames.forEach { option ->
+                FilterChip(selected=statusFilter==option,onClick={statusFilter=option},
+                    label={Text(option)})
             }
         }
         if(repo.myPostsLoading)LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -267,7 +287,7 @@ fun NativeMyPostsScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
         LazyColumn(modifier=Modifier.fillMaxWidth().weight(1f),
             verticalArrangement=Arrangement.spacedBy(12.dp),
             contentPadding=PaddingValues(bottom=24.dp)) {
-            items(visiblePosts,key={
+            items(filteredPosts,key={
                 DocString(it["kind"])+":"+DocString(it["id"])
             }) { row ->
                 val kind=DocString(row["kind"])
@@ -397,14 +417,18 @@ fun NativeMyPostsScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
                     }
                 }
             }
-            if(visiblePosts.isEmpty()) item {
+            if(filteredPosts.isEmpty()) item {
                 Column(Modifier.fillMaxWidth().padding(vertical=30.dp),
                     horizontalAlignment=Alignment.CenterHorizontally,
                     verticalArrangement=Arrangement.spacedBy(10.dp)) {
                     Icon(Icons.Default.Inventory2,contentDescription=null,
                         tint=PlusAccent,modifier=Modifier.size(40.dp))
-                    Text("Noch keine eigenen Beiträge geladen")
-                    OutlinedButton(onClick={navigate("create")}){Text("Eintrag erstellen")}
+                    Text(if(visiblePosts.isEmpty()) "Noch keine eigenen Beiträge geladen"
+                        else "Keine Beiträge passen zu diesem Filter")
+                    OutlinedButton(onClick={
+                        if(visiblePosts.isEmpty())navigate("create")
+                        else {searchQuery="";statusFilter="Alle"}
+                    }){Text(if(visiblePosts.isEmpty())"Eintrag erstellen" else "Filter zurücksetzen")}
                 }
             }
         }
@@ -462,7 +486,7 @@ fun NativeMyPostsScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
                 val id=DocString(row["id"])
                 deletionTarget=null
                 repo.updateMyPost(collection,id,"post.delete")
-            },enabled=!readOnly && !repo.enhancementLoading) {
+            },enabled=!readOnly && DocString(row["id"]) !in repo.myPostsBusyIds) {
                 Text("Inhalt endgültig entfernen",
                     color=MaterialTheme.colorScheme.error)
             }},

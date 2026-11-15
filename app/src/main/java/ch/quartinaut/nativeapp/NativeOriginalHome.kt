@@ -104,6 +104,18 @@ fun NativeOriginalHome(repo: QuartinautRepository, navigate: (String) -> Unit,
         verticalArrangement=Arrangement.spacedBy(14.dp)) {
 
         HomeHero(repo,firstName,navigate)
+        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(9.dp)) {
+            Button(onClick={navigate("create")},modifier=Modifier.weight(1f).heightIn(min=50.dp)) {
+                Icon(Icons.Default.AddCircleOutline,null)
+                Spacer(Modifier.width(7.dp))
+                Text("Eintrag erstellen",maxLines=1)
+            }
+            OutlinedButton(onClick={navigate("search")},modifier=Modifier.weight(1f).heightIn(min=50.dp)) {
+                Icon(Icons.Default.Search,null)
+                Spacer(Modifier.width(7.dp))
+                Text("Entdecken",maxLines=1)
+            }
+        }
         NativeHomeInsights(repo,navigate,openHub,openRequest)
         Row(horizontalArrangement=Arrangement.spacedBy(9.dp)) {
             HomeShortcut(HomeLink("personal","Mein Quartinaut","Meine Aktivitäten","👤","personal-center"),Modifier.weight(1f)) {

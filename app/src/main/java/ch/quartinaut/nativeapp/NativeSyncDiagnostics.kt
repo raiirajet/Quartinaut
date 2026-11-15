@@ -27,6 +27,12 @@ fun NativeSyncDiagnostics(repo: QuartinautRepository) {
         Text("Quartinaut überprüft jeden Datenbereich separat. Verweigerte Abfragen werden hier angezeigt, ohne die Startseite zu blockieren.")
         Text("Projekt: quartinaut  ·  Region: europe-west6",
             style=MaterialTheme.typography.bodySmall)
+        val timings=NativePerformanceMetrics.summary(androidx.compose.ui.platform.LocalContext.current)
+        Text("Lokale Ladezeiten (letzter Versuch)",style=MaterialTheme.typography.titleMedium)
+        if(timings.isEmpty()) Text("Noch keine Messung auf diesem Gerät.")
+        else timings.forEach { Text(it,style=MaterialTheme.typography.bodySmall) }
+        Text("Die Messwerte bleiben lokal und enthalten keine Nutzerdaten.",
+            style=MaterialTheme.typography.labelSmall)
         Text("Erweiterungsdienst: "+when {
             repo.enhancementLoading -> "Prüfung läuft"
             repo.enhancementReady -> "Erreichbar"

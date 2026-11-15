@@ -7,33 +7,7 @@ concurrency:
   group: android-native-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  coat-prefetch:
-    name: Fetch missing Swiss coat images (shard ${{ matrix.shard }})
-    runs-on: ubuntu-24.04
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]
-    steps:
-      - uses: actions/checkout@v4
-      - name: Restore Swiss coat cache
-        uses: actions/cache/restore@v4
-        with:
-          path: app/src/main/assets/wappen
-          key: wappen-assets-2026-${{ github.run_id }}
-          restore-keys: |
-            wappen-assets-2026-
-      - name: Fetch only this shard's missing coats
-        run: python3 scripts/fetch-wappen-shard.py ${{ matrix.shard }} 32
-      - name: Upload fetched images
-        uses: actions/upload-artifact@v4
-        with:
-          name: coat-shard-${{ matrix.shard }}
-          path: tmp/coat-shard/
-          if-no-files-found: ignore
-          retention-days: 1
   build:
-    needs: coat-prefetch
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -64,27 +38,6 @@ jobs:
           gradle-version: '8.9'
       - name: Restore original Quartinaut 5.4 artwork and location snapshot
         run: bash scripts/sync-original-assets.sh
-      - name: Restore validated municipality coats from previous builds
-        uses: actions/cache/restore@v4
-        with:
-          path: app/src/main/assets/wappen
-          key: wappen-assets-2026-${{ github.run_id }}
-          restore-keys: |
-            wappen-assets-2026-
-      - name: Merge images retrieved by independent downloader runners
-        uses: actions/download-artifact@v4
-        with:
-          pattern: coat-shard-*
-          path: app/src/main/assets/wappen
-          merge-multiple: true
-      - name: Retrieve 2018 Swiss BFS-ID image archive (only historical fallback)
-        run: |
-          git clone --depth 1 --filter=blob:none --sparse \
-            https://github.com/ganti/swissZIPcoatofarms.git .cache/legacy-coats
-          git -C .cache/legacy-coats sparse-checkout set 'coat of arms - 500px'
-          git -C .cache/legacy-coats rev-parse HEAD
-      - name: Install image thumbnail conversion
-        run: python3 -m pip install --quiet --disable-pip-version-check Pillow==11.3.0
       - name: Bundle pinned 2025 Swiss municipality geometry for offline maps
         run: |
           mkdir -p app/src/main/assets/geo
@@ -94,12 +47,6 @@ jobs:
           python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d.get("type")=="FeatureCollection" and len(d.get("features",[]))>=2000, "Incomplete municipal geometry"; print("Bundled",len(d["features"]),"municipality boundaries")' app/src/main/assets/geo/municipality_2025.geojson
       - name: Download and bundle every valid Swiss municipal coat
         run: python3 scripts/sync-wappen-assets.py
-      - name: Save partially or fully verified coats for next builds
-        if: always()
-        uses: actions/cache/save@v4
-        with:
-          path: app/src/main/assets/wappen
-          key: wappen-assets-2026-${{ github.run_id }}
       - name: Require complete offline coats and municipal logo
         run: python3 scripts/verify-wappen-assets.py
       - name: Verify private image-service code and validation tests
@@ -178,17 +125,3 @@ jobs:
             echo "::warning::Release konnte nicht erstellt werden; die APK bleibt als Actions-Artefakt verfügbar."
           fi
 
-      - name: Persist all verified coats in GitHub for reproducible offline builds
-        if: github.ref == 'refs/heads/native-android-v1' && success()
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app/src/main/assets/wappen
-          if git diff --cached --quiet; then
-            echo "All coat assets already committed in branch"
-          else
-            git commit -m "assets: pin BFS-verified Swiss municipality armorial for fully offline APK builds"
-            git push origin HEAD:native-android-v1
-            echo "All 2109 coats and Haute-Ajoie logo persisted in GitHub"
-          fi

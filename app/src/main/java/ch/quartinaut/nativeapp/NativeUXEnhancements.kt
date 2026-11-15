@@ -65,3 +65,32 @@ fun NativeWelcomeTour(
         dismissButton={TextButton(onClick={close()}){Text("Überspringen")}}
     )
 }
+
+
+/** Device-only anonymous timings; never upload IDs, content or personal data. */
+internal object NativePerformanceMetrics {
+    private val names=linkedMapOf(
+        "hub" to "Quartier+",
+        "posts" to "Meine Beiträge",
+        "extras" to "Erweiterungen",
+        "bookings" to "Reservationen",
+        "map" to "Schweizkarte"
+    )
+    fun record(context:android.content.Context, key:String, durationMs:Long, ok:Boolean) {
+        if(key !in names) return
+        context.getSharedPreferences("quartinaut_local_performance",
+            android.content.Context.MODE_PRIVATE).edit()
+            .putLong(key+"_ms",durationMs.coerceIn(0L,120000L))
+            .putBoolean(key+"_ok",ok)
+            .apply()
+    }
+    fun summary(context:android.content.Context):List<String> {
+        val prefs=context.getSharedPreferences("quartinaut_local_performance",
+            android.content.Context.MODE_PRIVATE)
+        return names.mapNotNull { (key,label) ->
+            val millis=prefs.getLong(key+"_ms",-1)
+            if(millis<0) null else label+": "+millis+" ms"+
+                if(prefs.getBoolean(key+"_ok",false))" · erfolgreich" else " · fehlgeschlagen"
+        }
+    }
+}
