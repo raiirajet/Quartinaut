@@ -109,6 +109,13 @@ fun NativeRadarScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
     }
     val localFallback=!repo.enhancementReady
     val localOrServer=if(localFallback)localPublicItems else repo.enhancedItems
+    val seenKey="seen_"+uid
+    var seenEntries by remember(uid) {
+        mutableStateOf(preferences.getStringSet(seenKey,emptySet())?.toSet() ?: emptySet())
+    }
+    var unseenOnly by rememberSaveable(uid) {mutableStateOf(false)}
+    fun entryKey(row:Map<String,Any?>):String =
+        DocString(row["kind"])+":"+DocString(row["id"])
     val shown=localOrServer.filter { row ->
         val kind=DocString(row["kind"])
         val area=DocString(row["area"])
@@ -119,6 +126,8 @@ fun NativeRadarScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
             .contains(text,ignoreCase=true)
         matchesArea && matchesTags && matchesText
     }
+    val unseenCount=shown.count {entryKey(it) !in seenEntries}
+    val displayed=if(unseenOnly)shown.filter {entryKey(it) !in seenEntries} else shown
     Column(Modifier.fillMaxSize().background(PlusBg).padding(15.dp),
         verticalArrangement=Arrangement.spacedBy(10.dp)) {
         ExtraHeader("Quartinaut Radar","Was gibt es Neues in deiner Umgebung?")
@@ -165,16 +174,30 @@ fun NativeRadarScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
                 },label={Text(label)})
             }
         }
+        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+            FilterChip(selected=unseenOnly,onClick={unseenOnly=!unseenOnly},
+                label={Text("Ungesehen ("+unseenCount+")")})
+            Spacer(Modifier.weight(1f))
+            TextButton(onClick={
+                seenEntries=seenEntries+shown.map(::entryKey)
+                preferences.edit().putStringSet(seenKey,seenEntries.toSet()).apply()
+            },enabled=unseenCount>0){Text("Gesehen")}
+        }
+        Text("«Ungesehen» bedeutet lokal noch nicht markiert – keine Push-Benachrichtigung.",
+            style=MaterialTheme.typography.labelSmall,color=PlusMuted)
         if(repo.enhancementLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
         if(localFallback)
             Text("Lokaler Fallback – unvollständig und schreibgeschützt. " +
                 "Nur bereits geladene öffentliche Beiträge; keine vollständige oder live aktualisierte Suche.",
                 color=PlusMuted,style=MaterialTheme.typography.bodySmall)
         LazyColumn(verticalArrangement=Arrangement.spacedBy(10.dp)) {
-            items(shown) { row ->
+            items(displayed) { row ->
                 ExtraItem(DocString(row["title"]),DocString(row["description"]),
                     (if(DocString(row["kind"])=="request") "Schwarzes Brett"
                      else DocString(row["kind"]))+" · "+DocString(row["area"])) {
+                    val key=entryKey(row)
+                    seenEntries=seenEntries+key
+                    preferences.edit().putStringSet(seenKey,seenEntries.toSet()).apply()
                     val kind=DocString(row["kind"])
                     navigate(when(kind){
                         "request" -> "board"
@@ -183,8 +206,9 @@ fun NativeRadarScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
                     })
                 }
             }
-            if(shown.isEmpty()&&!repo.enhancementLoading)item {
-                Text(if(localFallback) "Lokal sind derzeit keine passenden öffentlichen Beiträge geladen; der Radar-Dienst ist nicht bestätigt erreichbar."
+            if(displayed.isEmpty()&&!repo.enhancementLoading)item {
+                Text(if(unseenOnly && shown.isNotEmpty()) "Alle passenden Treffer sind bereits als gesehen markiert."
+                    else if(localFallback) "Lokal sind derzeit keine passenden öffentlichen Beiträge geladen; der Radar-Dienst ist nicht bestätigt erreichbar."
                     else "Keine passenden Beiträge. Wechsle zum ganzen Kanton oder entferne Filter.",
                     color=PlusMuted)
             }

@@ -93,6 +93,7 @@ fun NativeLoanPlanner(repo:QuartinautRepository,navigate:(String)->Unit) {
                         loanTimeZurich(DocString(loan["to"]))+
                         (if(owner)" · du verleihst" else " · du leihst")
                 ){
+                    NativeLoanProgress(status)
                     Text("Buchungs-ID: "+DocString(loan["id"]),
                         color=TMute,style=MaterialTheme.typography.labelSmall)
                     Row(Modifier.horizontalScroll(rememberScrollState()),
@@ -397,3 +398,30 @@ private fun renderQR(content:String):Bitmap? = runCatching{
     }
     bmp
 }.getOrNull()
+
+/** Honest status timeline: "accepted" does not imply QR handover happened. */
+@Composable
+private fun NativeLoanProgress(status:String) {
+    if(status=="declined" || status=="cancelled") {
+        Text(if(status=="declined")"Vorgang beendet · Anfrage abgelehnt"
+            else "Vorgang beendet · storniert",
+            style=MaterialTheme.typography.bodySmall,
+            color=MaterialTheme.colorScheme.onSurfaceVariant)
+        return
+    }
+    val progress=when(status) {"returned"->2;"accepted"->1;else->0}
+    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(5.dp)) {
+        listOf("Angefragt","Angenommen","Zurückgegeben").forEachIndexed {idx,name->
+            Surface(modifier=Modifier.weight(1f),
+                shape=RoundedCornerShape(9.dp),
+                color=if(idx<=progress) MaterialTheme.colorScheme.primaryContainer
+                    else MaterialTheme.colorScheme.surfaceVariant) {
+                Text(name,modifier=Modifier.padding(horizontal=5.dp,vertical=8.dp),
+                    style=MaterialTheme.typography.labelSmall,
+                    color=if(idx<=progress)MaterialTheme.colorScheme.onPrimaryContainer
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines=1)
+            }
+        }
+    }
+}

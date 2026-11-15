@@ -11,6 +11,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
@@ -183,11 +185,19 @@ fun NativeCreateHubPage(
     var expanded by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
     var confirmed by remember { mutableStateOf(false) }
-    val photoToken=remember { java.util.UUID.randomUUID().toString().replace("-","") }
-    val photoPaths=remember { mutableStateListOf<String>() }
+    val photoToken=rememberSaveable(uid,initialKind) {
+        java.util.UUID.randomUUID().toString().replace("-","")
+    }
+    val photoPaths=rememberSaveable(uid,initialKind,
+        saver=listSaver<androidx.compose.runtime.snapshots.SnapshotStateList<String>,String>(
+            save={it.toList()},restore={it.toMutableStateList()})) {
+        mutableStateListOf<String>()
+    }
     // The same op ID is reused on every retry, preventing duplicate listings
     // after a slow or interrupted connection.
-    val operationId=remember { "android_"+java.util.UUID.randomUUID().toString().replace("-","") }
+    val operationId=rememberSaveable(uid,initialKind) {
+        "android_"+java.util.UUID.randomUUID().toString().replace("-","")
+    }
     val date=remember(localDate) {
         if(localDate.isBlank()) "" else runCatching {
             java.time.LocalDateTime.parse(
@@ -269,15 +279,15 @@ fun NativeCreateHubPage(
                             color=Color(0xFFFFC7A4),
                             style=MaterialTheme.typography.bodySmall)
                     }
-                    OutlinedTextField(title,{title=it.take(100);error=""},
+                    OutlinedTextField(title,{title=it.take(100);error="";confirmed=false},
                         label={Text("Titel")},modifier=Modifier.fillMaxWidth(),
                         singleLine=true,
                         supportingText={Text(title.length.toString()+" / 100 Zeichen")})
                     Text("Kategorie",fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.onSurface)
                     (NativeCategories[kind] ?: emptyList()).forEach { value ->
-                        Row(Modifier.fillMaxWidth().clickable{category=value},
+                        Row(Modifier.fillMaxWidth().clickable{category=value;confirmed=false},
                             verticalAlignment=Alignment.CenterVertically) {
-                            RadioButton(selected=category==value,onClick={category=value})
+                            RadioButton(selected=category==value,onClick={category=value;confirmed=false})
                             Text(value,color=MaterialTheme.colorScheme.onSurface)
                         }
                     }
@@ -285,27 +295,27 @@ fun NativeCreateHubPage(
                     Text("Erzähle den Menschen in deiner Gemeinde mehr darüber",
                         color=MaterialTheme.colorScheme.onSurface,style=MaterialTheme.typography.titleMedium)
                     OutlinedTextField(description,{
-                        description=it.take(1200);error=""
+                        description=it.take(1200);error="";confirmed=false
                     },label={Text("Beschreibung")},minLines=5,maxLines=12,
                         modifier=Modifier.fillMaxWidth(),
                         supportingText={Text(description.length.toString()+" / 1200 Zeichen")})
                     if(kind in listOf("market","lend")) {
-                        OutlinedTextField(price,{price=it;error=""},
+                        OutlinedTextField(price,{price=it;error="";confirmed=false},
                             modifier=Modifier.fillMaxWidth(),label={Text(if(kind=="lend") "Preis pro Ausleihtag in CHF (0 = kostenlos)" else "Preis in CHF (0 = kostenlos)")},
                             singleLine=true)
                         if(!priceValid)Text("Bitte einen Betrag von 0 bis 100'000 CHF mit maximal zwei Nachkommastellen eingeben.",
-                            color=Color(0xFFFFB4AB),
+                            color=MaterialTheme.colorScheme.error,
                             style=MaterialTheme.typography.bodySmall)
                     }
                     if(kind in listOf("group","project")) {
-                        OutlinedTextField(capacity,{capacity=it;error=""},
+                        OutlinedTextField(capacity,{capacity=it;error="";confirmed=false},
                             modifier=Modifier.fillMaxWidth(),
                             label={Text("Max. Teilnehmer (0 = unbegrenzt)")},singleLine=true)
                         if(!capValid)Text("Zahl zwischen 0 und 300 eingeben.",
                             color=Color(0xFFFFB4AB))
                     }
                     if(kind in listOf("project","calendar")) {
-                        OutlinedTextField(localDate,{localDate=it;error=""},
+                        OutlinedTextField(localDate,{localDate=it;error="";confirmed=false},
                             modifier=Modifier.fillMaxWidth(),
                             label={Text("Datum und Uhrzeit: TT.MM.JJJJ HH:MM")},singleLine=true)
                         if(!eventDateValid)Text("Ein gültiger zukünftiger Termin ist erforderlich.",
@@ -313,7 +323,7 @@ fun NativeCreateHubPage(
                             style=MaterialTheme.typography.bodySmall)
                     }
                     if(kind in listOf("calendar","project","group")) {
-                        OutlinedTextField(venue,{venue=it.take(120)},
+                        OutlinedTextField(venue,{venue=it.take(120);confirmed=false},
                             modifier=Modifier.fillMaxWidth(),
                             label={Text("Ort oder Treffpunkt (optional)")},singleLine=true)
                     }

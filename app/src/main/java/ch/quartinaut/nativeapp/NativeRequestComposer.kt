@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
@@ -54,7 +55,12 @@ fun NativeRequestComposer(
     val photoToken=rememberSaveable {
         java.util.UUID.randomUUID().toString().replace("-","")
     }
-    val photoPaths=remember { mutableStateListOf<String>() }
+    // Photo references survive Android rotation just like form fields.
+    val photoPaths=rememberSaveable(uid,initialKind,
+        saver=listSaver<androidx.compose.runtime.snapshots.SnapshotStateList<String>,String>(
+            save={it.toList()},restore={it.toMutableStateList()})) {
+        mutableStateListOf<String>()
+    }
     LaunchedEffect(uid,initialKind,title,details,kind,category,urgency) {
         if(uid.isNotBlank()) {
             kotlinx.coroutines.delay(550)
@@ -101,7 +107,7 @@ fun NativeRequestComposer(
                     style=MaterialTheme.typography.titleMedium)
                 Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                     listOf("Suche","Biete").forEach { value ->
-                        FilterChip(selected=kind==value,onClick={kind=value},
+                        FilterChip(selected=kind==value,onClick={kind=value;confirmed=false},
                             label={Text(if(value=="Suche")"Hilfe suchen" else "Hilfe anbieten")})
                     }
                 }
@@ -117,7 +123,7 @@ fun NativeRequestComposer(
                     DropdownMenu(expanded=categoriesOpen,onDismissRequest={categoriesOpen=false}) {
                         CreateCategories.forEach { cat ->
                             DropdownMenuItem(text={Text(cat)},onClick={
-                                category=cat;categoriesOpen=false
+                                category=cat;categoriesOpen=false;confirmed=false
                             })
                         }
                     }
@@ -125,9 +131,9 @@ fun NativeRequestComposer(
                 Text("Wie dringend ist dein Anliegen?",color=CreateText,
                     fontWeight=FontWeight.SemiBold)
                 UrgencyLabels.forEach { value ->
-                    Row(Modifier.fillMaxWidth().clickable {urgency=value},
+                    Row(Modifier.fillMaxWidth().clickable {urgency=value;confirmed=false},
                         verticalAlignment=Alignment.CenterVertically) {
-                        RadioButton(selected=urgency==value,onClick={urgency=value})
+                        RadioButton(selected=urgency==value,onClick={urgency=value;confirmed=false})
                         Text(value,color=MaterialTheme.colorScheme.onSurface)
                     }
                 }
@@ -145,14 +151,14 @@ fun NativeRequestComposer(
                 Text("Ein klarer Titel hilft deinen Nachbarn, deinen Beitrag sofort zu verstehen.",
                     color=CreateText,style=MaterialTheme.typography.bodySmall)
                 OutlinedTextField(
-                    value=title,onValueChange={title=it.take(100);error=""},
+                    value=title,onValueChange={title=it.take(100);error="";confirmed=false},
                     modifier=Modifier.fillMaxWidth(),
                     label={Text("Titel")},singleLine=true,
                     supportingText={Text(title.length.toString()+" / 100 Zeichen")},
                     keyboardOptions=KeyboardOptions(capitalization=KeyboardCapitalization.Sentences),
                     isError=title.isNotEmpty()&&title.trim().length<5
                 )
-                OutlinedTextField(value=details,onValueChange={details=it.take(1200);error=""},
+                OutlinedTextField(value=details,onValueChange={details=it.take(1200);error="";confirmed=false},
                     modifier=Modifier.fillMaxWidth(),
                     minLines=5,maxLines=12,
                     label={Text("Was sollen andere darüber wissen?")},
@@ -168,7 +174,7 @@ fun NativeRequestComposer(
                 Text("Tipp: Beschreibe Ort, Zeitraum und was du genau suchst oder anbietest. Veröffentliche keine privaten Kontaktdaten.",
                     color=CreateText,style=MaterialTheme.typography.bodySmall)
             }
-            if(error.isNotBlank()) Text(error,color=Color(0xFFFFB4AB))
+            if(error.isNotBlank()) Text(error,color=MaterialTheme.colorScheme.error)
             Row(horizontalArrangement=Arrangement.spacedBy(10.dp)) {
                 OutlinedButton(onClick={step=0},modifier=Modifier.weight(1f)) {
                     Text("Zurück")

@@ -377,8 +377,16 @@ fun NativeCalendarPlanner(repo:QuartinautRepository,navigate:(String)->Unit) {
         V6Header("Meine Termine", "Gemeindetermine entdecken und in deinen Kalender übernehmen")
         Text("Terminzeiten werden in der Kalender-App von dir bestätigt. Quartinaut setzt keine erfundenen Anfangszeiten.",
             style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
-        OutlinedButton(onClick={navigate("official-calendar")},
-            modifier=Modifier.fillMaxWidth()) {Text("Offizieller Quellenkalender Schweiz")}
+        OutlinedButton(onClick={navigate("calendar")},
+            modifier=Modifier.fillMaxWidth().heightIn(min=48.dp)) {
+            Icon(Icons.Default.CalendarMonth,contentDescription=null)
+            Spacer(Modifier.width(8.dp))
+            Text("Gemeindekalender · offizielle & lokale Termine")
+        }
+        TextButton(onClick={navigate("official-calendar")},
+            modifier=Modifier.fillMaxWidth()) {
+            Text("Alle offiziellen Schweizer Termine mit Quellen")
+        }
         OutlinedTextField(keyword,{keyword=it},label={Text("Termine durchsuchen")},
             singleLine=true,modifier=Modifier.fillMaxWidth())
         OutlinedButton(onClick={navigate("v50associations")}) {Text("Meine Vereinsanmeldungen")}

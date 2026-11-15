@@ -288,7 +288,11 @@ fun NativeMunicipalityMap(
     }
     val regions by produceState<List<MapMunicipality>?>(initialValue=null,canton.code) {
         value=withContext(Dispatchers.IO) {
-            runCatching { loadFeatures(canton,context) }.getOrDefault(emptyList())
+            val start=android.os.SystemClock.elapsedRealtime()
+            val loaded=runCatching { loadFeatures(canton,context) }.getOrDefault(emptyList())
+            NativePerformanceMetrics.record(context,"map",
+                android.os.SystemClock.elapsedRealtime()-start,loaded.isNotEmpty())
+            loaded
         }
     }
     when {
