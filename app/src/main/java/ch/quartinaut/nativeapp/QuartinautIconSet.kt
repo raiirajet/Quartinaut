@@ -1,19 +1,124 @@
 package ch.quartinaut.nativeapp
+
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
 
-/** Local Quartinaut icon collection. Automatic black-and-white graphics on the black theme. */
+/**
+ * Quartinaut raised 3D icon treatment. The original six photo-realistic 3D
+ * navigation illustrations are used where a semantic match exists. Other
+ * catalog symbols are displayed over a shaded, bevelled and specular tile,
+ * not on the previous flat backgrounds. Dark uses monochrome grayscale.
+ */
 @Composable
-internal fun QuartinautIcon(key:String,modifier:Modifier=Modifier) {
-    val monochrome=MaterialTheme.colorScheme.background.luminance()<0.018f
-    Image(painter=painterResource(iconRes(key,monochrome)),contentDescription=null,
-        modifier=modifier,contentScale=ContentScale.Fit)
+internal fun QuartinautIcon(key: String, modifier: Modifier = Modifier) {
+    val monochrome = MaterialTheme.colorScheme.background.luminance() < 0.018f
+    val original = when (key) {
+        "home", "navigation_home", "navigation_startseite", "start" -> R.drawable.qt_community
+        "entdecken", "discover", "plus", "quartier", "navigation_entdecken",
+        "navigation_plus", "navigation_gemeinde" -> R.drawable.qt_discover
+        "erstellen", "create", "neu", "navigation_erstellen", "navigation_create",
+        "aktion_hinzufuegen" -> R.drawable.qt_create
+        "meine", "activity", "profile", "profil", "navigation_meine",
+        "navigation_profile", "personal-center", "saved" -> R.drawable.qt_activity
+        "gemeinde", "community", "group", "community-pulse" -> R.drawable.qt_community
+        "sicherheit", "security", "safety-center", "enh-trust" -> R.drawable.qt_security
+        "messages", "chats", "navigation_messages" -> R.drawable.qt_messages
+        else -> null
+    }
+    val grayscale = remember(monochrome) {
+        if (monochrome) ColorFilter.colorMatrix(
+            ColorMatrix().apply { setToSaturation(0f) }
+        ) else null
+    }
+    if (original != null) {
+        Image(
+            painter = painterResource(original),
+            contentDescription = null,
+            modifier = modifier,
+            contentScale = ContentScale.Fit,
+            colorFilter = grayscale
+        )
+    } else {
+        val radius = RoundedCornerShape(16.dp)
+        Box(
+            modifier = modifier.shadow(6.dp, radius).clip(radius),
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(Modifier.fillMaxSize()) {
+                val corner = CornerRadius(size.minDimension * 0.28f)
+                val main = if (monochrome)
+                    listOf(Color(0xFFF3F3F3), Color(0xFF858585), Color(0xFF2A2A2A))
+                else listOf(Color(0xFF6FE8B2), Color(0xFF087650), Color(0xFF073828))
+                drawRoundRect(
+                    brush = Brush.linearGradient(
+                        colors = main,
+                        start = Offset.Zero, end = Offset(size.width, size.height)
+                    ),
+                    cornerRadius = corner
+                )
+                drawRoundRect(
+                    brush = Brush.verticalGradient(
+                        listOf(
+                            Color.White.copy(alpha = 0.43f),
+                            Color.White.copy(alpha = 0.10f),
+                            Color.Transparent
+                        ),
+                        endY = size.height * 0.63f
+                    ),
+                    topLeft = Offset(size.width * 0.07f, size.height * 0.05f),
+                    size = Size(size.width * 0.86f, size.height * 0.50f),
+                    cornerRadius = CornerRadius(size.minDimension * 0.24f)
+                )
+                drawRoundRect(
+                    brush = Brush.verticalGradient(
+                        listOf(Color.Transparent, Color.Black.copy(alpha = 0.28f)),
+                        startY = size.height * 0.63f
+                    ),
+                    topLeft = Offset(size.width * 0.06f, size.height * 0.69f),
+                    size = Size(size.width * 0.88f, size.height * 0.25f),
+                    cornerRadius = corner
+                )
+                drawRoundRect(
+                    color = Color.White.copy(alpha = 0.36f),
+                    topLeft = Offset(size.width * 0.035f, size.height * 0.035f),
+                    size = Size(size.width * 0.93f, size.height * 0.93f),
+                    cornerRadius = corner,
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(
+                        width = size.minDimension * 0.025f
+                    )
+                )
+            }
+            Image(
+                painter = painterResource(iconRes(key, true)),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Fit
+            )
+        }
+    }
 }
+
 private fun iconRes(key:String,monochrome:Boolean):Int = when(key) {
         "activity" -> if (monochrome) R.drawable.qt_mono_activity else R.drawable.qt_custom_activity
         "admin" -> if (monochrome) R.drawable.qt_mono_admin else R.drawable.qt_custom_admin
@@ -125,3 +230,4 @@ private fun iconRes(key:String,monochrome:Boolean):Int = when(key) {
         "v50market" -> if (monochrome) R.drawable.qt_mono_v50market else R.drawable.qt_custom_v50market
         else -> if(monochrome)R.drawable.qt_mono_plus else R.drawable.qt_custom_plus
 }
+
