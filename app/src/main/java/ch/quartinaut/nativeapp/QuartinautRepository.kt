@@ -507,14 +507,16 @@ class QuartinautRepository(context: Context) {
     }
     fun createRequest(title: String, description: String, category: String, kind: String,
                       urgency: String, onCreated: () -> Unit = {},
-                      photoPaths: List<String> = emptyList()) {
+                      photoPaths: List<String> = emptyList(),
+                      operationId: String = "") {
         val uid = user?.uid ?: return
         if (title.trim().length < 4 || description.trim().length < 5) {
             message = "Bitte Titel und Beschreibung ausfüllen."; return
         }
         val now = isoNow()
         val hours = when (urgency) { "Heute" -> 24L; "Morgen" -> 48L; "Diese Woche" -> 168L; else -> 336L }
-        val id = "req_" + UUID.randomUUID().toString().replace("-", "")
+        val id = operationId.takeIf {it.matches(Regex("req_[0-9a-f]{32}"))}
+            ?: "req_" + UUID.randomUUID().toString().replace("-", "")
         val status = if (isAdmin()) "offen" else "wartet_freigabe"
         val data = hashMapOf<String, Any>(
             "id" to id, "tenantId" to "quartinaut", "uid" to uid,

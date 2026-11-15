@@ -55,6 +55,10 @@ fun NativeRequestComposer(
     val photoToken=rememberSaveable {
         java.util.UUID.randomUUID().toString().replace("-","")
     }
+    // Reuse the same Firestore document ID across interrupted submissions.
+    val operationId=rememberSaveable(uid,initialKind) {
+        "req_"+java.util.UUID.randomUUID().toString().replace("-","")
+    }
     // Photo references survive Android rotation just like form fields.
     val photoPaths=rememberSaveable(uid,initialKind,
         saver=listSaver<androidx.compose.runtime.snapshots.SnapshotStateList<String>,String>(
@@ -216,7 +220,8 @@ fun NativeRequestComposer(
                     enabled=!repo.busy) {Text("Bearbeiten")}
                 Button(onClick={
                     repo.createRequest(title.trim(),details.trim(),category,kind,urgency,
-                        onCreated={ clearDraft();onDone() },photoPaths=photoPaths.toList())
+                        onCreated={ clearDraft();onDone() },photoPaths=photoPaths.toList(),
+                        operationId=operationId)
                 },modifier=Modifier.weight(1f),
                     enabled=confirmed&&!repo.busy) {
                     if(repo.busy) CircularProgressIndicator(Modifier.size(18.dp),

@@ -78,10 +78,17 @@ internal object NativePerformanceMetrics {
     )
     fun record(context:android.content.Context, key:String, durationMs:Long, ok:Boolean) {
         if(key !in names) return
-        context.getSharedPreferences("quartinaut_local_performance",
-            android.content.Context.MODE_PRIVATE).edit()
-            .putLong(key+"_ms",durationMs.coerceIn(0L,120000L))
+        val prefs=context.getSharedPreferences("quartinaut_local_performance",
+            android.content.Context.MODE_PRIVATE)
+        val sample=durationMs.coerceIn(0L,120000L)
+        val old=prefs.getString(key+"_samples","").orEmpty().split(",")
+            .mapNotNull {it.toLongOrNull()}.takeLast(19)
+        val recent=if(ok)old+sample else old
+        prefs.edit()
+            .putLong(key+"_ms",sample)
             .putBoolean(key+"_ok",ok)
+            .putString(key+"_samples",recent.joinToString(","))
+            .putInt(key+"_errors",prefs.getInt(key+"_errors",0)+(if(ok)0 else 1))
             .apply()
     }
     fun summary(context:android.content.Context):List<String> {
@@ -89,8 +96,18 @@ internal object NativePerformanceMetrics {
             android.content.Context.MODE_PRIVATE)
         return names.mapNotNull { (key,label) ->
             val millis=prefs.getLong(key+"_ms",-1)
-            if(millis<0) null else label+": "+millis+" ms"+
-                if(prefs.getBoolean(key+"_ok",false))" · erfolgreich" else " · fehlgeschlagen"
+            if(millis<0) null else {
+                val samples=prefs.getString(key+"_samples","").orEmpty().split(",")
+                    .mapNotNull {it.toLongOrNull()}.sorted()
+                val median=if(samples.isEmpty())"" else
+                    " · Median "+samples[(samples.size-1)/2]+" ms"
+                val p95=if(samples.isEmpty())"" else
+                    " · P95 "+samples[(((samples.size*95+99)/100)-1).coerceIn(0,samples.lastIndex)]+" ms"
+                val failures=prefs.getInt(key+"_errors",0)
+                label+": zuletzt "+millis+" ms"+
+                    (if(prefs.getBoolean(key+"_ok",false))" · OK" else " · Fehler")+
+                    median+p95+(if(failures>0)" · Fehler total "+failures else "")
+            }
         }
     }
 }

@@ -1,6 +1,6 @@
 # Quartinaut Native Android
 
-**Quartinaut Native Android 5.7.2 · Kotlin + Jetpack Compose · ohne WebView.**
+**Quartinaut Native Android 5.10.0 UX Preview · Kotlin + Jetpack Compose · ohne WebView.**
 
 ## Android-APK direkt herunterladen
 
@@ -87,3 +87,38 @@ firebase deploy --project quartinaut --config firebase.chats.json --only functio
 ```
 
 **Wichtig:** Ohne bestätigten Cloud-Function-Deploy und Test mit zwei Konten ist die Chat-Reparatur im Produktivsystem noch nicht vollständig aktiv. Die Android-App selbst kann mit dem GitHub-APK gebaut und installiert werden.
+
+## 5.10.0 – Android UX, offline und Zuverlässigkeit
+
+- Alle 2'110 Schweizer Gemeindeembleme bleiben fest in der APK. Der Quellenbestand
+  umfasst 2'109 Wappen und das offizielle Logo von Haute-Ajoie; bei historischen
+  Bildern sind Gemeindezusammenlegungen gesondert zu prüfen.
+- Vereinfachte 2025er Gemeindegeometrie wird zur Buildzeit aus einer fest
+  referenzierten Revision geladen und offline in die APK eingebunden. Die
+  geometrischen Grenzen sind nicht mit dem 2026er BFS-Verzeichnis gleichzusetzen.
+- Schnellaktionen und Aufgaben-Navigation, Statusfilter und Suche in «Meine
+  Beiträge», persistentere Erstellungsentwürfe und Navigationszustand.
+- Lokale, anonyme Messung von Ladezeiten (letzte Messung, Median, P95) unter
+  Einstellungen → Verbindungsdiagnose. Kein Tracking-Backend.
+- Schrittweise App-Einführung, über Einstellungen erneut aufrufbar.
+- Radar kann bereits gesehene Treffer lokal markieren. Dies ersetzt keine
+  serverseitigen Push-Suchaufträge.
+- Ausleihen zeigen eine Statusübersicht; die Anzeige nimmt keine tatsächlich
+  nicht bestätigte Übergabe an. Gemeinde- und offizielle Termine sind gemeinsam
+  über den Gemeindekalender erreichbar.
+- Beitragserstellung nutzt stabile Vorgangskennungen; die serverseitige
+  Beitragsliste ist für kleine Feldprojektionen vorbereitet.
+
+### Wichtige Veröffentlichungsgrenzen
+
+Ein erfolgreicher GitHub-Build beweist keine vollständig durchgeführten
+End-to-End-Gerätetests auf verschiedenen Android-Geräten. Die APK ist weiterhin
+eine **Debug-Testversion** mit nicht dauerhaft festgelegtem Release-Signierschlüssel.
+Für ein nahtlos updatefähiges Produktionsrelease ist ein sicher aufbewahrter,
+vom App-Eigentümer bereitgestellter Keystore nötig. Keine Schlüssel oder
+Zugangsdaten in das Repository übernehmen.
+
+Die optimierte `functions/enhancements/index.js` ist Quellcode im
+GitHub-Entwicklungszweig. Der Android-Build deployed keine Funktionen oder
+Firebase-Sicherheitsregeln. Das produktive Backend muss nach Prüfung gesondert
+freigegeben und deployed werden.

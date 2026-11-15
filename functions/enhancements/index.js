@@ -45,8 +45,10 @@ const asDoc=(snap,kind)=>({
  description:setLimit(snap.data().description||snap.data().text,1200),
  category:setLimit(snap.data().category,60),area:setLimit(snap.data().area,140),
  cantonCode:setLimit(snap.data().cantonCode,2),
- createdAt:setLimit(snap.data().createdAt,50),
+ createdAt:(snap.data().createdAt && typeof snap.data().createdAt.toDate==='function'
+   ? snap.data().createdAt.toDate().toISOString():setLimit(snap.data().createdAt,50)),
  status:setLimit(snap.data().status,30),
+ priceChf:typeof snap.data().priceChf==='number'?snap.data().priceChf:0,
  photoPaths:Array.isArray(snap.data().photoPaths)?snap.data().photoPaths.slice(0,3):[]
 });
 async function postRef(ctx,data) {
@@ -61,9 +63,13 @@ async function postRef(ctx,data) {
  return {ref,value,collection};
 }
 async function postMine(ctx) {
+ // Owner-only, field-projected queries: do not read full document bodies,
+ // moderation metadata or large attachments just to render a compact list.
+ const fields=['title','description','text','kind','category','area',
+   'cantonCode','createdAt','status','priceChf','photoPaths'];
  const [req,item]=await Promise.all([
-   requests.where('uid','==',ctx.uid).limit(140).get(),
-   hub.where('ownerUid','==',ctx.uid).limit(140).get()]);
+   requests.where('uid','==',ctx.uid).select(...fields).limit(140).get(),
+   hub.where('ownerUid','==',ctx.uid).select(...fields).limit(140).get()]);
  return [...req.docs.filter(d=>d.data().status!=='gelöscht').map(d=>asDoc(d,'request')),
    ...item.docs.filter(d=>d.data().status!=='deleted').map(d=>asDoc(d,d.data().kind))]
    .sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))).slice(0,180);
