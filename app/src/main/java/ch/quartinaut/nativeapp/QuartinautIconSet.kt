@@ -1,6 +1,15 @@
 package ch.quartinaut.nativeapp
 
 import androidx.compose.foundation.Canvas
+import android.content.Context
+import android.graphics.BitmapFactory
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.graphics.FilterQuality
+import kotlin.math.roundToInt
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -33,6 +42,33 @@ import androidx.compose.ui.unit.dp
 @Composable
 internal fun QuartinautIcon(key: String, modifier: Modifier = Modifier) {
     val monochrome = MaterialTheme.colorScheme.background.luminance() < 0.018f
+
+    val context = LocalContext.current
+    val atlas = remember(context) { QuartinautAtlasCache.load(context) }
+    if (atlas != null) {
+        val index = quartinaut3DTile(key)
+        val monoFilter = remember(monochrome) {
+            if (monochrome) ColorFilter.colorMatrix(
+                ColorMatrix().apply { setToSaturation(0f) }
+            ) else null
+        }
+        Canvas(modifier) {
+            drawImage(
+                image = atlas,
+                srcOffset = IntOffset((index % 6) * 96, (index / 6) * 96),
+                srcSize = IntSize(96, 96),
+                dstOffset = IntOffset.Zero,
+                dstSize = IntSize(
+                    size.width.roundToInt().coerceAtLeast(1),
+                    size.height.roundToInt().coerceAtLeast(1)
+                ),
+                colorFilter = monoFilter,
+                filterQuality = FilterQuality.High
+            )
+        }
+        return
+    }
+
     val original = when (key) {
         "home", "navigation_home", "navigation_startseite", "start" -> R.drawable.qt_community
         "entdecken", "discover", "plus", "quartier", "navigation_entdecken",
@@ -231,3 +267,56 @@ private fun iconRes(key:String,monochrome:Boolean):Int = when(key) {
         else -> if(monochrome)R.drawable.qt_mono_plus else R.drawable.qt_custom_plus
 }
 
+
+/** 36 original glossy 3D motifs, in the order of the bundled 6 × 6 image sheet. */
+private fun quartinaut3DTile(key: String): Int = when (key) {
+        "home", "start", "navigation_home", "navigation_startseite" -> 0
+        "discover", "entdecken", "plus", "quartier", "navigation_entdecken", "navigation_plus", "enhancements", "aktion_weiter", "aktion_zurueck" -> 1
+        "create", "erstellen", "neu", "createNav", "navigation_erstellen", "aktion_hinzufuegen" -> 2
+        "saved", "aktion_speichern" -> 3
+        "gemeinde", "community", "community-pulse", "navigation_gemeinde", "enh-clubs" -> 4
+        "sicherheit", "security", "safety-center", "enh-trust", "navigation_sicherheit", "aktion_bestaetigen", "aktion_auswaehlen" -> 5
+        "chats", "messages", "navigation_messages", "aktion_versenden" -> 6
+        "board", "bulletin" -> 7
+        "market", "hub-create:market" -> 8
+        "lend", "loans", "v50loans", "enh-loans", "hub-create:lend" -> 9
+        "lost", "hub-create:lost" -> 10
+        "enh-radar" -> 11
+        "map", "swissmap" -> 12
+        "enh-map" -> 13
+        "municipal-compare" -> 14
+        "need", "create-request" -> 15
+        "offer", "create-offer", "aktion_freigeben" -> 16
+        "group", "groupNav", "hub-create:group", "v50associations" -> 17
+        "calendar", "enh-calendar", "official-calendar", "calendar-planner", "hub-create:calendar" -> 18
+        "events" -> 19
+        "official" -> 20
+        "issue", "hub-create:issue", "aktion_melden", "aktion_abbrechen", "aktion_loeschen" -> 21
+        "alerts" -> 22
+        "project", "hub-create:project" -> 23
+        "enh-posts", "enh-assist", "aktion_bearbeiten", "aktion_kopieren", "aktion_herunterladen", "aktion_hochladen" -> 24
+        "enh-favorites" -> 25
+        "v50market" -> 26
+        "enh-qr" -> 27
+        "search", "aktion_filtern" -> 28
+        "inbox" -> 29
+        "profile", "profil", "personal-center", "activity", "meine", "navigation_meine", "navigation_profile", "aktion_ausloggen" -> 30
+        "settings", "admin", "navigation_admin" -> 31
+        "enh-offline" -> 32
+        "aktion_sperren" -> 33
+        "sources", "help", "aktion_information" -> 34
+        "diagnostics", "aktion_aktualisieren", "aktion_sortieren" -> 35
+    else -> 1
+}
+
+private object QuartinautAtlasCache {
+    @Volatile private var cached: ImageBitmap? = null
+    @Synchronized fun load(context: Context): ImageBitmap? {
+        cached?.let { return it }
+        return runCatching {
+            context.applicationContext.assets.open("qt3d_atlas.webp").use { input ->
+                BitmapFactory.decodeStream(input)?.asImageBitmap()
+            }
+        }.getOrNull()?.also { cached = it }
+    }
+}
