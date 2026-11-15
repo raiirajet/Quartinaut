@@ -36,6 +36,8 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+          # Native development is the long-lived build branch, not main.
+          cache-read-only: false
       - name: Restore original Quartinaut 5.4 artwork and location snapshot
         run: bash scripts/sync-original-assets.sh
       - name: Bundle pinned 2025 Swiss municipality geometry for offline maps
@@ -69,7 +71,26 @@ jobs:
           npx -y firebase-tools@latest emulators:exec --only firestore,storage \
             --project demo-quartinaut-rules "npm --prefix firebase/rules-tests test"
       - name: Assemble debug APK (native)
-        run: gradle :app:assembleDebug --no-daemon --stacktrace
+        run: |
+          set -o pipefail
+          # Shared CI IP addresses can receive 429s from Maven Central.
+          # Retry only transport throttling; never conceal Kotlin/Gradle errors.
+          for attempt in 1 2 3; do
+            echo "Android build attempt $attempt of 3"
+            if gradle :app:assembleDebug --no-daemon --max-workers=4 --stacktrace 2>&1 | tee /tmp/quartinaut-gradle.log; then
+              exit 0
+            fi
+            if ! grep -Eiq 'Too Many Requests|status code 429|HTTP 429|status code 503' /tmp/quartinaut-gradle.log; then
+              echo "::error::Non-transient Gradle build error; not retrying"
+              exit 1
+            fi
+            if test "$attempt" -lt 3; then
+              echo "::warning::Dependency host throttled this runner; retrying with cached downloads"
+              sleep $((20 * attempt))
+            fi
+          done
+          echo "::error::Maven repository throttling persisted after retries"
+          exit 1
       - name: Validate produced Android APK integrity
         run: |
           test -s app/build/outputs/apk/debug/app-debug.apk
