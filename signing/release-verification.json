@@ -1,21 +1,26 @@
 {
-  "version_code": 31,
-  "version_name": "5.11.2-signed-preview",
+  "version_code": 32,
+  "version_name": "5.11.3-permissions-preview",
   "application_id": "ch.quartinaut.nativeapp",
   "debuggable": false,
   "apk_certificate_verified": true,
   "aab_signature_verified": true,
   "certificate_sha256": "A7F498276029BC545335FA8D9A12140FF5FEEEB215AC97AA9F4193F1BBE3F6AE",
+  "permissions_tests": {
+    "tests": 6,
+    "failures": 0,
+    "errors": 0
+  },
   "artifacts": [
     {
-      "file": "Quartinaut-5.11.2-signiert.apk",
-      "size": 93757035,
-      "sha256": "f0602ca9d66c4bea82ed94adb5e1075cf3296ae190935951b21980d7a60486c7"
+      "file": "Quartinaut-5.11.3-signiert.apk",
+      "size": 93773419,
+      "sha256": "acfd9efa6ce9d4ccf0059a0781d940790682f286ec1f6e41f9e50afb0d071131"
     },
     {
-      "file": "Quartinaut-5.11.2-signiert.aab",
-      "size": 68533559,
-      "sha256": "f41b720e73ba77e3400b265ba3811dd354992f7b3e476196ac47615a0f4ffa12"
+      "file": "Quartinaut-5.11.3-signiert.aab",
+      "size": 68541764,
+      "sha256": "46a3f0529ed580fd90a4428162780cd83b9acf75b522d536c246450fc40500ac"
     }
   ]
 }

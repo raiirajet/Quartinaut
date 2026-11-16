@@ -24,8 +24,8 @@ android {
         applicationId = "ch.quartinaut.nativeapp"
         minSdk = 26
         targetSdk = 35
-        versionCode = 31
-        versionName = "5.11.2-signed-preview"
+        versionCode = 32
+        versionName = "5.11.3-permissions-preview"
     }
     signingConfigs {
         if (releaseSigningReady) {
@@ -100,4 +100,5 @@ dependencies {
     debugImplementation("com.google.firebase:firebase-appcheck-debug")
     implementation("androidx.core:core-ktx:1.15.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
+    testImplementation("junit:junit:4.13.2")
 }

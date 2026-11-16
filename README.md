@@ -1,6 +1,20 @@
 # Quartinaut Native Android
 
-**Quartinaut Native Android 5.11.2 Signed Preview · Build 31 · Kotlin + Jetpack Compose.**
+**Quartinaut Native Android 5.11.3 Permissions Preview · Build 32 · Kotlin + Jetpack Compose.**
+
+## Berechtigungen beim ersten Start
+
+Vor der Anmeldung fragt Quartinaut erstmals die fehlenden Android-Freigaben
+für Standort und Kamera sowie ab Android 13 für Benachrichtigungen ab.
+Ein ungefährer Standort genügt. Bereits erteilte Freigaben werden übersprungen;
+eine Ablehnung führt nicht zu wiederholten automatischen Dialogen. Die App ist
+auch ohne diese Freigaben zugänglich.
+
+Unter Einstellungen → **Standort, Kamera und Berechtigungen verwalten** können
+die Freigaben später erneut geprüft und angefragt werden. Bei ausgeschaltetem
+Standortdienst gibt es einen direkten Weg zu den Android-Standorteinstellungen.
+Internetzugriff wird von Android automatisch erlaubt; die Bildauswahl verwendet
+weiterhin den System-Dateidialog ohne umfassenden Speicherzugriff.
 
 ## Android-APK direkt herunterladen
 

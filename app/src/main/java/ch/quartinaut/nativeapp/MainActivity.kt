@@ -103,6 +103,9 @@ class MainActivity : ComponentActivity() {
             val prefs = remember {
                 applicationContext.getSharedPreferences("quartinaut_android", MODE_PRIVATE)
             }
+            var showPermissionSetup by remember {
+                mutableStateOf(!prefs.getBoolean(STARTUP_PERMISSIONS_COMPLETED, false))
+            }
             var mode by remember { mutableStateOf(prefs.getString("theme_mode",null)
                 ?: if(prefs.getBoolean("dark",false)) "dark" else "light") }
             val displayMode=if(mode=="system") { if(isSystemInDarkTheme()) "dark" else "light" } else mode
@@ -142,9 +145,16 @@ class MainActivity : ComponentActivity() {
                 )
             ) {
                 Box(Modifier.fillMaxSize().background(bars)) {
-                    QuartinautApp(repository,mode,displayMode) { next ->
-                        mode=next
-                        prefs.edit().putString("theme_mode",next).apply()
+                    if (showPermissionSetup) {
+                        NativePermissionSetup(onFinish = {
+                            prefs.edit().putBoolean(STARTUP_PERMISSIONS_COMPLETED, true).apply()
+                            showPermissionSetup = false
+                        })
+                    } else {
+                        QuartinautApp(repository,mode,displayMode) { next ->
+                            mode=next
+                            prefs.edit().putString("theme_mode",next).apply()
+                        }
                     }
                 }
             }
