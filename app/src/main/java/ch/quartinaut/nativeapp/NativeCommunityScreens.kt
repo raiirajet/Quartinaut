@@ -413,9 +413,16 @@ fun NativeCreateHubPage(
                                     "priceChf" to (priceValue ?: 0.0),
                                     "capacity" to (count ?: 0),
                                     "venue" to venue.trim(),"startsAt" to date,
-                                    "audienceLevel" to audienceScope,
-                                    "radiusKm" to (if(audienceScope=="radius")audienceRadius else 15),
-                                    "photoPaths" to photoPaths.toList())
+                                    "photoPaths" to photoPaths.toList()) +
+                                    (if(AUDIENCE_BACKEND_READY) mapOf<String,Any?>(
+                                        "audienceLevel" to audienceScope,
+                                        "radiusKm" to audienceRadius,
+                                        "audienceCenter" to
+                                            (if(audienceScope=="radius" &&
+                                                audienceLat!=null && audienceLng!=null)
+                                                mapOf("lat" to audienceLat!!,"lng" to audienceLng!!)
+                                             else null)
+                                    ) else emptyMap())
                                 repo.createCommunityItem(data,{
                                     clearDraft()
                                     onCompleted()

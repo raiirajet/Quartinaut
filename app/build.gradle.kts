@@ -13,8 +13,8 @@ android {
         applicationId = "ch.quartinaut.nativeapp"
         minSdk = 26
         targetSdk = 35
-        versionCode = 29
-        versionName = "5.11.0-3d-icons"
+        versionCode = 30
+        versionName = "5.11.1-icons-reach-preview"
     }
     buildTypes {
         release { isMinifyEnabled = false }
