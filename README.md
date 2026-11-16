@@ -22,6 +22,10 @@ Vor nahtlosen Updates muss die App einmalig auf eine dauerhaft stabile,
 sicher verwahrte Release-Signatur umgestellt werden.
 Es findet keine stille Installation statt.
 
+Die Vorbereitung für feste Release-Signierung mit APK-/App-Bundle-Build und
+Zertifikatsprüfung ist in [ANDROID_SIGNING.md](ANDROID_SIGNING.md) beschrieben.
+Ein Keystore muss noch über einen berechtigten Zugang eingerichtet werden.
+
 
 Eigenständige Android-App auf Grundlage des von der Eigentümerin bereitgestellten Quartinaut-5.4-Release-Kandidaten. Es handelt sich nicht um eine umverpackte Website. Produktives Hosting und Firebase-Regeln werden beim APK-Build nicht verändert.
 

@@ -13,3 +13,34 @@ Vor Freigabe:
 6. Erst dann `AUDIENCE_BACKEND_READY` auf true setzen, neue APK ausliefern und Firebase in der richtigen Standard-Datenbank bereitstellen.
 
 Schweizer SVG-/Wappendaten und die Firestore-Enterprise-Datenbank bleiben unverändert.
+
+## Prüfung vom 16. November 2026
+
+Im Entwicklungsstand `0decad8` fehlen im Repository die Implementierungen der
+bereits produktiv aufgerufenen Dienste `quartinautHub` und `quartinautPhoto`.
+Die vorhandenen zusätzlichen Funktionen ersetzen diese Dienste nicht.
+Ein Firebase-Zugang für eine Prüfung bzw. Bereitstellung ist in der aktuellen
+Arbeitsumgebung nicht eingerichtet.
+
+Konkrete Befunde für die nächste Backend-Änderung:
+
+- `requestInUserScope()` in `firebase/firestore.rules` wertet `audienceLevel`
+  nicht aus. Die direkten Schreibregeln für `requests` beschränken den Wert
+  ebenfalls nicht. Eine umgebaute App könnte deshalb die lokale UI-Sperre
+  umgehen. Die UI-Sperre ist keine serverseitige Sicherheitsregel.
+- `QuartinautRepository.createRequest()` überträgt bereits `audienceLevel`,
+  aber keinen Umkreis-Mittelpunkt. Ein späterer Umkreis-Rollout muss diesen
+  Schreibweg und die getrennte private Speicherung der Koordinaten ersetzen.
+- Die direkten Android-Feed-Abfragen filtern auf Kanton und Status. Werden
+  Gemeinde-/Umkreisbedingungen nur in die Leseregeln ergänzt, werden solche
+  Abfragen insgesamt verweigert: Firestore-Regeln filtern kein Abfrageergebnis.
+  Der Wechsel auf einen geschützten Server-Leseweg muss dazu passen.
+- `functions/enhancements` verwendet für Radar und Favoriten bisher nur den
+  Kanton; `functions/nativeChats.startChat` prüft ebenfalls nicht die geplante
+  Beitragsreichweite. Diese Admin-SDK-Zugriffe umgehen Firestore-Regeln und
+  brauchen dieselbe serverseitige Zugriffsentscheidung wie Detail und Fotos.
+
+Die produktiven Funktionsquellen und der Firebase-Zugang sind daher für eine
+vollständige Umsetzung erforderlich. Die Reichweitenfreigabe bleibt bis zur
+gemeinsamen Umsetzung und Prüfung deaktiviert. Diese Prüfung hat keine
+produktiven Firebase-Regeln oder Funktionen verändert.
