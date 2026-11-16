@@ -1,9 +1,9 @@
-# Quartinaut Web 5.11.4 · Android Build 33
+# Quartinaut Web 5.11.5 · Desktop layout · Android Build 33
 
 The live Web 5.4.2 source was captured from the owner's existing Firebase Hosting
 version `sites/quartinaut/versions/ecfb5a780cca5bcf`. The original production
 Firebase configuration and existing account, moderation and community flows
-were retained. `app-source-5114.mjs` is the editable application entry. `npm run build` bundles all local modules into `app-release-5114.js`, so an old Service Worker cannot mix outdated module exports into the new release. `app-release-5114.js` is the active entry point; earlier public
+were retained. `app-source-5115.mjs` is the editable application entry. `npm run build` bundles all local modules into `app-release-5115.js`, so an old Service Worker cannot mix outdated module exports into the new release. `app-release-5115.js` is the active entry point; earlier public
 release files remain for existing clients and rollback compatibility.
 
 ## Run and verify
@@ -23,6 +23,18 @@ Browser tests include an actual installed 5.4.2 Service Worker upgrading at the 
 `/usr/bin/chromium`; CI installs a compatible Playwright browser. Tests inject
 fixtures into an intercepted JavaScript module, never into published code.
 `tests/`, dependency files and local artifacts are excluded from Hosting.
+
+## Website layout
+
+From 1024 CSS pixels the website uses a full-width header and text navigation,
+a main content area up to 1760 pixels, a two-column home page with a personal
+sidebar, multi-column function/post/calendar cards, and inbox plus conversation
+side by side. Below that breakpoint, navigation and content adapt for touch
+screens. The sign-in view uses a broad two-column layout on desktop.
+
+The desktop layer is in `quartinaut-desktop-5115.css`. Keep the new bundled
+release filename and Service Worker version when publishing changes; older
+5.4.2 and 5.11.4 installed caches are exercised by the upgrade tests.
 
 ## Shared app behavior
 
@@ -80,8 +92,8 @@ and the existing historical coat qualifications from the Android resources.
 From the repository root, use the separate Hosting-only configuration:
 
 ```sh
-npx -y firebase-tools@latest hosting:channel:deploy app-abgleich-5114 --project quartinaut --config firebase.hosting.json --expires 7d
-npx -y firebase-tools@latest hosting:clone quartinaut:app-abgleich-5114 quartinaut:live --project quartinaut
+npx -y firebase-tools@latest hosting:channel:deploy desktop-5115 --project quartinaut --config firebase.hosting.json --expires 7d
+npx -y firebase-tools@latest hosting:clone quartinaut:desktop-5115 quartinaut:live --project quartinaut
 ```
 
 The second command promotes the tested immutable preview version. It does not
@@ -92,7 +104,7 @@ deploy Firestore/Storage rules, functions or a different Hosting site.
 Unit tests cover street/coordinate privacy, cancellation feedback, calendar
 exports, catalog parity, private-cache exclusions and stale account responses.
 Playwright tests exercise the actual Web code with isolated API fixtures at
-360, 390, 768 and 1440 pixels, including a regional request submission, shared
+360, 390, 768, 1024, 1280, 1440 and 1920 pixels, including a regional request submission, shared
 favorites, post editing, chat sending, QR handover, maps and account logout.
 Anonymous production SDK loading and public asset delivery are checked
 separately. Real two-device authenticated use, physical GPS/camera capture and

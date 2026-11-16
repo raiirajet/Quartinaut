@@ -35,6 +35,7 @@
   <link rel="stylesheet" href="./quartinaut-v53.css">
   <link rel="stylesheet" href="./quartinaut-v54.css">
   <link rel="stylesheet" href="./quartinaut-native-5114.css">
+  <link rel="stylesheet" href="./quartinaut-desktop-5115.css">
   <title>Quartinaut – Gemeinsam in deiner Nähe</title>
 </head>
 <body>
@@ -42,14 +43,21 @@
   <noscript>Diese App benötigt JavaScript.</noscript>
 
   <div id="app" class="app-shell">
-    <header class="topbar" aria-label="App Kopfbereich">
+    <header class="topbar" aria-label="Website Kopfbereich">
       <button id="qn-back" class="icon-button" type="button" aria-label="Einen Schritt zurück" hidden>←</button><button class="brand reset-button" data-route="home" aria-label="Zur Startseite">
         <span class="v2-brand-logo-frame" aria-hidden="true"><img class="v2-brand-logo" src="./assets/native/quartinaut-brand.svg" alt="" width="70" height="50" decoding="async" fetchpriority="high"></span>
         <span class="brand-copy">
           <strong>Quartinaut</strong>
           <small>Deine Schweizer Gemeindeplattform</small>
         </span>
+        <span class="qn-brand-desktop"><strong>Quartinaut</strong><small>Gemeinsam in deiner Nähe</small></span>
       </button>
+      <nav class="qn-desktop-nav" aria-label="Seitennavigation">
+        <button type="button" data-qn-nav="home">Start</button>
+        <button type="button" data-qn-nav="hub">Entdecken</button>
+        <button type="button" data-qn-nav="chats">Nachrichten</button>
+        <button type="button" data-qn-nav="create" class="primary-button">Eintrag erstellen</button>
+      </nav>
       <div class="top-actions"><button id="qn-search" class="icon-button" type="button" aria-label="Suche öffnen">⌕</button>
         <button class="icon-button top-theme" id="themeButton" type="button" aria-label="Darstellung wechseln" title="Darstellung wechseln">
           <svg class="touch-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path></svg>
@@ -110,7 +118,7 @@
   <script src="./firebase-config.js"></script>
   <script src="./assets/native/coats-index.js"></script>
   <script src="./vendor/qrcode-1.4.4.js"></script>
-  <script src="./app-release-5114.js" type="module"></script>
+  <script src="./app-release-5115.js" type="module"></script>
 
 
 </body></html>
