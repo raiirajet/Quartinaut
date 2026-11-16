@@ -1,0 +1,24 @@
+{
+  "tag": "android-v34-preview",
+  "versionCode": 34,
+  "sourceCommit": "1852b03dab0d04a31ea9faa021f5261780699545",
+  "origin": "https://quartinaut--android-34-nfu0y1o9.web.app",
+  "files": {
+    "Quartinaut-Android-v34-preview.apk": {
+      "sha256": "51789f504ef127820dfbc007e696b39fa038eb6119e1a8e486524a505637127b",
+      "bytes": 93806187
+    },
+    "Quartinaut-Android-v34-preview.aab": {
+      "sha256": "09c1cfc7002a7828672806d25875c75aa81f7398e25d51a1c41e76aab24c7bbf",
+      "bytes": 68573338
+    },
+    "SHA256SUMS.txt": {
+      "sha256": "857540b97cb8ca47cc18fd125b9b9863bd9a3ffde91000c03e21b6e975440246",
+      "bytes": 202
+    },
+    "release-verification.json": {
+      "sha256": "63afc9e87e764dd39d169361e963687e74a426993489ad2801f033ecc3f54740",
+      "bytes": 2552
+    }
+  }
+}

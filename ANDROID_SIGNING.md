@@ -36,6 +36,9 @@ Android Lint hat keine Fehler; 16 bestehende Hinweise betreffen unter anderem
 Bibliotheksversionen und Launcher-/Manifest-Empfehlungen. Prüfbelege und
 Datei-Prüfsummen stehen unter `audit/2026-11-16-navigation/android-release.json`.
 Geräte- und produktive Anmeldetests sind dadurch nicht belegt.
+Der Workflow `publish-reviewed-android.yml` veröffentlicht bereits lokal
+signierte und geprüfte Dateien nach erneuter Hash-/Zertifikatsprüfung.
+Er erhält keinen privaten Schlüssel und keine Signierkennwörter.
 
 ## Schlüssel und GitHub einrichten
 

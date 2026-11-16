@@ -1,6 +1,6 @@
 /** Navigation and transient presentation state; never persisted or sent to a server. */
 export function createViewSession({getView,getRoot,render,restoreView}) {
- const views=new Map();let painted='',owner='',interaction=false,pending=false,token=0,goal=null,generation=0;
+ const views=new Map();let painted='',owner='',interaction=false,pending=false,token=0,goal=null,generation=0,scrollIntent=0;
  const identity=v=>[v.account,v.gate||'',v.route,v.section||'',v.chat||''].join('|');
  const userEvent=()=>{interaction=true;queueMicrotask(()=>{interaction=false;});};
  for(const type of ['click','input','change','submit','keydown'])document.addEventListener(type,userEvent,true);
@@ -50,7 +50,8 @@ export function createViewSession({getView,getRoot,render,restoreView}) {
   if(!frame)return;
   if(!frame.same&&!frame.target)window.scrollTo({top:0,left:0,behavior:'instant'});
   else restore(frame.target,{focus:frame.same});
-  requestAnimationFrame(()=>{if(frame.token===token&&identity(getView())===frame.key)scroll(frame.target);});
+  const afterY=scrollY,afterX=scrollX,intent=scrollIntent;
+  requestAnimationFrame(()=>{if(frame.token===token&&intent===scrollIntent&&scrollY===afterY&&scrollX===afterX&&identity(getView())===frame.key)scroll(frame.target);});
  }
  function navigate(view){
   const url=new URL(location.href);url.searchParams.set('route',view.route);if(view.route==='hub')url.searchParams.set('section',view.section||'all');else url.searchParams.delete('section');
@@ -66,7 +67,9 @@ export function createViewSession({getView,getRoot,render,restoreView}) {
   const url=new URL(location.href),saved=event.state?.qnView||{route:url.searchParams.get('route')||'home',section:url.searchParams.get('section')||'all'};
   restoreView(saved);render({force:true});getRoot()?.focus({preventScroll:true});
  }
- for(const type of ['wheel','touchstart'])document.addEventListener(type,()=>{goal=null;},{passive:true});
+ const cancelRestore=()=>{goal=null;scrollIntent++;};
+ for(const type of ['wheel','touchstart'])document.addEventListener(type,cancelRestore,{passive:true});
+ document.addEventListener('keydown',event=>{if(['ArrowUp','ArrowDown','PageUp','PageDown','Home','End',' '].includes(event.key))cancelRestore();},true);
  window.addEventListener('popstate',pop);
  return {begin,end,navigate,initial,snapshot,stamp:()=>({key:identity(getView()),generation}),current:stamp=>stamp?.key===identity(getView())&&stamp.generation===generation,reset(){generation++;views.clear();painted='';goal=null;token++;hidePending();},get pending(){return pending;}};
 }

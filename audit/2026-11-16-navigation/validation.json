@@ -8,7 +8,7 @@
   "androidLintWarnings": 16,
   "webUnitTestsPassed": 15,
   "webFunctionalScenariosPassed": 21,
-  "webNavigationScenariosPassed": 10,
+  "webNavigationScenariosPassed": 11,
   "cacheUpgradeOrigins": [
     "5.4.2",
     "5.11.4",
@@ -28,7 +28,7 @@
   "fixtureBasedWebFlows": true,
   "robolectricAndroidApi": 34,
   "physicalDeviceGpsCameraOrTwoDeviceTests": false,
-  "webBundleSha256": "9c36e27d7b0a427f30c716e3447e24d34f86fbeab1a02b4a618b1ce9b1d412f9",
+  "webBundleSha256": "4d80be863ac6c19bf8f32e271871f427e7f86bd46c65a3921ebdc2e865ac32ff",
   "views": [
     {
       "id": "home",

@@ -13,12 +13,17 @@ window.__seed=()=>{for(const kind of ['market','lend'])for(let i=0;i<35;i++)hubS
  await context.route('**/app-release-5117.js',async route=>{const source=await fs.readFile(path.join(__dirname,'../app-release-5117.js'),'utf8');await route.fulfill({contentType:'text/javascript',body:source.replace('void initAuth();',fixture+hooks)});});
  const tests=[];async function check(name,run){await run();tests.push(name);console.log('PASS '+name);}
  const go=async r=>{await page.evaluate(route=>window.__go(route),r);await page.waitForTimeout(120);};
- const scroll=async y=>{await page.evaluate(y=>window.scrollTo(0,y),y);await page.waitForTimeout(50);return page.evaluate(()=>scrollY);};
+ const scroll=async y=>{await page.evaluate(y=>window.scrollTo({top:y,behavior:'instant'}),y);await page.waitForTimeout(50);return page.evaluate(()=>scrollY);};
  const sameHeight=async y=>{await page.waitForTimeout(200);assert.ok(Math.abs(await page.evaluate(()=>scrollY)-y)<3,'Scroll must stay at '+y+'; actual '+await page.evaluate(()=>scrollY));};
  try{
  await page.goto(base,{waitUntil:'networkidle'});await page.evaluate(()=>window.__seed());
  await check('browser Back restores the exact previous page height on desktop and mobile',async()=>{
   for(const width of [1440,390]){await page.setViewportSize({width,height:844});await go('home');const y=await scroll(820);assert.ok(y>200);await go('settings');await page.goBack();await page.getByRole('heading',{name:'Grüezi, Test!'}).waitFor();await sameHeight(y);}
+ });
+ await check('a queued restoration never overrides scrolling performed after rendering',async()=>{
+  await go('market');const old=await scroll(900);
+  const actual=await page.evaluate(()=>{window.__render({force:true});document.dispatchEvent(new WheelEvent('wheel',{deltaY:400,bubbles:true}));window.scrollTo({top:1500,behavior:'instant'});return scrollY;});
+  assert.ok(actual>old);await sameHeight(actual);
  });
  await check('hub submenus have distinct history and restore list height',async()=>{
   await go('market');const y=await scroll(1400);assert.ok(y>1000);assert.equal(new URL(page.url()).searchParams.get('section'),'market');await go('lend');assert.equal(new URL(page.url()).searchParams.get('section'),'lend');await page.goBack();await page.waitForFunction(()=>new URL(location.href).searchParams.get('section')==='market');await sameHeight(y);assert.match(await page.locator('#main h1').innerText(),/Marktplatz/);

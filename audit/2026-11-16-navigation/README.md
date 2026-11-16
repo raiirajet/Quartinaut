@@ -26,7 +26,7 @@ passwords/images are excluded from view history, and account changes clear it.
 Validation: 23 Android unit tests including four real Compose/Robolectric
 restoration tests, Android lint with zero errors (16 non-blocking existing
 warnings), signed APK/App Bundle verification against the existing certificate,
-15 web unit tests, 21 functional browser scenarios, 10 navigation regressions,
+15 web unit tests, 21 functional browser scenarios, 11 navigation regressions,
 four installed-cache upgrades and 242 page/form/theme/accessibility measurements.
 All 2,110 Swiss municipalities retain their sourced bundled emblem; nine
 calendar validation tests also pass. Lint's seven old state-producer errors were
@@ -43,3 +43,9 @@ Current Android artifact hashes and public signing fingerprint are in
 `android-release.json`; web checks and the case inventory are in `validation.json`.
 `hosting-before.json` records the previous live Hosting version. Only the Web
 client is deployed to Firebase Hosting; backend/rules are unchanged.
+
+The signed preview is copied to GitHub by the reviewed-artifact workflow after
+hash, package/version and pinned-certificate checks. CI only downloads public,
+already signed files; no signing key or signing password is sent to Actions.
+The temporary Hosting source expires; released GitHub assets are the durable
+download location. The metadata pins the Android source commit and every file.

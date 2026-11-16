@@ -1,0 +1,35 @@
+name: Publish reviewed Android preview
+on:
+  push:
+    branches: [codex/web-app-parity]
+    paths: ['releases/android-v34-preview.json', '.github/workflows/publish-reviewed-android.yml', 'scripts/publish-reviewed-android.py']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: reviewed-android-34
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/codex/web-app-parity'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: APK verification tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          BIN="$(find "$SDK" -type f -name sdkmanager -print -quit)"
+          test -n "$BIN"
+          "$BIN" --sdk_root="$SDK" "build-tools;35.0.0"
+      - name: Verify and publish the reviewed signed files
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 scripts/publish-reviewed-android.py releases/android-v34-preview.json "$RUNNER_TEMP/reviewed-android-34" --publish

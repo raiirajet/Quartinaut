@@ -1,7 +1,7 @@
 // src/view-session.mjs
 function createViewSession({ getView, getRoot, render: render2, restoreView }) {
   const views = /* @__PURE__ */ new Map();
-  let painted = "", owner = "", interaction = false, pending = false, token = 0, goal = null, generation = 0;
+  let painted = "", owner = "", interaction = false, pending = false, token = 0, goal = null, generation = 0, scrollIntent = 0;
   const identity = (v) => [v.account, v.gate || "", v.route, v.section || "", v.chat || ""].join("|");
   const userEvent = () => {
     interaction = true;
@@ -115,8 +115,9 @@ function createViewSession({ getView, getRoot, render: render2, restoreView }) {
     if (!frame) return;
     if (!frame.same && !frame.target) window.scrollTo({ top: 0, left: 0, behavior: "instant" });
     else restore(frame.target, { focus: frame.same });
+    const afterY = scrollY, afterX = scrollX, intent = scrollIntent;
     requestAnimationFrame(() => {
-      if (frame.token === token && identity(getView()) === frame.key) scroll(frame.target);
+      if (frame.token === token && intent === scrollIntent && scrollY === afterY && scrollX === afterX && identity(getView()) === frame.key) scroll(frame.target);
     });
   }
   function navigate(view) {
@@ -140,9 +141,14 @@ function createViewSession({ getView, getRoot, render: render2, restoreView }) {
     render2({ force: true });
     getRoot()?.focus({ preventScroll: true });
   }
-  for (const type of ["wheel", "touchstart"]) document.addEventListener(type, () => {
+  const cancelRestore = () => {
     goal = null;
-  }, { passive: true });
+    scrollIntent++;
+  };
+  for (const type of ["wheel", "touchstart"]) document.addEventListener(type, cancelRestore, { passive: true });
+  document.addEventListener("keydown", (event) => {
+    if (["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "].includes(event.key)) cancelRestore();
+  }, true);
   window.addEventListener("popstate", pop);
   return { begin, end, navigate, initial, snapshot, stamp: () => ({ key: identity(getView()), generation }), current: (stamp) => stamp?.key === identity(getView()) && stamp.generation === generation, reset() {
     generation++;
