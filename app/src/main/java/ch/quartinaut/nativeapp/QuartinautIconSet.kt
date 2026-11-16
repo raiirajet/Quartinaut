@@ -34,7 +34,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 
 /**
- * Quartinaut raised 3D icon treatment. The original six photo-realistic 3D
+ * Quartinaut individually isolated 3D artwork with transparent margins. The original six photo-realistic 3D
  * navigation illustrations are used where a semantic match exists. Other
  * catalog symbols are displayed over a shaded, bevelled and specular tile,
  * not on the previous flat backgrounds. Dark uses monochrome grayscale.
@@ -55,8 +55,8 @@ internal fun QuartinautIcon(key: String, modifier: Modifier = Modifier) {
         Canvas(modifier) {
             drawImage(
                 image = atlas,
-                srcOffset = IntOffset((index % 6) * 96, (index / 6) * 96),
-                srcSize = IntSize(96, 96),
+                srcOffset = IntOffset((index % 6) * 144, (index / 6) * 144),
+                srcSize = IntSize(144, 144),
                 dstOffset = IntOffset.Zero,
                 dstSize = IntSize(
                     size.width.roundToInt().coerceAtLeast(1),
@@ -314,7 +314,7 @@ private object QuartinautAtlasCache {
     @Synchronized fun load(context: Context): ImageBitmap? {
         cached?.let { return it }
         return runCatching {
-            context.applicationContext.assets.open("qt3d_atlas.webp").use { input ->
+            context.applicationContext.assets.open("qt3d_atlas_safe.webp").use { input ->
                 BitmapFactory.decodeStream(input)?.asImageBitmap()
             }
         }.getOrNull()?.also { cached = it }

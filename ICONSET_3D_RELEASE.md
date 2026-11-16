@@ -1,11 +1,7 @@
-# Quartinaut 5.11 – echte 3D-Bildicons
+# 3D-Icon-Fix: vollständig freigestellt
 
-Die App nutzt jetzt die im Gespräch gelieferte Schweizer 3D-Bildtafel, aufgeteilt in 36 transparent freigestellte Motive. Die 576 × 576 Pixel grosse WebP-Datei `app/src/main/assets/qt3d_atlas.webp` ist mit dem APK lokal gebündelt; jede Funktion erhält einen zugewiesenen 96 × 96-Pixel-Ausschnitt.
+Die 36 originalen Motive der vom Nutzer gelieferten Bildvorlage werden nun pro Motiv isoliert, transparent freigestellt, mit 14 Pixeln Innenabstand und einheitlicher skalierter Darstellung als 6 × 6-Atlas gespeichert (144 × 144 Pixel pro Kachel, 864 × 864 insgesamt).
 
-- Alle 47 Einträge des Quartier+-Funktionsverzeichnisses und insgesamt 108 UI-Schlüssel sind zugeordnet.
-- Auch Hauptnavigation und Dashboard verwenden den gleichen 3D-Renderer.
-- Bei der tiefschwarzen Darstellung wird die 3D-Grafik in Graustufen gerendert, wobei Glanz und Schatten erhalten bleiben.
-- Fehlende oder beschädigte Atlasdateien fallen auf den bisherigen lokalen Icon-Renderer zurück.
-- Keine Änderung an Gemeindewappen, App-Logo, Firebase oder Backend.
+Die Kotlin-Rendering-Routine bezieht ihre 144 × 144 Pixel-Kachel aus `qt3d_atlas_safe.webp` statt den fehlerhaft entlang des Motivs abgeschnittenen 96 × 96-Pixel-Rastern der früheren Version. Dunkles Design: Graustufeneffekt mit erhaltenen 3D-Schattierungen.
 
-Das Ausgangsbild hatte einen beinahe schwarzen Hintergrund; für die App wurde dieser rechnerisch freigestellt. An sehr dunklen Konturen können leichte Randartefakte auftreten.
+Dies ändert keine offiziellen Gemeindewappen, Backend-Regeln oder Firebase-Daten.
