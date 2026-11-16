@@ -35,3 +35,7 @@ functions/audience/.env*
 # Generated offline geometry and Python helper bytecode
 app/src/main/assets/geo/municipality_2025.geojson
 **/__pycache__/
+
+# Web dependencies and Firebase Hosting cache
+web/node_modules/
+.firebase/

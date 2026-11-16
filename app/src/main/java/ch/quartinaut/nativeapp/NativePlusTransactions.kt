@@ -54,8 +54,8 @@ internal fun loanTimeZurich(raw:String):String = runCatching {
 
 @Composable
 fun NativeLoanPlanner(repo:QuartinautRepository,navigate:(String)->Unit) {
-    LaunchedEffect(Unit){repo.loadV50("loan.list")}
-    val rows=repo.v50Items.sortedBy{DocString(it["from"])}
+    LaunchedEffect(Unit){repo.ensureV50Loaded("loan.list")}
+    val rows=repo.v50Entries("loan.list").sortedBy{DocString(it["from"])}
     Column(Modifier.fillMaxSize().background(TBg).padding(15.dp),
         verticalArrangement=Arrangement.spacedBy(10.dp)) {
         Text("Ausleih-Kalender",color=MaterialTheme.colorScheme.onSurface,
@@ -75,7 +75,7 @@ fun NativeLoanPlanner(repo:QuartinautRepository,navigate:(String)->Unit) {
             color=TMute,style=MaterialTheme.typography.bodySmall)
         if(repo.v50Loading) LinearProgressIndicator(Modifier.fillMaxWidth())
         LazyColumn(verticalArrangement=Arrangement.spacedBy(12.dp)) {
-            items(rows) { loan ->
+            items(rows,key={DocString(it["id"])}) { loan ->
                 val uid=repo.user?.uid
                 val owner=DocString(loan["ownerUid"])==uid
                 val status=DocString(loan["status"])
@@ -135,7 +135,7 @@ fun NativeLoanPlanner(repo:QuartinautRepository,navigate:(String)->Unit) {
 }
 @Composable
 fun NativeClubCenter(repo:QuartinautRepository,navigate:(String)->Unit) {
-    LaunchedEffect(Unit){repo.loadV50("association.list")}
+    LaunchedEffect(Unit){repo.ensureV50Loaded("association.list")}
     val all=repo.hubItems.filter{it["kind"]=="group"||it["kind"]=="project"}
     val context=LocalContext.current
     var expandedClub by remember {mutableStateOf("")}
@@ -155,7 +155,7 @@ fun NativeClubCenter(repo:QuartinautRepository,navigate:(String)->Unit) {
         LazyColumn(verticalArrangement=Arrangement.spacedBy(11.dp)) {
             item {Text("Meine Anmeldungen",color=TGreen,
                 style=MaterialTheme.typography.titleMedium)}
-            items(repo.v50Items){entry->
+            items(repo.v50Entries("association.list"),key={DocString(it["id"])}){entry->
                 ToolCard(DocString(entry["eventId"]), "Status: "+DocString(entry["status"])) {
                     if(DocString(entry["uid"])==repo.user?.uid &&
                         DocString(entry["status"]) in listOf("confirmed","waitlisted")) {
@@ -248,7 +248,7 @@ fun NativeClubCenter(repo:QuartinautRepository,navigate:(String)->Unit) {
 @Composable
 fun NativeCalendarPlus(repo:QuartinautRepository,navigate:(String)->Unit) {
     val context=LocalContext.current
-    LaunchedEffect(Unit){repo.loadV50("calendar.list")}
+    LaunchedEffect(Unit){repo.ensureV50Loaded("calendar.list")}
     var hours by remember {mutableIntStateOf(24)}
     var selected by remember {mutableStateOf("")}
     Column(Modifier.fillMaxSize().background(TBg).padding(16.dp),
@@ -261,7 +261,7 @@ fun NativeCalendarPlus(repo:QuartinautRepository,navigate:(String)->Unit) {
             modifier=Modifier.fillMaxWidth()) {Text("🇨🇭 Offizielle Schweizer Termine und Feiertage")}
         OutlinedButton(onClick={repo.loadV50("calendar.list")}){Text("Kalender aktualisieren")}
         LazyColumn(verticalArrangement=Arrangement.spacedBy(10.dp)) {
-            items(repo.v50Items.sortedBy{DocString(it["date"])}){event->
+            items(repo.v50Entries("calendar.list").sortedBy{DocString(it["date"])},key={DocString(it["id"])}){event->
                 val id=DocString(event["id"])
                 ToolCard(DocString(event["title"]),
                     DocString(event["date"])+" · "+DocString(event["venue"])) {
@@ -309,7 +309,7 @@ fun NativeCalendarPlus(repo:QuartinautRepository,navigate:(String)->Unit) {
                     }
                 }
             }
-            if(repo.v50Items.isEmpty())item{Text("Keine kommenden Termine verfügbar.",color=TMute)}
+            if(repo.v50Entries("calendar.list").isEmpty())item{Text("Keine kommenden Termine verfügbar.",color=TMute)}
         }
     }
 }
@@ -320,8 +320,8 @@ fun NativeQRHandover(repo:QuartinautRepository) {
     var loanId by remember {mutableStateOf("")}
     var scanned by remember {mutableStateOf("")}
     var confirmed by remember {mutableStateOf(false)}
-    LaunchedEffect(Unit){repo.loadV50("loan.list")}
-    val accepted=repo.v50Items.filter{it["status"]=="accepted"}
+    LaunchedEffect(Unit){repo.ensureV50Loaded("loan.list")}
+    val accepted=repo.v50Entries("loan.list").filter{it["status"]=="accepted"}
     val scanner=rememberLauncherForActivityResult(ScanContract()) { result->
         val content=result.contents.orEmpty()
         val code=when {

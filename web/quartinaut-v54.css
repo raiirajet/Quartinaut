@@ -1,0 +1,43 @@
+/* Quartinaut 5.4: Karte im bestehenden Grün-/Creme-Design */
+.v54-page{display:grid;gap:16px;min-width:0}.v54-card{min-width:0;display:grid;gap:14px;padding:clamp(14px,2.5vw,23px)}
+.v54-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.v54-card-head h2{margin:0;font-size:clamp(1.2rem,2.6vw,1.6rem)}.v54-card-head p{margin:6px 0 0;max-width:680px}.v54-card-head button{min-height:44px}
+.v54-stats{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:.8rem;color:var(--muted)}.v54-stats>span{padding:6px 10px;border-radius:20px;background:var(--surface-soft)}.v54-stats strong{color:var(--primary)}.v54-stats small{margin-left:auto}
+.v54-crumb{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:36px;color:var(--muted);font-size:.84rem}.v54-crumb button{border:0;background:transparent;color:var(--primary);min-height:40px;padding:5px 8px;border-radius:8px;font-weight:650}.v54-crumb button:hover{background:var(--primary-soft)}
+.v54-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(280px,1fr);gap:16px;align-items:start;min-width:0}.v54-map-pane{min-width:0;border:1px solid var(--line);background:var(--surface-soft);padding:12px;border-radius:18px}.v54-map-actions{display:flex;gap:6px;justify-content:space-between;align-items:center;flex-wrap:wrap}.v54-map-actions button{min-height:44px}.v54-map-hint{color:var(--muted);font-size:.8rem}
+.v54-canvas{min-height:280px;display:grid;place-items:center;overflow:hidden;background:var(--surface);border-radius:14px;border:1px solid var(--line);padding:8px}.v54-canvas svg{display:block;width:100%;height:auto;max-height:560px;aspect-ratio:1.4;overflow:visible;transition:opacity .16s ease}.v54-canvas :is(.canton-shape,.v54-municipalities-svg path){cursor:pointer;outline:none;transition:fill .18s ease,opacity .18s ease}.v54-canvas .canton-shape:hover{filter:brightness(1.08)}.v54-canvas svg [role=button]:focus-visible{stroke:#e7ab46!important;stroke-width:4px!important;outline:none}.v54-canvas .canton-label-layer{pointer-events:none}.v54-canvas .v54-dimmed{opacity:.13}.v54-canvas .v54-municipalities-svg path{fill:#a9d5b7;stroke:#3a7158;stroke-width:.85;vector-effect:non-scaling-stroke;stroke-linejoin:round}.v54-canvas .v54-municipalities-svg path:hover{fill:#6eb38a}.v54-canvas .v54-municipalities-svg path.is-selected{fill:#e4ad46;stroke:#754d0c;stroke-width:2.1}.v54-map-legend{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;font-size:.73rem;color:var(--muted);margin-top:10px}.v54-map-legend span{height:12px;width:12px;border-radius:3px;border:1px solid var(--line-strong)}.v54-legend-zero{background:#dfe4e1}.v54-legend-active{background:#2f6f4f}.v54-status{font-size:.77rem;color:var(--muted);margin:9px 0 0;text-align:center;min-height:1em}
+.v54-side{min-width:0;border:1px solid var(--line);background:var(--surface);border-radius:18px;padding:14px;display:grid;gap:12px}.v54-profile{padding:5px 2px 15px;border-bottom:1px solid var(--line)}.v54-profile h3{font-size:clamp(1.2rem,2.4vw,1.5rem);margin:6px 0 12px}.v54-profile p{color:var(--muted);font-size:.83rem;line-height:1.5}.v54-kicker{font-size:.68rem;letter-spacing:.07em;text-transform:uppercase;font-weight:750;color:var(--primary)}.v54-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.v54-facts span{background:var(--surface-soft);border-radius:12px;padding:11px;min-width:0;display:grid;gap:4px}.v54-facts small{font-size:.7rem;color:var(--muted)}.v54-facts strong{font-size:.86rem;overflow-wrap:anywhere}.v54-actions{display:flex;gap:8px;flex-wrap:wrap}.v54-actions :is(a,button){min-height:44px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+.v54-search-label{font-size:.82rem;font-weight:700}.v54-side input[type=search]{background:var(--surface-soft);color:var(--text);border:1px solid var(--line-strong);min-height:48px;padding:10px 12px;border-radius:12px;width:100%;min-width:0}.v54-item-list{max-height:350px;overflow:auto;display:grid;align-content:start;gap:6px;padding-right:2px}.v54-list-counter{font-size:.75rem;color:var(--muted);margin:1px 0 5px}.v54-item{min-height:53px;display:flex;align-items:center;text-align:left;gap:10px;border:1px solid var(--line);background:var(--surface);border-radius:11px;padding:8px 10px;color:var(--text);width:100%;cursor:pointer}.v54-item:hover,.v54-item.is-current{border-color:var(--primary);background:var(--primary-soft)}.v54-item-code{display:grid;place-items:center;min-width:36px;height:36px;background:var(--surface-soft);border-radius:10px;color:var(--primary);font-size:.75rem;font-weight:800}.v54-item-main{display:grid;gap:3px;flex:1;min-width:0}.v54-item-main strong{font-size:.8rem;overflow-wrap:anywhere}.v54-item-main small{color:var(--muted);font-size:.7rem}.v54-item-hint{font-size:.69rem;color:var(--muted)}.v54-source{font-size:.74rem;color:var(--muted);line-height:1.5;margin:0}.v54-source a{color:var(--primary)}
+@media(max-width:800px){.v54-grid{grid-template-columns:1fr}.v54-side{grid-row:2}.v54-item-list{max-height:320px}.v54-canvas svg{max-height:430px}}
+@media(max-width:520px){.v54-card{padding:12px}.v54-grid{gap:10px}.v54-map-pane,.v54-side{padding:10px}.v54-stats small{margin-left:0}.v54-canvas{min-height:210px;padding:3px}.v54-canvas svg{max-height:340px}.v54-map-hint{display:none}.v54-item-list{max-height:300px}}
+@media(prefers-reduced-motion:reduce){.v54-canvas svg,.v54-canvas .canton-shape,.v54-item{transition:none!important}}
+
+.v54-canvas .v54-dimmed{opacity:0!important;pointer-events:none!important;}
+
+/* 5.4.1 – Amtliche Kantonskürzel / BFS-Nummern ohne überladene Karte */
+.v541-caption{display:flex;align-items:center;gap:9px;padding:5px 4px;min-height:40px;min-width:0;color:var(--text);font-size:.79rem}
+.v541-caption strong{display:inline-grid;place-items:center;background:var(--primary-soft);color:var(--primary);border:1px solid var(--line);border-radius:9px;min-width:45px;min-height:35px;padding:5px 9px;font-size:.88rem;white-space:nowrap}
+.v541-caption span{min-width:0;overflow-wrap:anywhere;font-weight:600}
+.v541-map-controls{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:8px;color:var(--muted);font-size:.72rem;line-height:1.45}
+.v541-map-controls button{min-height:44px}
+.v541-map-controls button[hidden]{display:none}
+.v541-label-layer{pointer-events:none;user-select:none}
+.v541-municipality-label{font-family:Inter,"Segoe UI",Arial,sans-serif;font-weight:800;fill:#163a28;text-anchor:middle;dominant-baseline:central;paint-order:stroke;stroke:rgba(255,255,255,.97);stroke-width:3.5px;stroke-linejoin:round}
+.v54-canvas .canton-label-code{font-size:13px;font-weight:800}
+.v54-canvas .canton-label-count{font-size:8px}
+.v54-canvas .v54-item-code,.v54-item-code{font-size:.73rem;min-width:40px;font-variant-numeric:tabular-nums;white-space:nowrap}
+@media(max-width:520px){.v541-map-controls{align-items:flex-start}.v541-caption{font-size:.75rem}.v54-canvas .canton-label-code{font-size:17px}}
+
+/* Quartinaut 5.4.1 – Kantons- und Gemeindewappen (Informationszwecke) */
+.v541-coat-icon{width:43px;height:49px;min-width:43px;display:inline-flex;align-items:center;justify-content:center;background:var(--surface-soft);border:1px solid var(--line);border-radius:10px;padding:5px;box-sizing:border-box;overflow:hidden}
+.v541-coat-icon img{display:block;width:100%;height:100%;object-fit:contain}
+.v541-coat-missing{font-size:1.25rem;color:var(--muted)}
+.v541-profile-heading{display:flex;align-items:center;gap:12px;min-width:0;margin:6px 0 12px}
+.v541-profile-heading .v541-coat-icon{width:69px;height:79px;min-width:69px;border-radius:13px;padding:7px}
+.v541-profile-heading>div{min-width:0}
+.v541-profile-heading h3{margin:0 0 5px;overflow-wrap:anywhere}
+.v541-shortcode{display:inline-flex;font-size:.72rem;border-radius:7px;padding:4px 10px;background:var(--primary-soft);font-weight:800;color:var(--primary)}
+.v541-coat-source{display:inline-block;color:var(--primary);font-size:.72rem;margin-top:7px;line-height:1.4}
+.v541-caption .v541-coat-icon{width:38px;height:42px;min-width:38px;padding:4px}
+.v54-item .v541-coat-icon{width:36px;height:42px;min-width:36px;padding:4px}
+.v54-item .v54-item-main{min-width:0}
+@media(max-width:520px){.v54-item .v54-item-hint{font-size:.7rem}.v541-profile-heading .v541-coat-icon{width:56px;height:65px;min-width:56px}}

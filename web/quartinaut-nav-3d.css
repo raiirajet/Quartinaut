@@ -1,0 +1,63 @@
+/* Quartinaut 4.6.1 — fixed 3D navigation, using the bundled 3D PNG assets. */
+.v41-nav[data-nav-style="glass3d"]{
+  height:94px!important;
+  max-width:650px!important;
+  background:linear-gradient(180deg,#0e1918 0%,#050c0c 98%)!important;
+  border:1px solid #4b6263!important;
+  border-radius:27px!important;
+  box-shadow:0 15px 30px #00151243, inset 0 1px 2px #ffffff15!important;
+  padding:5px!important;
+}
+.v41-nav[data-nav-style="glass3d"] .nav-item{
+  min-width:0!important;
+  min-height:65px!important;
+  border-radius:21px!important;
+  color:#f6fbf8!important;
+  background:transparent!important;
+  gap:1px!important;
+  padding:5px 2px 4px!important;
+  box-shadow:none!important;
+  outline-offset:1px;
+}
+.v41-nav[data-nav-style="glass3d"] .nav-item.active{
+  background:linear-gradient(135deg,#126849 0%,#063d31 55%,#036044 100%)!important;
+  outline:1px solid #43db89;
+  box-shadow:inset 0 1px 6px #b5ff9b25,0 0 10px #0dd16d3b!important;
+}
+.v41-nav[data-nav-style="glass3d"] .nav-item .v41-nav-icon-shell,
+.v41-nav[data-nav-style="glass3d"] .nav-item:nth-child(3) .v41-nav-icon-shell{
+  width:51px!important;height:51px!important;
+  background:transparent!important;
+  color:inherit!important;
+  border:none!important;
+  border-radius:12px!important;
+  box-shadow:none!important;
+  flex-shrink:1;
+}
+.v41-nav[data-nav-style="glass3d"] .qnav3d-image{
+  display:block;
+  height:49px;width:49px;
+  object-fit:contain;
+  pointer-events:none;
+  filter:drop-shadow(0 2px 4px #0007);
+}
+.v41-nav[data-nav-style="glass3d"] .nav-item:nth-child(3) .qnav3d-image{filter:drop-shadow(0 0 5px #64e85a75)}
+.v41-nav[data-nav-style="glass3d"] .nav-item small{
+  font-size:.64rem!important;
+  line-height:1.14!important;
+  color:#f6fbf8!important;
+  font-weight:700!important;
+  text-shadow:0 1px 2px #000a;
+}
+.v41-nav[data-nav-style="glass3d"] .nav-item:focus-visible{outline:3px solid #a4f3ae!important}
+@media(max-width:400px){
+  .v41-nav[data-nav-style="glass3d"]{height:88px!important;padding:4px!important}
+  .v41-nav[data-nav-style="glass3d"] .nav-item .v41-nav-icon-shell,
+  .v41-nav[data-nav-style="glass3d"] .nav-item:nth-child(3) .v41-nav-icon-shell{width:43px!important;height:45px!important}
+  .v41-nav[data-nav-style="glass3d"] .qnav3d-image{width:43px;height:43px}
+  .v41-nav[data-nav-style="glass3d"] .nav-item small{font-size:.59rem!important}
+}
+@media(prefers-reduced-motion:reduce){
+  .v41-nav[data-nav-style="glass3d"] .nav-item,
+  .v41-nav[data-nav-style="glass3d"] .v41-nav-icon-shell{transition:none!important}
+}

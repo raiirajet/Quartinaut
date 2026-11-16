@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.ui.platform.LocalContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -94,7 +95,7 @@ fun NativeRadarScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
     }
     var text by rememberSaveable(uid) {mutableStateOf("")}
     var scope by rememberSaveable(uid) {mutableStateOf("municipality")}
-    val tags=remember(uid){mutableStateListOf<String>()}
+    val tags=rememberSaveable(uid,saver=listSaver<androidx.compose.runtime.snapshots.SnapshotStateList<String>,String>(save={it.toList()},restore={it.toMutableStateList()})){mutableStateListOf<String>()}
     LaunchedEffect(scope,tags.toList()){
         repo.loadEnhancementList("radar.list",mapOf("scope" to scope,"tags" to tags.toList()))
     }
@@ -108,7 +109,7 @@ fun NativeRadarScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
             "area" to doc.str("area"),"cantonCode" to doc.str("cantonCode"))
     }
     val localFallback=!repo.enhancementReady
-    val localOrServer=if(localFallback)localPublicItems else repo.enhancedItems
+    val localOrServer=if(localFallback)localPublicItems else repo.enhancementEntries("radar.list")
     val seenKey="seen_"+uid
     var seenEntries by remember(uid) {
         mutableStateOf(preferences.getStringSet(seenKey,emptySet())?.toSet() ?: emptySet())
@@ -191,7 +192,7 @@ fun NativeRadarScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
                 "Nur bereits geladene öffentliche Beiträge; keine vollständige oder live aktualisierte Suche.",
                 color=PlusMuted,style=MaterialTheme.typography.bodySmall)
         LazyColumn(verticalArrangement=Arrangement.spacedBy(10.dp)) {
-            items(displayed) { row ->
+            items(displayed,key={DocString(it["kind"])+":"+DocString(it["id"])}) { row ->
                 ExtraItem(DocString(row["title"]),DocString(row["description"]),
                     (if(DocString(row["kind"])=="request") "Schwarzes Brett"
                      else DocString(row["kind"]))+" · "+DocString(row["area"])) {
@@ -547,7 +548,7 @@ fun NativeFavoriteScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
         if(repo.enhancementError.isNotBlank()) Text(repo.enhancementError,
             color=Color(0xFFFFB4AB))
         LazyColumn(verticalArrangement=Arrangement.spacedBy(10.dp)) {
-            items(repo.enhancedItems){ row ->
+            items(repo.enhancementEntries("favorites.list"),key={DocString(it["kind"])+":"+DocString(it["id"])}){ row ->
                 ExtraItem(DocString(row["title"]),DocString(row["kind"]),
                     "Öffnen"){
                     navigate(if(row["collection"]=="requests")"board"
@@ -560,7 +561,7 @@ fun NativeFavoriteScreen(repo:QuartinautRepository,navigate:(String)->Unit) {
                     )){repo.loadEnhancementList("favorites.list")}
                 }){Text("Aus Favoriten entfernen",color=PlusAccent)}
             }
-            if(repo.enhancedItems.isEmpty())item {Text("Noch keine Favoriten gespeichert.",color=PlusMuted)}
+            if(repo.enhancementEntries("favorites.list").isEmpty())item {Text("Noch keine Favoriten gespeichert.",color=PlusMuted)}
         }
     }
 }

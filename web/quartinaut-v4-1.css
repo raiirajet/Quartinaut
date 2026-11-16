@@ -1,0 +1,39 @@
+/* Quartinaut 4.1 – Android-inspirierte Einstellungen und wählbare, farbige Navigationsicons */
+.v41-profile-hero{background:linear-gradient(118deg,#103b2f,#1b634a);border:1px solid #347a5e;border-radius:26px;padding:clamp(18px,3vw,30px);color:#fff;position:relative;overflow:hidden;box-shadow:0 14px 32px #103b2b25}
+.v41-profile-hero::before{content:"";position:absolute;width:180px;height:180px;border:35px solid #ffffff09;border-radius:50%;right:-82px;top:-90px;pointer-events:none}
+.v41-profile-hero h1{font:800 clamp(1.55rem,3vw,2.2rem)/1.18 system-ui,sans-serif;margin:7px 0 4px;color:#fff;letter-spacing:-.045em}
+.v41-profile-hero>p{font-size:.95rem;margin:0 0 20px;color:#d8eee1}
+.v41-eyebrow{font-size:.7rem;letter-spacing:.17em;color:#b6e6c3;font-weight:800}
+.v41-user-card{display:flex;align-items:center;gap:14px;border-radius:19px;background:#f0f9f2;color:#173c2f;padding:16px;min-width:0;position:relative}
+.v41-avatar{width:62px;height:62px;flex:0 0 62px;display:grid;place-items:center;border-radius:50%;background:linear-gradient(150deg,#37ad75,#15513f);color:white;border:3px solid #fff;font:800 1.35rem system-ui,sans-serif}
+.v41-user-information{min-width:0;display:flex;flex-direction:column;gap:2px;flex:1}.v41-user-information>strong{font:800 1.08rem system-ui,sans-serif;color:#153f2c;overflow-wrap:anywhere}.v41-user-information>small{font:.8rem system-ui,sans-serif;color:#4c6656}.v41-user-information .badge{font-size:.67rem}.v41-user-information .badges{margin:0}
+.v41-profile-edit{display:inline-flex;align-items:center;gap:7px;border:0;background:#c6edcf;color:#144932;border-radius:13px;padding:12px;font-weight:700;cursor:pointer;min-height:44px}.v41-profile-edit svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8}
+.v41-settings-page{max-width:960px;margin:16px auto 28px}.v41-group-label{font:800 1rem system-ui,sans-serif;color:var(--primary-dark);margin:23px 8px 8px;letter-spacing:-.025em}
+.v41-setting-group{border-radius:21px;border:1px solid var(--line);background:var(--surface);overflow:hidden;box-shadow:0 6px 22px #0d372014}
+.v41-setting,.v41-setting-link{display:block;background:transparent;border:none;color:var(--text);margin:0;width:100%;font:inherit}
+.v41-setting+.v41-setting,.v41-setting-link+.v41-setting,.v41-setting+.v41-setting-link,.v41-setting-link+.v41-setting-link{border-top:1px solid var(--line)}
+.v41-setting summary,.v41-setting-link{min-height:77px;padding:12px 17px;display:flex;gap:13px;align-items:center;text-align:left;cursor:pointer;list-style:none}
+.v41-setting summary::-webkit-details-marker{display:none}
+.v41-setting summary:hover,.v41-setting-link:hover{background:color-mix(in srgb,var(--primary) 4%,transparent)}
+.v41-setting summary:focus-visible,.v41-setting-link:focus-visible,.v41-profile-edit:focus-visible{outline:3px solid #4dbb86;outline-offset:-3px}
+.v41-setting-icon{display:grid;place-items:center;flex:0 0 43px;width:43px;height:43px;border-radius:14px;color:white}
+.v41-setting-icon svg{width:23px;height:23px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.v41-green{background:linear-gradient(145deg,#32b36e,#168655)}.v41-purple{background:linear-gradient(145deg,#a88cf0,#7855ba)}.v41-amber{background:linear-gradient(145deg,#ffd45e,#e5a522);color:#422f00}.v41-blue{background:linear-gradient(145deg,#48b5f8,#2382cc)}.v41-orange{background:linear-gradient(145deg,#ffa853,#f26b1c)}.v41-coral{background:linear-gradient(145deg,#fa8d99,#e35468)}
+.v41-setting-text{display:grid;flex:1;gap:3px;min-width:0}.v41-setting-text strong{font:750 .98rem/1.25 system-ui,sans-serif;color:var(--text)}.v41-setting-text small{font:.79rem/1.35 system-ui,sans-serif;color:var(--muted)}
+.v41-chevron{font:400 1.7rem system-ui,sans-serif;color:var(--muted);transition:transform .18s ease;line-height:1;align-self:center}
+.v41-setting[open]>.v41-setting-content{display:block}.v41-setting[open]>.v41-setting-content:empty{display:none}.v41-setting[open]>summary .v41-chevron{transform:rotate(90deg)}
+.v41-setting-content{padding:4px 16px 18px;border-top:1px solid var(--line);background:color-mix(in srgb,var(--surface) 93%,var(--bg))}
+.v41-setting-content>.card,.v41-setting-content>.grid,.v41-setting-content>section{margin-top:14px}.v41-setting-content .card{max-width:100%;box-shadow:none}.v41-setting-content .grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.v41-setting-link{cursor:pointer}.v41-setting-link .v41-chevron{margin-left:auto}
+.v41-design-picker{display:grid;gap:12px;padding:14px 4px}.v41-design-picker>label,.v41-subheading{font-weight:700;color:var(--text);font-size:.9rem}.v41-design-picker>select{width:100%;max-width:460px;min-height:47px;border:1px solid var(--line-strong);border-radius:12px;background:var(--surface);color:var(--text);padding:8px}
+.v41-profile-footer{text-align:center;color:var(--muted);font-size:.76rem;margin:17px}
+/* Bottom navigation layout. The 3D image style is the only supported navigation design. */
+.v41-nav{height:82px!important;max-width:560px!important;padding:6px!important}
+.v41-nav .nav-item{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:2px!important;height:100%!important;min-height:0!important;padding:3px 1px!important;border-radius:16px!important;color:#e9f2ed!important}
+.v41-nav .nav-item.active{background:#ffffff17!important;color:#fff!important}
+.v41-nav .nav-item .v41-nav-icon-shell{width:38px;height:36px;display:grid;place-items:center;border-radius:13px;transition:background .16s ease,transform .16s ease;flex-shrink:0}
+.v41-nav .nav-item small{font:650 .7rem/1.1 system-ui,sans-serif!important;color:inherit!important;text-align:center;white-space:nowrap}
+.v41-nav .v2-create-nav{background:transparent!important;box-shadow:none!important}
+@media(max-width:600px){.v41-setting-content .grid.two{grid-template-columns:minmax(0,1fr)}.v41-nav{width:calc(100% - 18px)!important;bottom:calc(6px + env(safe-area-inset-bottom,0px))!important}.v41-settings-page{margin-inline:-3px}}
+@media(max-width:390px){.v41-setting summary,.v41-setting-link{padding:11px 12px;gap:10px}.v41-setting-text strong{font-size:.88rem}.v41-setting-text small{font-size:.72rem}.v41-user-card{padding:12px;gap:10px}.v41-avatar{width:49px;height:49px;flex-basis:49px}.v41-profile-edit{padding:9px}.v41-profile-edit span{display:none}.v41-nav .nav-item small{font-size:.62rem!important}}
+@media(prefers-reduced-motion:reduce){.v41-chevron,.v41-nav .nav-item .v41-nav-icon-shell{transition:none!important}}

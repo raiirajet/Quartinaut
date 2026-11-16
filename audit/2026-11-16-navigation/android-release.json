@@ -1,0 +1,64 @@
+{
+  "versionCode": 34,
+  "versionName": "5.11.7-navigation-preview",
+  "packageName": "ch.quartinaut.nativeapp",
+  "debuggable": false,
+  "certificateSha256": "A7F498276029BC545335FA8D9A12140FF5FEEEB215AC97AA9F4193F1BBE3F6AE",
+  "apkSha256": "51789f504ef127820dfbc007e696b39fa038eb6119e1a8e486524a505637127b",
+  "apkBytes": 93806187,
+  "bundleSha256": "09c1cfc7002a7828672806d25875c75aa81f7398e25d51a1c41e76aab24c7bbf",
+  "bundleBytes": 68573338,
+  "androidLint": {
+    "errors": 0,
+    "warnings": 16
+  },
+  "androidUnitTests": [
+    {
+      "suite": "ch.quartinaut.nativeapp.NativeNavigationStateTest",
+      "passed": 9,
+      "cases": [
+        "oldBackEntriesStillOpenAndInvalidSavedEntriesFailSafely",
+        "refreshKeepsRowsAndFailureDoesNotEraseThem",
+        "simultaneousScreensNeverReplaceEachOthersRows",
+        "backEntriesRetainTheOriginalPostAndMapContext",
+        "lateResponsesCannotRepopulateAnAccountAfterLogout",
+        "aReadStartedBeforeAWriteCannotOverwriteTheRefreshedStatus",
+        "completingAnOldRequestCannotNavigateAwayFromTheCurrentMenu",
+        "lateHomeCannotReplaceNavigationOrRestoredBackstack",
+        "mapOrChatBackNavigationInvalidatesOlderCallbacksOnTheSamePage"
+      ]
+    },
+    {
+      "suite": "ch.quartinaut.nativeapp.NativeAudienceLocationTest",
+      "passed": 4,
+      "cases": [
+        "oldOrImpreciseFixesAreNotReportedAsCurrentLocations",
+        "streetLookupNeverNeedsAnAddressLineOrHouseNumber",
+        "requestRadiusNeedsAValidFixAndSupportedDistance",
+        "onlyTheVerifiedRequestServiceEnablesAdditionalScopes"
+      ]
+    },
+    {
+      "suite": "ch.quartinaut.nativeapp.NativePermissionsTest",
+      "passed": 6,
+      "cases": [
+        "android12DoesNotRequestAndroid13NotificationPermission",
+        "olderAndroidCanAskForLocationWithoutCameraOrNotificationDialogs",
+        "deviceWithoutCameraDoesNotAskForCameraAccess",
+        "approximateLocationIsAcceptedWithoutRequestingAnUpgrade",
+        "grantedPermissionsNeverProduceAnotherSystemRequest",
+        "android13RequestsAllSupportedMissingPermissions"
+      ]
+    },
+    {
+      "suite": "ch.quartinaut.nativeapp.NativeScrollRestorationTest",
+      "passed": 4,
+      "cases": [
+        "longPageReturnsToItsPreviousHeightAndRetainsFields",
+        "listPositionSurvivesDetailAndActivityStateRestoration",
+        "differentScreensAndAccountsHaveIndependentPositions",
+        "completedFormsAreForgottenWhileTheMenuPositionIsRetained"
+      ]
+    }
+  ]
+}

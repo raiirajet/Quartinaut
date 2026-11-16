@@ -1,0 +1,42 @@
+name: Android navigation and UI state
+on:
+  push:
+    branches: [codex/web-app-parity]
+    paths: ['app/**', 'build.gradle.kts', 'settings.gradle.kts', 'gradle.properties', '.github/workflows/native-navigation.yml']
+  pull_request:
+    paths: ['app/**', 'build.gradle.kts', 'settings.gradle.kts', 'gradle.properties', '.github/workflows/native-navigation.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  navigation:
+    runs-on: ubuntu-24.04
+    env:
+      JAVA_TOOL_OPTIONS: -XX:ActiveProcessorCount=4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Android SDK 35
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          BIN="$(find "$SDK" -type f -name sdkmanager -print -quit)"
+          test -n "$BIN"
+          "$BIN" --sdk_root="$SDK" "platforms;android-35" "build-tools;35.0.0"
+      - name: Unit, Compose restoration and Android lint
+        run: gradle --no-daemon :app:testDebugUnitTest :app:lintDebug
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: quartinaut-android-navigation-reports
+          path: |
+            app/build/reports/tests/testDebugUnitTest/
+            app/build/test-results/testDebugUnitTest/
+            app/build/reports/lint-results-debug.*

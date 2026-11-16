@@ -13,6 +13,7 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -34,8 +35,8 @@ private val ChatMuted: Color @Composable get() = MaterialTheme.colorScheme.onSur
 
 @Composable
 fun NativePrivateChatsPage(repo: QuartinautRepository) {
-    var filter by remember {mutableStateOf("")}
-    var draft by remember(repo.chatId) {mutableStateOf("")}
+    var filter by rememberSaveable {mutableStateOf("")}
+    var draft by rememberSaveable(repo.chatId) {mutableStateOf("")}
     var menuOpen by remember {mutableStateOf(false)}
     var confirmBlock by remember {mutableStateOf(false)}
     var reportOpen by remember {mutableStateOf(false)}

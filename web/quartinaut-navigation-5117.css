@@ -1,0 +1,4 @@
+/* Updates never replace an active editor automatically. */
+#qn-view-update{position:fixed;z-index:55;right:16px;bottom:106px;max-width:min(400px,calc(100vw - 32px));display:grid;gap:12px;padding:18px;border:1px solid var(--line-strong);border-radius:18px;background:var(--surface);color:var(--text);box-shadow:0 8px 28px #12332218;font-size:14px}
+#qn-view-update button{font-size:14px}
+@media(min-width:1024px){#qn-view-update{right:32px;bottom:24px}}

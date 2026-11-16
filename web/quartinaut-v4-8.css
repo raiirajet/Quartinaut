@@ -1,0 +1,9 @@
+/* 4.8 Accessibility polish. Does not change the mobile or desktop layout. */
+.v48-skip-link{position:fixed;top:-100px;left:12px;z-index:100100;padding:12px 18px;background:#fff;color:#15352d;border:2px solid #15352d;border-radius:8px}
+.v48-skip-link:focus{top:12px}
+:where(a,button,input,select,textarea,[tabindex]):focus-visible{outline:3px solid #f5a623;outline-offset:3px}
+.v48-search-toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:12px 0}
+.v48-area-filter{min-width:0;margin:0;padding:0;border:0}.v48-area-filter legend{font-size:.92rem;font-weight:600}
+.v48-search-toolbar label{font-weight:600}
+.v48-search-toolbar select{min-height:44px;min-width:190px;border-radius:9px;border:1px solid var(--border,#829c91);background:var(--surface,#fff);color:var(--text,#17342f);padding:8px}
+@media(prefers-reduced-motion:reduce){html:focus-within{scroll-behavior:auto!important}*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}

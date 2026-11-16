@@ -1,0 +1,41 @@
+name: Web and Android parity
+on:
+  pull_request:
+    paths: ['web/**', 'firebase.hosting.json', 'app/src/main/java/ch/quartinaut/nativeapp/NativeQuartierNavigation.kt', '.github/workflows/web-parity.yml']
+  push:
+    branches: ['codex/web-app-parity']
+    paths: ['web/**', 'firebase.hosting.json', '.github/workflows/web-parity.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  web:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+        working-directory: web
+      - run: npm run build && git diff --exit-code -- app-release-5117.js
+        working-directory: web
+      - run: npm run check && npm test
+        working-directory: web
+      - run: npx playwright install --with-deps chromium
+        working-directory: web
+      - name: Serve and exercise the Web client with isolated fixtures
+        run: |
+          python3 -m http.server 5114 --bind 127.0.0.1 --directory web > /tmp/quartinaut-web-http.log 2>&1 &
+          curl --fail --retry 5 --retry-connrefused --retry-delay 1 http://127.0.0.1:5114/ > /dev/null
+          node web/tests/browser.cjs
+          node web/tests/navigation.cjs
+          node web/tests/cache-upgrade.cjs
+          node web/tests/site-review.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: quartinaut-web-browser-screenshots
+          path: artifacts/

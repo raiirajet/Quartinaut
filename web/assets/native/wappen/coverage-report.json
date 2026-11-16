@@ -1,0 +1,17 @@
+{
+  "register_date": "2026-01-01",
+  "municipalities": 2110,
+  "coats_expected": 2109,
+  "coats_present": 2109,
+  "historical_2018_fallbacks": 1614,
+  "no_coat_communities": {
+    "6809": {
+      "name": "Haute-Ajoie",
+      "reason": "Gemeindelogo statt eigenem Gemeindewappen",
+      "logo_bundled": true,
+      "source": "https://hauteajoie.ch/"
+    }
+  },
+  "source_missing": [],
+  "asset_missing": []
+}

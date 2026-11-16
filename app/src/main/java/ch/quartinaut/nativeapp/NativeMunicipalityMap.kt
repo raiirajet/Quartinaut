@@ -233,7 +233,8 @@ fun NativeMunicipalityMap(
     val imageLoader=remember(context) { wappenLoader(context) }
     var wappenLoading by remember(canton.code) { mutableStateOf(false) }
     var zoom by remember(canton.code) { mutableFloatStateOf(1f) }
-    val coats by produceState<Map<String,Bitmap>>(initialValue=emptyMap(),canton.code) {
+    var coats by remember { mutableStateOf<Map<String,Bitmap>>(emptyMap()) }
+    LaunchedEffect(canton.code) {
         wappenLoading=true
         val displayed=java.util.Collections.synchronizedMap(mutableMapOf<String,Bitmap>())
         val priority=canton.municipalities.sortedBy {
@@ -250,12 +251,12 @@ fun NativeMunicipalityMap(
                         wappenBitmap(context,imageLoader,packaged)
                     }.getOrNull() ?: continue
                     displayed[municipality.bfs]=bitmap
-                    if(displayed.size<=3 || displayed.size%6==0) value=displayed.toMap()
+                    if(displayed.size<=3 || displayed.size%6==0) coats=displayed.toMap()
                 }
             }
-            value=displayed.toMap()
+            coats=displayed.toMap()
             // Do not contact Wikidata if all coats came from the APK.
-            if(displayed.size==canton.municipalities.size) return@produceState
+            if(displayed.size==canton.municipalities.size) return@LaunchedEffect
             val urls=withContext(Dispatchers.IO) {
                 queryCantonWappen(canton,context)
             }
@@ -273,21 +274,22 @@ fun NativeMunicipalityMap(
                             if(bitmap!=null) {
                                 displayed[municipality.bfs]=bitmap
                                 if(displayed.size<=3 || displayed.size%6==0)
-                                    value=displayed.toMap()
+                                    coats=displayed.toMap()
                             }
                         }
                     }
                 }.joinAll()
             }
-            value=displayed.toMap()
+            coats=displayed.toMap()
         } catch (_:Exception) {
-            value=displayed.toMap()
+            coats=displayed.toMap()
         } finally {
             wappenLoading=false
         }
     }
-    val regions by produceState<List<MapMunicipality>?>(initialValue=null,canton.code) {
-        value=withContext(Dispatchers.IO) {
+    var regions by remember { mutableStateOf<List<MapMunicipality>?>(null) }
+    LaunchedEffect(canton.code) {
+        regions=withContext(Dispatchers.IO) {
             val start=android.os.SystemClock.elapsedRealtime()
             val loaded=runCatching { loadFeatures(canton,context) }.getOrDefault(emptyList())
             NativePerformanceMetrics.record(context,"map",

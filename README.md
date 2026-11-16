@@ -2,6 +2,16 @@
 
 **Quartinaut Native Android 5.11.4 Location Preview · Build 33 · Kotlin + Jetpack Compose.**
 
+## Website 5.11.5 · mit Android Build 33 verbunden
+
+Der Web-Client für `quartinaut.web.app` liegt unter `web/`. Ab Version 5.11.5
+nutzt er auf Desktop-Bildschirmen breite Inhalte, Navigation oben, mehrere
+Spalten und eine Seitenleiste. Er verwendet
+App-Logo und Symbole, fünf Aufgabenbereiche und dieselben Firebase-Dienste für
+Konten, Beiträge, Favoriten, Hintergrund und private Nachrichten.
+Siehe [Web-Dokumentation](web/README.md) und die separate
+Hosting-Konfiguration `firebase.hosting.json`.
+
 ## Standort und regionale Anliegen
 
 Build 33 ergänzt GPS-/Netzwerkabfrage mit Fortschritt und Zeitlimit sowie die

@@ -1,0 +1,340 @@
+{
+  "sourceAndroidCommit": "1ce4942ac2800cb69a1b6bf60882e55f09198992",
+  "sourceAndroidBuild": 33,
+  "previousHostingVersion": "sites/quartinaut/versions/ecfb5a780cca5bcf",
+  "previousHostingConfig": {
+    "headers": [
+      {
+        "headers": {
+          "X-Content-Type-Options": "nosniff",
+          "Referrer-Policy": "strict-origin-when-cross-origin"
+        },
+        "glob": "/**"
+      }
+    ]
+  },
+  "capturedPublicFiles": [
+    {
+      "path": "/__/firebase/init.js",
+      "bytes": 478,
+      "sha256": "0bc18b2938359d47cbae9465f3dd82a8f085e39ed6af4ac8424856c9f11d1892"
+    },
+    {
+      "path": "/__/firebase/init.json",
+      "bytes": 301,
+      "sha256": "ba8c93bd6cefb32e16d3ab5ef36731cc561ba949faea7d78370a6cf2dba8259b"
+    },
+    {
+      "path": "/app-release-470.js",
+      "bytes": 609459,
+      "sha256": "331c33b29648d1db1c545fdf49db63ed7edb608c2ff55d978bd0432617b0fe01"
+    },
+    {
+      "path": "/app-release-471.js",
+      "bytes": 610453,
+      "sha256": "bab0a347c241c0284522ea4722a93be368e5c82d0c2ea08ac203ad36e1a16eab"
+    },
+    {
+      "path": "/app-release-480.js",
+      "bytes": 611349,
+      "sha256": "e9cae1d02fdd3f31edc759520237427742a0763fac4d7ad2ddf5ea12c5316b5f"
+    },
+    {
+      "path": "/app-release-500.js",
+      "bytes": 625481,
+      "sha256": "a763327fc74ff301e743671afdc8485e32f622b12c20854607012a6e04ffc21f"
+    },
+    {
+      "path": "/app-release-530.js",
+      "bytes": 640796,
+      "sha256": "8f0d949be7903de532d7aaa021b1ae4a0a98e5b0791b98f157686d57ff1d8f82"
+    },
+    {
+      "path": "/app-release-540.js",
+      "bytes": 644195,
+      "sha256": "b8f905f4a848fa8bbd96e650e71cb1bf78cea8cc62ab2169388ea90b64db3cdd"
+    },
+    {
+      "path": "/app-release-541.js",
+      "bytes": 644458,
+      "sha256": "421d2092182ed0573dbe38a3d0a910f88ac898e766fac88f3686e566ebfc0940"
+    },
+    {
+      "path": "/app-release-542.js",
+      "bytes": 648463,
+      "sha256": "433a14ae35929e139e6ae40bd7410309edbd72bc9461d7ed8cc5543d5acca733"
+    },
+    {
+      "path": "/app-settings-463.js",
+      "bytes": 595959,
+      "sha256": "d549a5df4261615a001e9419e1ae4619a3f5e36257636e39a779928a86ef06ee"
+    },
+    {
+      "path": "/app-startup-463.js",
+      "bytes": 595959,
+      "sha256": "d549a5df4261615a001e9419e1ae4619a3f5e36257636e39a779928a86ef06ee"
+    },
+    {
+      "path": "/app.js",
+      "bytes": 609459,
+      "sha256": "331c33b29648d1db1c545fdf49db63ed7edb608c2ff55d978bd0432617b0fe01"
+    },
+    {
+      "path": "/assets/data/ch-locations-2026.json",
+      "bytes": 250787,
+      "sha256": "bf2053a04e457cf0916897054139b0298cb2032598ec615d8887dfc51c99c1ec"
+    },
+    {
+      "path": "/assets/icons/icon-192.png",
+      "bytes": 17564,
+      "sha256": "43f4a9c255fd11a7b0aa25a4b8db8929c1f35137355eaa89de7b8fab67dc668e"
+    },
+    {
+      "path": "/assets/icons/icon-512.png",
+      "bytes": 63576,
+      "sha256": "48655d226f192dc1e80ef4cd1633ee973dcddea4ab0311fe39e0df627b265088"
+    },
+    {
+      "path": "/assets/icons/navigation/chats.png",
+      "bytes": 60843,
+      "sha256": "c4720e92cebc169c02d3166cd8806e810f755f7c42fdeb6a59c3b0d7f1ad3376"
+    },
+    {
+      "path": "/assets/icons/navigation/neu.png",
+      "bytes": 64885,
+      "sha256": "00cbaa306d7f0e24278f41f398c5eae355c1398ed7acd620989ec1b38af29a61"
+    },
+    {
+      "path": "/assets/icons/navigation/profil.png",
+      "bytes": 64342,
+      "sha256": "bd5eb64676609df775b4223071d83ebbac5cfcb27eb08bb5fead07dc028758d6"
+    },
+    {
+      "path": "/assets/icons/navigation/quartier.png",
+      "bytes": 76320,
+      "sha256": "4f2422490bf0bd4c95311a2e34a076afccf375e475ebea794183a6f9f3efe333"
+    },
+    {
+      "path": "/assets/icons/navigation/start.png",
+      "bytes": 67834,
+      "sha256": "a8059a39e9607830f795ea79cb00bbf9e25aa16fe36f83587048089c39766526"
+    },
+    {
+      "path": "/assets/icons/quartinaut-logo.svg",
+      "bytes": 361593,
+      "sha256": "fbe5627e8f63a71e240b026580ab06222d9ba6b4cfd4ed26f8e48301e1a22013"
+    },
+    {
+      "path": "/firebase-config.js",
+      "bytes": 1118,
+      "sha256": "56e95da4f3bb45cae112e5166cd1a851029adc1b7fe0cdd75e76aa4c2121c44b"
+    },
+    {
+      "path": "/firebase-messaging-sw.js",
+      "bytes": 2340,
+      "sha256": "c01ab77d86cd808bb4275c3b0fc94ddaa4540597db0ebcb8e8fac8a0b43ec959"
+    },
+    {
+      "path": "/index.html",
+      "bytes": 8523,
+      "sha256": "30bddf91962505257e3768734167c009c40fae16f679d64c1e497e72025972cd"
+    },
+    {
+      "path": "/manifest.webmanifest",
+      "bytes": 2120,
+      "sha256": "5a7c58921c96f1871abf43dd58952359703092126843a08598b151a8975470de"
+    },
+    {
+      "path": "/offline.html",
+      "bytes": 949,
+      "sha256": "0d15c18267719027dc86b8f94999cd498bd17e5529a3c49b3121a3ba5f067998"
+    },
+    {
+      "path": "/quartinaut-bundle-48.css",
+      "bytes": 155075,
+      "sha256": "b49186ef23f6e05702b023f7f1492b9e491425498961b8755e18a7aa46bd440c"
+    },
+    {
+      "path": "/quartinaut-bundle-50.css",
+      "bytes": 156880,
+      "sha256": "3729fb9cae2edafb1ac4575c48ce4a63a2a8a189561b6831d51489cfc25ddb7e"
+    },
+    {
+      "path": "/quartinaut-nav-3d.css",
+      "bytes": 2527,
+      "sha256": "6ffb4e2a28a86e9f5f0d1d11d8a6cb896d64747a3c4cb172022d54327d764f80"
+    },
+    {
+      "path": "/quartinaut-v2.css",
+      "bytes": 18895,
+      "sha256": "b607016d00074e52d6c62e40650e388aeeca5cf88d460c311ecfc19a03043398"
+    },
+    {
+      "path": "/quartinaut-v21.css",
+      "bytes": 3597,
+      "sha256": "854e246d7b5ca3b0b7ca1678c569a7cc24bfb28bfb32e1ef9bb8aaf46209e150"
+    },
+    {
+      "path": "/quartinaut-v3.css",
+      "bytes": 6863,
+      "sha256": "ff9ce519c634045d74b96ee5ea679740cecf2d77d6ffe388dfda9f18f1638953"
+    },
+    {
+      "path": "/quartinaut-v4-1.css",
+      "bytes": 6578,
+      "sha256": "5afc26ebcb1c8e727c243b1064d10c4a6d8d47892892812a6d8cccaf53cf0a19"
+    },
+    {
+      "path": "/quartinaut-v4-2.css",
+      "bytes": 12784,
+      "sha256": "394aac1aa3226f57fcc37a3b359505b3baf690c7219276eb9df2dbabd9383328"
+    },
+    {
+      "path": "/quartinaut-v4-3.css",
+      "bytes": 1917,
+      "sha256": "e7badd7b6a34d68ed610060833dacd70b432d640098de1e6ffd20db864e9df0d"
+    },
+    {
+      "path": "/quartinaut-v4-4.css",
+      "bytes": 7199,
+      "sha256": "5ed219c24221833c4f8f7821a71399ee2ff37e9aafae03da35d9fdd8dbd3736b"
+    },
+    {
+      "path": "/quartinaut-v4-5-2.css",
+      "bytes": 1065,
+      "sha256": "6626866b97b843cfbc9a710cc948d4487ffc8e24210a7c7595a3a20478b398b4"
+    },
+    {
+      "path": "/quartinaut-v4-5-3.css",
+      "bytes": 3196,
+      "sha256": "9f4cc2f95c12d979693603340ead253f917ef81aba402739d84ee4faba27388a"
+    },
+    {
+      "path": "/quartinaut-v4-6-1.css",
+      "bytes": 1775,
+      "sha256": "280af9fd7a42ede41d3ed55503aef7ab65ac7fa119b15b70dd5195d932ac114f"
+    },
+    {
+      "path": "/quartinaut-v4-6-2.css",
+      "bytes": 3422,
+      "sha256": "d8121c2fdbf2e1fe6484b7998462066e75ac7c8f02370b0d36be6936571b051e"
+    },
+    {
+      "path": "/quartinaut-v4-6.css",
+      "bytes": 3697,
+      "sha256": "32636ae6ca821380fa7414c9b945883a7b6b471878aa77a0b7aa06a1ce00db29"
+    },
+    {
+      "path": "/quartinaut-v4-7.css",
+      "bytes": 1839,
+      "sha256": "2759a3dbf170a8f8445d880f77fdcd2cc8e0e949061107f27055bee9e7c3e0fc"
+    },
+    {
+      "path": "/quartinaut-v4-8.css",
+      "bytes": 1029,
+      "sha256": "ed751482422d4563ec91d193c6d2d4d0fe5da0ede03a78058cfd2e97631ee806"
+    },
+    {
+      "path": "/quartinaut-v4.css",
+      "bytes": 6840,
+      "sha256": "9533760548d9fc4de157169981bcf62bed4c86868fce15cef76f65bada58dc3c"
+    },
+    {
+      "path": "/quartinaut-v53.css",
+      "bytes": 9987,
+      "sha256": "697a807f76fec631c557eda975b151d9df5a23283fff718c6ee314c0045fb40a"
+    },
+    {
+      "path": "/quartinaut-v54.css",
+      "bytes": 8440,
+      "sha256": "b15c091f5cd30d5b02aed11fc073cb1c6ea1675c03a867ff04e976754879c9b9"
+    },
+    {
+      "path": "/src/v2/preferences.js",
+      "bytes": 2604,
+      "sha256": "83fdac10b84240f70927181ac53746ce402c4de9d84fb55c97804fc26d308c10"
+    },
+    {
+      "path": "/src/v2/pwa-updates.js",
+      "bytes": 2749,
+      "sha256": "cc06e96ff678b4e6cfc792e8dbb69a296ec9fe73f377c046bd3f7a9916a94737"
+    },
+    {
+      "path": "/src/v2/wizard.js",
+      "bytes": 3529,
+      "sha256": "7926c901e5805c20c841d45e82a43cec22b84f82537d1dcc9e6daaac71d0c786"
+    },
+    {
+      "path": "/src/v3/community.js",
+      "bytes": 4081,
+      "sha256": "330676ca27bd4291d0c8029bb493eaad4cda4f58ca4ba52712238652f679d56e"
+    },
+    {
+      "path": "/src/v46/features.js",
+      "bytes": 5383,
+      "sha256": "df5a463eef90bfb644668f7102deb086941b5139b2ba8515c27a4f6bad4b528a"
+    },
+    {
+      "path": "/src/v462/dashboard-background.js",
+      "bytes": 2705,
+      "sha256": "6480ad894e3c8bd6e7f305651dc408a8edff520a1988a3395d14c9095fbd813f"
+    },
+    {
+      "path": "/src/v47/dashboard-editor.js",
+      "bytes": 5955,
+      "sha256": "cea46738d2688ebe652b9ff7a19667ec270e69e9751e944426c3214b48ac1878"
+    },
+    {
+      "path": "/src/v47/sync.js",
+      "bytes": 6821,
+      "sha256": "0ecd3e15366c1be198c2dd97e4f224f461b27c746a2f5b5edf43c5a9f998680a"
+    },
+    {
+      "path": "/src/v48/accessibility.js",
+      "bytes": 979,
+      "sha256": "35f0bef5d558173928db1b8db348308997f50ad032c849774073d24df41aca0e"
+    },
+    {
+      "path": "/src/v50-ics.mjs",
+      "bytes": 1338,
+      "sha256": "6e2dffe72a7b497e6080e4772ce7b860403983c3f18a5c380a9716557599b8ff"
+    },
+    {
+      "path": "/src/v53/presentation.mjs",
+      "bytes": 3961,
+      "sha256": "97b43ddf8c9b97c087995ba4146834f7142b3871d8a9dbbda4be70d22404ccfd"
+    },
+    {
+      "path": "/src/v54/presentation.mjs",
+      "bytes": 4077,
+      "sha256": "205db04e4be170c1a17d56fca893fe6d02811730cb92fcdada6c21db2c1c0d83"
+    },
+    {
+      "path": "/src/v54/swiss-map.mjs",
+      "bytes": 20583,
+      "sha256": "06bd02621a4c090ab9bea3dda4a1dd42a308662ac4a425247b2f33524efacd7b"
+    },
+    {
+      "path": "/src/v54/wappen.mjs",
+      "bytes": 4698,
+      "sha256": "397b1b07329d8c93ef7be1e0a099593378cf3a9737dbf70730bbc0e9329034f3"
+    },
+    {
+      "path": "/styles.css",
+      "bytes": 71152,
+      "sha256": "7f28dc04bb66881f8cadbeab7f5835de7b31259a234a44221614c339e7b31a50"
+    },
+    {
+      "path": "/sw.js",
+      "bytes": 3003,
+      "sha256": "17cab709a72544fb33afe64baaf827e160aab5aff740a075a46354d6d25710f6"
+    },
+    {
+      "path": "/theme-bootstrap.js",
+      "bytes": 536,
+      "sha256": "3e0f8c90699c2f8a9b7b80c6e22f4fa588e32d72ee6f9a20430237beec9731c2"
+    }
+  ],
+  "scope": "Hosting only; no Firebase Auth configuration, Firestore rules, Storage rules, functions or Android binaries changed",
+  "backendRulesSha256": "0cd45c3bd3bab65f96bfb5db9f6c78cdd335562ba76a5196b0bb1fe1d50ef7a5"
+}

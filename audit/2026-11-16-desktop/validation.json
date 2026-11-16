@@ -1,0 +1,28 @@
+{
+  "baseCommit": "fe3a8648f490c1fb0d5608fc9319431cde21219d",
+  "webVersion": "5.11.5",
+  "androidBuild": 33,
+  "unitTestsPassed": 13,
+  "browserScenariosPassed": 17,
+  "installedCacheUpgradeScenariosPassed": [
+    "5.4.2 -> 5.11.5",
+    "5.11.4 -> 5.11.5"
+  ],
+  "viewports": [
+    360,
+    390,
+    768,
+    1024,
+    1280,
+    1440,
+    1920
+  ],
+  "breakpoint": 1024,
+  "maximumContentWidth": 1760,
+  "appAndBackendChanged": false,
+  "scope": "Website layout, navigation placement, home columns, listing grids, desktop inbox; shared Firebase behavior retained",
+  "bundleSha256": "b3b4dfd83968e65dc45e198e129531cc20ab90a54e4ef891caedeb1b80c89d1a",
+  "desktopCssSha256": "747cc20a839ad0e2ef9bab12dfcf402791aaad8b7683541b45d1b034cdee5de0",
+  "fixtureBasedAuthenticatedTests": true,
+  "physicalTwoDeviceGpsCameraTests": false
+}

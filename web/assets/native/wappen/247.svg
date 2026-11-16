@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+<svg id="b" width="204.35" height="239.36" version="1.0" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+ <path d="m1 1 3.6791 154.56c2.6279 110.4 192.36 110.4 194.99 0l3.6791-154.56z" fill="#316bc6" stroke="#000" stroke-width="2"/>
+ <g id="a" stroke="#000" stroke-width="1px">
+  <path d="m21.869 118.57c11.806 1.6768 20.295-6.4685 22.194-17.717 5.532-32.759 40.043 8.9312 39.717 31.011-0.70533 47.949-46.47 45.632-31.487 22.139-25.121 4.7289-24.437 17.515-23.514 21.915 6.8872 32.837 68.052 20.896 65.026-42.338-3.5105-73.347-62.119-101.95-77.198-72.65-12.537 24.361 14.024 37.898 5.2628 57.64z" fill="#fde900" stroke-linejoin="round"/>
+  <path d="m42.069 73.009c39.959-1.5109 70.82 91.104 17.207 108.23" fill="none" stroke-linecap="round"/>
+ </g>
+ <use transform="matrix(-1 0 0 1 204.35 0)" width="248.03149" height="248.03149" stroke="#000000" xlink:href="#a"/>
+ <path d="m102.17 228.12c4.3786-9.3065 21.388-14.492 22.162-30.456 0.94938-19.598-14.334-14.991-13.114-67.585 0.76008-32.766 18.517-58.451 17.863-79.159-0.90372-28.618-21.175-23.528-26.911-41.1-5.7352 17.573-26.007 12.483-26.911 41.1-0.65394 20.708 17.103 46.393 17.863 79.159 1.22 52.595-14.063 47.988-13.114 67.585 0.77335 15.964 17.783 21.15 22.162 30.456z" fill="#fde900" stroke="#000" stroke-linejoin="round" stroke-width="1px"/>
+ <path d="m102.17 17.399v205.72" fill="none" stroke="#000" stroke-linecap="round" stroke-width=".99921"/>
+ <rect x="72.125" y="122.88" width="60.099" height="21.945" fill="#fde900" stroke="#000" stroke-linejoin="round" stroke-width="1px"/>
+ <rect x="66.656" y="129.12" width="71.038" height="9.4762" rx="4.7381" ry="4.7381" fill="#fde900" stroke="#000" stroke-width="1px"/>
+</svg>

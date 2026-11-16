@@ -366,9 +366,9 @@ internal fun MunicipalityCoat(
     bfs:String?=null, cantonCode:String?=null
 ) {
     val context=LocalContext.current
-    val state by produceState<Pair<Boolean,Bitmap?>>(initialValue=false to null,
-        url,bfs,cantonCode) {
-        value=withContext(Dispatchers.IO) {
+    var state by remember { mutableStateOf<Pair<Boolean,Bitmap?>>(false to null) }
+    LaunchedEffect(url,bfs,cantonCode) {
+        state=withContext(Dispatchers.IO) {
             val local=bfs?.let {bundledWappenAsset(context,it)}
                 ?: cantonCode?.let(::bundledCantonWappenAsset)
             // Bundled coats are authoritative for display; don't wait for
@@ -425,8 +425,9 @@ internal suspend fun wappenBitmap(context:Context,loader:ImageLoader,url:String)
 @Composable
 internal fun NativeMunicipalityFactCard(municipality:Municipality,canton:Region,
     cachedWappen:String?=null) {
-    val facts by produceState<MunicipalityFacts?>(initialValue=null,municipality.bfs) {
-        value=withContext(Dispatchers.IO) {queryMunicipalityFacts(municipality.bfs)}
+    var facts by remember { mutableStateOf<MunicipalityFacts?>(null) }
+    LaunchedEffect(municipality.bfs) {
+        facts=withContext(Dispatchers.IO) {queryMunicipalityFacts(municipality.bfs)}
     }
     val coat=facts?.coat ?: cachedWappen ?: verifiedWappenFallback(municipality.bfs)
     Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),

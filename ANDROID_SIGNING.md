@@ -10,7 +10,7 @@ SHA-256: `A7F498276029BC545335FA8D9A12140FF5FEEEB215AC97AA9F4193F1BBE3F6AE`
 
 SHA-1: `A58C30DAD91C279A4ADB4DAE957F26D4F1966DB2`
 
-Release-Build 33 (`5.11.4-location-preview`) wurde erfolgreich als signierte
+Der vorherige Release-Build 33 (`5.11.4-location-preview`) wurde erfolgreich als signierte
 APK und als App Bundle mit derselben Signieridentität wie Build 31 erstellt.
 `assembleRelease`, `bundleRelease` und die
 Release-Lint-Prüfung sind erfolgreich. APK-Signatur und App-Bundle-Signatur
@@ -25,6 +25,20 @@ Ohne einen vollständigen Keystore
 und dessen Kennwörter bricht ein Release-Build ab. Debug-Builds bleiben separat.
 Ein erfolgreich signiertes Release ist erst nach einem erfolgreichen Build und
 der Prüfung gegen den festgelegten Zertifikatsfingerprint bestätigt.
+
+## Aktueller Navigations-Build
+
+Build 34 (`5.11.7-navigation-preview`) verwendet denselben dauerhaft gesicherten
+Schlüssel. APK und App Bundle sind signiert; Paketname, Buildnummer, deaktivierter
+Debug-Modus und das festgelegte Zertifikat sind geprüft. 23 Android-Tests,
+darunter vier Compose-Tests für Scroll- und Zustandswiederherstellung, bestehen.
+Android Lint hat keine Fehler; 16 bestehende Hinweise betreffen unter anderem
+Bibliotheksversionen und Launcher-/Manifest-Empfehlungen. Prüfbelege und
+Datei-Prüfsummen stehen unter `audit/2026-11-16-navigation/android-release.json`.
+Geräte- und produktive Anmeldetests sind dadurch nicht belegt.
+Der Workflow `publish-reviewed-android.yml` veröffentlicht bereits lokal
+signierte und geprüfte Dateien nach erneuter Hash-/Zertifikatsprüfung.
+Er erhält keinen privaten Schlüssel und keine Signierkennwörter.
 
 ## Schlüssel und GitHub einrichten
 

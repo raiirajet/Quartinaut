@@ -1,0 +1,5 @@
+# Keep the copied Android coats and their original license/source bytes intact.
+web/assets/native/wappen/** -whitespace linguist-vendored
+
+# Original map asset is copied without rewriting its signed build-time hash.
+web/assets/icons/** -whitespace linguist-vendored

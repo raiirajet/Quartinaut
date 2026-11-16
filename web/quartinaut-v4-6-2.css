@@ -1,0 +1,59 @@
+/* Quartinaut 4.6.2 – persönliches Dashboard-Foto und transparentes Plus */
+.v462-hero-tools{display:flex;align-items:center;gap:7px;margin-left:auto}
+.v462-background-button,.v462-background-reset{
+  appearance:none;display:inline-flex;align-items:center;justify-content:center;gap:5px;
+  background:rgba(17,42,32,.30)!important;color:#fff!important;
+  border:1px solid rgba(255,255,255,.55)!important;border-radius:13px;
+  min-height:42px;padding:7px 10px;cursor:pointer;
+  font:650 .77rem system-ui,sans-serif!important;
+}
+.v462-background-reset{width:42px;padding:7px}
+.v462-background-button:focus-visible,.v462-background-reset:focus-visible{
+  outline:3px solid #9cf1b4!important;outline-offset:2px}
+.v462-file-input[hidden]{display:none!important}
+html body .v2-hero.v462-has-photo{
+  background-image:linear-gradient(95deg,rgba(6,26,26,.88),rgba(6,29,27,.62) 70%,rgba(9,36,30,.52)),var(--v462-dashboard-photo)!important;
+  background-color:#163b30!important;
+  background-size:cover!important;background-position:center center!important;
+  color:#fff!important;border-color:rgba(255,255,255,.30)!important;
+}
+html body .v2-hero.v462-has-photo::before,
+html body .v2-hero.v462-has-photo::after{display:none!important}
+html body .v2-hero.v462-has-photo h1,
+html body .v2-hero.v462-has-photo .v4-welcome{color:#fff!important;text-shadow:0 2px 9px #001b15a6}
+html body .v2-hero.v462-has-photo p{color:#f1fff7!important;text-shadow:0 1px 6px #001a168c}
+html body .v2-hero.v462-has-photo .v2-location-chip{
+  background:#09291dc9!important;color:#fff!important;border-color:#ffffff5e!important;
+}
+.v462-background-setting{display:grid;gap:7px;margin-top:17px;padding:14px 0 0;border-top:1px solid var(--line)}
+.v462-background-setting>strong{font-size:.93rem}
+.v462-background-setting>small{color:var(--muted);font-size:.82rem;line-height:1.5}
+.v462-background-actions{display:flex;flex-wrap:wrap;gap:8px}
+.v462-background-actions button{min-height:44px}
+/* Legacy theme styles used to give the middle item a dark block.
+   Override those backgrounds at every breakpoint and in every theme. */
+html body .v41-nav[data-nav-style="glass3d"] button[data-v4-create].nav-item,
+html body .v41-nav[data-nav-style="glass3d"] button[data-v4-create].nav-item:hover,
+html body .v41-nav[data-nav-style="glass3d"] button[data-v4-create].nav-item:active{
+  background:transparent!important;background-image:none!important;
+  border:none!important;box-shadow:none!important;
+  outline:none!important;transform:none!important;
+  margin:0!important;padding:5px 2px 4px!important;
+  border-radius:18px!important;
+  min-height:65px!important;height:100%!important;
+}
+html body .v41-nav[data-nav-style="glass3d"] button[data-v4-create] .v41-nav-icon-shell{
+  background:transparent!important;background-image:none!important;
+  border:none!important;box-shadow:none!important;
+}
+html body .v41-nav[data-nav-style="glass3d"] button[data-v4-create]::before,
+html body .v41-nav[data-nav-style="glass3d"] button[data-v4-create]::after{
+  content:none!important;display:none!important;
+}
+html body .v41-nav[data-nav-style="glass3d"] button[data-v4-create]:focus-visible{
+  outline:3px solid #a4f3ae!important;outline-offset:0!important;
+}
+@media(max-width:400px){
+  html body .v41-nav[data-nav-style="glass3d"] button[data-v4-create].nav-item{min-height:61px!important}
+  .v462-background-button{padding:6px 8px;font-size:.73rem!important}
+}

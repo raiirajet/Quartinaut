@@ -1,0 +1,34 @@
+{
+  "unitTests": 13,
+  "browserScenarios": 16,
+  "browserViewports": [
+    360,
+    390,
+    768,
+    1440
+  ],
+  "fixtureTests": true,
+  "physicalGpsCameraTested": false,
+  "twoDeviceAuthenticatedProductionTested": false,
+  "entrypointSha256": "2d552745281f82baf6403ce07f0f872e92adee6d587df1987b5db947e49a25fb",
+  "moduleSha256": "225112ce4c9af268b49322923c500a02c04ad36d4a3f9f703553116f011dfd72",
+  "sourceRulesUnchanged": true,
+  "storageChatImageLimitationUnchanged": true,
+  "previewSmoke": {
+    "origin": "https://quartinaut--app-abgleich-5114-qi68ska6.web.app",
+    "anonymousAuthReady": true,
+    "snapshot": {
+      "cacheKeys": [
+        "quartinaut-shell-v5.11.4"
+      ],
+      "privateRequests": [],
+      "icons": 5,
+      "overflow": false
+    },
+    "streetLookup": "Wiblen",
+    "errors": []
+  },
+  "precacheResourcesVerified": 46,
+  "legacyServiceWorkerUpgradeTested": true,
+  "editableEntrypointSha256": "af18cbdd4e1fb3eceaa689fb45784f73f797ff30e99e76f77d24e645c5bad9b8"
+}

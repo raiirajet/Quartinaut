@@ -1,0 +1,48 @@
+// Injected ONLY by Playwright into the intercepted module. Never a production login bypass.
+module.exports=String.raw`
+const fixtureUid='test_user_00000000000000000001';
+const fixtureRequest={id:'arq_test_request_00001',title:'Hilfe beim Garten gesucht',text:'Wer kann beim Hochbeet helfen?',category:'Alltagshilfe',type:'Suche',urgency:'Diese Woche',area:'Oberbüren (SG)',areaKey:'oberburen sg',cantonCode:'SG',uid:'peer_user_00000000000000000001',authorName:'Beispielperson',status:'offen',audienceLevel:'municipality',photoPaths:[],createdAt:new Date().toISOString(),expiresAt:new Date(Date.now()+86400000).toISOString()};
+authState={ready:true,mode:'firebase',user:{uid:fixtureUid,email:'web-test@example.invalid',displayName:'Test Person',role:'resident',accountStatus:'active',emailVerified:true}};
+activeAccountUid=fixtureUid;
+state.profile={...state.profile,name:'Test Person',displayName:'Test Person',initials:'TP',area:'Oberbüren (SG)',areaKey:'oberburen sg',cantonCode:'SG',role:'resident',accountType:'resident',accountStatus:'active',location:{cantonCode:'SG',cantonName:'St. Gallen',municipalityName:'Oberbüren',municipalityBfs:'3424'}};
+state.onboarding={...state.onboarding,version:2,completed:true};
+localStorage.setItem(ONBOARDING_SEEN_KEY+':'+fixtureUid,'yes');
+window.__calls=[];
+const fixtureItems=[{id:'market_fixture_001',kind:'market',title:'Gartenstuhl zu verschenken',description:'Ein gut erhaltener Gartenstuhl.',ownerUid:'peer_user_00000000000000000001',ownerName:'Nachbar',area:'Oberbüren (SG)',cantonCode:'SG',status:'published',createdAt:new Date().toISOString(),availability:'available',priceChf:0,photoPaths:[]},{id:'mine_request_00001',kind:'request',title:'Mein erster Beitrag',description:'Eine ausführliche Beschreibung für den Test.',uid:fixtureUid,status:'offen',area:'Oberbüren (SG)'}];
+hubState.items=[fixtureItems[0],{...fixtureItems[0],id:'lend_fixture_001',kind:'lend',title:'Bohrmaschine ausleihen'}];hubState.loaded=true;hubState.section='all';
+const fixtureChat={id:'chat_fixture_00001',requestId:fixtureRequest.id,requestTitle:'Hilfe beim Garten gesucht',requestOwnerUid:fixtureRequest.uid,participants:[fixtureUid,fixtureRequest.uid],participantLabels:{[fixtureUid]:'Test Person',[fixtureRequest.uid]:'Beispielperson'},mutedBy:[],blockedBy:[],readBy:{},lastMessagePreview:'Gerne helfe ich!',lastMessageAt:new Date().toISOString()};
+window.__fixtureChat=fixtureChat;
+firebaseAppInstance={};
+firebaseAuthApi={auth:{currentUser:{uid:fixtureUid,email:'web-test@example.invalid',emailVerified:true}},signOut:async()=>{authState={ready:true,mode:'firebase',user:null};resetAccountSession('');render();}};
+firebaseFunctionsApi={functions:{},httpsCallable:(functions,name)=>async data=>{
+ window.__calls.push({name,data});
+ if(window.__failAction===data.action)throw Error('Verbindung unterbrochen');
+ if(name==='quartinautAudience'&&data.action==='feed')return {data:{ids:[fixtureRequest.id]}};
+ if(data.action==='create')return {data:{id:'arq_created_fixture_001',status:'wartet_freigabe'}};
+ if(data.action==='location.set')return {data:{ok:true}};
+ if(data.action==='favorites.list')return {data:{items:name==='quartinautAudience'?[{...fixtureRequest,itemId:fixtureRequest.id,kind:'request'}]:[]}};
+ if(data.action==='posts.mine')return {data:{items:name==='quartinautAudience'?[]:[fixtureItems[1]]}};
+ if(data.action==='radar.list')return {data:{items:name==='quartinautAudience'?[{...fixtureRequest,kind:'request',description:fixtureRequest.text}]:[fixtureItems[0]]}};
+ if(data.action==='trust.profile')return {data:{profile:{displayName:'Beispielperson',verified:true,totalReviews:3,averageRating:4.7,accountType:'resident'}}};
+ if(data.action==='list'&&name==='quartinautPrivateChats')return {data:{chats:[fixtureChat]}};
+ if(data.action==='messages')return {data:{messages:[{id:'message_fixture_0001',senderUid:fixtureRequest.uid,text:'Gerne helfe ich!',createdAt:new Date().toISOString()}]}};
+ if(data.action==='start'||data.action==='chat.start')return {data:{chat:{id:fixtureChat.id}}};
+ if(data.action==='handover.create')return {data:{token:'a'.repeat(40),expiresAt:new Date(Date.now()+600000).toISOString()}};
+ if(data.action==='loan.list')return {data:{entries:[{id:'loan_fixture_00001',listingId:'market_fixture_001',ownerUid:fixtureUid,borrowerUid:fixtureRequest.uid,status:'accepted',from:'2026-11-20T09:00:00Z',to:'2026-11-21T09:00:00Z'},{id:'loan_returned_fixture_001',listingId:'lend_fixture_001',ownerUid:fixtureRequest.uid,borrowerUid:fixtureUid,status:'returned',from:'2026-11-10T09:00:00Z',to:'2026-11-11T09:00:00Z'}]}};
+ if(data.action==='calendar.list')return {data:{entries:[{id:'calendar_fixture_0001',title:'Gemeindetreffen',date:'2026-11-20',kind:'event',published:true}]}};
+ if(['association.list','market.list','reminders.list'].includes(data.action))return {data:{entries:[],items:[]}};
+ if(data.action==='get'&&name==='quartinautAppearance')return {data:{hasImage:false}};
+ if(data.action==='settings.get')return {data:{settings:{homeView:'home',topics:['chats','alerts'],digest:'off',quietHours:false},configured:true}};
+ if(data.action==='summary')return {data:{summaries:{}}};
+ if(data.action==='comments.list'||data.action==='social.comments.list')return {data:{comments:[],summary:{likes:0,comments:0,liked:false}}};
+ return {data:{ok:true,items:[],entries:[]}};
+}};
+firebaseStoreApi={db:{},doc:(...args)=>args.join('/'),getDocFromServer:async path=>({id:fixtureRequest.id,exists:()=>true,data:()=>fixtureRequest}),setDoc:async()=>{},getDoc:async()=>({exists:()=>false}),deleteDoc:async()=>{}};
+window.__go=route=>nativeWeb.go(route);
+window.__logout=()=>{authState={ready:true,mode:'firebase',user:null};resetAccountSession('');render();};
+window.__route=()=>state.route;
+window.__model=()=>nativeWeb.model;
+window.__request=fixtureRequest;
+window.__changeUser=()=>{authState.user={...authState.user,uid:'test_user_00000000000000000002'};resetAccountSession(authState.user.uid);};
+void nativeWeb.signedIn();render();
+`;
