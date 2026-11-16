@@ -223,6 +223,20 @@ fun NativeAdminScreen(repo: QuartinautRepository, navigate: (String) -> Unit) {
         }
         Text("Zur Prüfung ("+queue.size+")",fontWeight=FontWeight.SemiBold)
         LazyColumn(verticalArrangement=Arrangement.spacedBy(9.dp)) {
+            items(repo.requests.filter {it.id.startsWith("arq_")&&it.str("status")=="wartet_freigabe"},key={it.id}) { request ->
+                Card {
+                    Column(Modifier.fillMaxWidth().padding(14.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                        Text("Anliegen · "+request.title(),fontWeight=FontWeight.Bold)
+                        Text(request.str("text"))
+                        Text(request.str("area")+" · "+audienceLabel(request.str("audienceLevel"),
+                            (request.get("radiusKm") as? Number)?.toInt()?:10))
+                        Row {
+                            OutlinedButton(onClick={repo.moderateScopedRequest(request.id,true)},enabled=!repo.busy) {Text("Freigeben")}
+                            TextButton(onClick={repo.moderateScopedRequest(request.id,false)},enabled=!repo.busy) {Text("Ablehnen")}
+                        }
+                    }
+                }
+            }
             items(queue) { item ->
                 Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)) {
                     Column(Modifier.fillMaxWidth().padding(14.dp),

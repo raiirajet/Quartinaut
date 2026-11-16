@@ -734,6 +734,8 @@ private fun BulletinPage(repo: QuartinautRepository, go: (String) -> Unit,
     }.sortedByDescending { it.str("createdAt") }
     Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         SectionTitle("Schwarzes Brett", "Suche oder biete Hilfe in deiner Umgebung.")
+        NativeNearbyRequestsLocation(repo)
+        TextButton(onClick=repo::loadScopedRequests) {Text("Regionale Anliegen aktualisieren")}
         Button(onClick = { go("create-request") }, modifier=Modifier.fillMaxWidth()) {
             Icon(Icons.Default.Add, null); Spacer(Modifier.width(6.dp)); Text("Neues Anliegen")
         }

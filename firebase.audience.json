@@ -1,0 +1,5 @@
+{
+  "firestore": {"database": "(default)", "rules": "firebase/audience.firestore.rules"},
+  "functions": [{"source": "functions/audience", "codebase": "quartinaut-audience", "ignore": ["node_modules", ".git", "firebase-debug.log"]}],
+  "emulators": {"firestore": {"port": 8088}, "ui": {"enabled": false}, "singleProjectMode": true}
+}

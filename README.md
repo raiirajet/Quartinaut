@@ -1,6 +1,14 @@
 # Quartinaut Native Android
 
-**Quartinaut Native Android 5.11.3 Permissions Preview · Build 32 · Kotlin + Jetpack Compose.**
+**Quartinaut Native Android 5.11.4 Location Preview · Build 33 · Kotlin + Jetpack Compose.**
+
+## Standort und regionale Anliegen
+
+Build 33 ergänzt GPS-/Netzwerkabfrage mit Fortschritt und Zeitlimit sowie die
+lokale Anzeige einer Straße ohne Hausnummer. Gemeinde-, Umkreis- und
+schweizweite Anliegen verwenden einen gesonderten geschützten Firebase-Dienst.
+Die neue APK zeigt keinen technischen roten Reichweitenhinweis mehr.
+Details zu Zugriffskontrolle und Prüfung: [POST_AUDIENCE_ROLLOUT.md](POST_AUDIENCE_ROLLOUT.md).
 
 ## Berechtigungen beim ersten Start
 

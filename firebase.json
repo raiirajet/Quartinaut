@@ -11,23 +11,50 @@
     {
       "source": "functions/appearance",
       "codebase": "quartinaut-appearance",
-      "ignore": ["node_modules", ".git", "firebase-debug.log"]
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log"
+      ]
     },
     {
       "source": "functions/nativeChats",
       "codebase": "quartinaut-native-chats",
-      "ignore": ["node_modules", ".git", "firebase-debug.log"]
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log"
+      ]
     },
     {
       "source": "functions/enhancements",
       "codebase": "quartinaut-enhancements",
-      "ignore": ["node_modules", ".git", "firebase-debug.log"]
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log"
+      ]
+    },
+    {
+      "source": "functions/audience",
+      "codebase": "quartinaut-audience",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log"
+      ]
     }
   ],
   "emulators": {
-    "firestore": {"port": 8088},
-    "storage": {"port": 9198},
-    "ui": {"enabled": false},
+    "firestore": {
+      "port": 8088
+    },
+    "storage": {
+      "port": 9198
+    },
+    "ui": {
+      "enabled": false
+    },
     "singleProjectMode": true
   }
 }

@@ -154,8 +154,11 @@ fun NativeRequestComposer(
                 PublicationAudiencePicker(audienceScope,audienceRadius,audienceLat,audienceLng,
                     onScope={audienceScope=it;confirmed=false},
                     onRadius={audienceRadius=it;confirmed=false},
-                    onCoordinates={lat,lon->audienceLat=lat;audienceLng=lon;confirmed=false})
-                Text("Ausgangspunkt: "+quartierAreaLabel(repo.area(),repo.canton()),
+                    onCoordinates={lat,lon->
+                        audienceLat=lat;audienceLng=lon;confirmed=false
+                        repo.setAudienceLocation(lat,lon)
+                    },backendReady=REQUEST_AUDIENCE_BACKEND_READY)
+                Text("Profilgemeinde: "+quartierAreaLabel(repo.area(),repo.canton()),
                     color=CreateText,style=MaterialTheme.typography.bodySmall)
             }
             Button(onClick={step=1},modifier=Modifier.fillMaxWidth().height(52.dp)) {
@@ -233,8 +236,8 @@ fun NativeRequestComposer(
                 OutlinedButton(onClick={step=1},modifier=Modifier.weight(1f),
                     enabled=!repo.busy) {Text("Bearbeiten")}
                 Button(onClick={
-                    if(!canPublishAudience(audienceScope,audienceRadius,audienceLat,audienceLng)) {
-                        error="Diese Reichweite ist noch nicht serverseitig freigegeben. Bitte Kanton wählen."
+                    if(!canPublishAudience(audienceScope,audienceRadius,audienceLat,audienceLng,REQUEST_AUDIENCE_BACKEND_READY)) {
+                        error="Bitte Reichweite prüfen und für den Umkreis zuerst einen Standort bestimmen."
                         confirmed=false
                     } else {
                         repo.createRequest(title.trim(),details.trim(),category,kind,urgency,

@@ -724,5 +724,39 @@ service cloud.firestore {
     // Deshalb vorher die gesamten aktiven Regeln auf Ã¼berschneidende matches prÃ¼fen.
 
 
+    // Regional requests are server-owned and isolated from legacy canton queries.
+    // Source: uid/area/canton/audience/status, bounded text/photos; coarse centre
+    // is private. Viewer locations are private, rounded to 0.01 degrees, expire
+    // after two hours and never contain street names or house numbers.
+    // Feed documents contain public fields only, owner UID and source version,
+    // a five-minute grant, profile scope and (for radius) location version.
+    function validAudienceFeed(uid, id) {
+      let source = get(/databases/$(database)/documents/quartinautScopedRequests/$(id));
+      let row = resource.data;
+      return activeUser() && request.auth.uid == uid
+        && row.id == id && row.validUntil is timestamp && row.validUntil > request.time
+        && source.data.tenantId == 'quartinaut'
+        && source.data.status != 'gelöscht'
+        && row.sourceUpdatedAt == source.data.updatedAt
+        && (source.data.uid == uid || isAdmin() || source.data.status == 'offen')
+        && row.viewerAreaKey == userDoc().data.get('areaKey', '')
+        && row.viewerCantonCode == userDoc().data.get('cantonCode', '')
+        && row.viewerRole == request.auth.token.get('role', '')
+        && row.viewerAdmin == request.auth.token.get('admin', false)
+        && row.viewerAdminScopeArea == request.auth.token.get('adminScopeArea', '')
+        && (!row.requiresLocation || (
+          get(/databases/$(database)/documents/quartinautAudienceLocations/$(uid)).data.validUntil > request.time
+          && row.viewerLocationUpdatedAt == get(/databases/$(database)/documents/quartinautAudienceLocations/$(uid)).data.updatedAt
+        ));
+    }
+    match /quartinautAudienceFeeds/{uid}/items/{id} {
+      allow get: if validAudienceFeed(uid, id);
+      allow list, create, update, delete: if false;
+    }
+    match /quartinautScopedRequests/{id} { allow read, write: if false; }
+    match /quartinautAudienceLocations/{uid} { allow read, write: if false; }
+    match /quartinautAudienceSettings/{document=**} { allow read, write: if false; }
+    match /quartinautAudienceSocial/{document=**} { allow read, write: if false; }
+    match /quartinautAudienceQuotas/{id} { allow read, write: if false; }
   }
 }

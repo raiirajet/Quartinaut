@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test security.test.mjs"
+    "test": "node --test security.test.mjs",
+    "test:audience": "node --test audience.test.mjs"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "6.0.0",

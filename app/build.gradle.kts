@@ -24,8 +24,8 @@ android {
         applicationId = "ch.quartinaut.nativeapp"
         minSdk = 26
         targetSdk = 35
-        versionCode = 32
-        versionName = "5.11.3-permissions-preview"
+        versionCode = 33
+        versionName = "5.11.4-location-preview"
     }
     signingConfigs {
         if (releaseSigningReady) {

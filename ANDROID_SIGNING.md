@@ -10,14 +10,14 @@ SHA-256: `A7F498276029BC545335FA8D9A12140FF5FEEEB215AC97AA9F4193F1BBE3F6AE`
 
 SHA-1: `A58C30DAD91C279A4ADB4DAE957F26D4F1966DB2`
 
-Release-Build 32 (`5.11.3-permissions-preview`) wurde erfolgreich als signierte
+Release-Build 33 (`5.11.4-location-preview`) wurde erfolgreich als signierte
 APK und als App Bundle mit derselben Signieridentität wie Build 31 erstellt.
 `assembleRelease`, `bundleRelease` und die
 Release-Lint-Prüfung sind erfolgreich. APK-Signatur und App-Bundle-Signatur
 wurden gegen das feste Zertifikat geprüft; Paketname, Buildnummer und
-deaktivierter Debug-Modus wurden bestätigt. Sechs Unit-Tests prüfen die
-Berechtigungsauswahl, insbesondere Android 12/13, ungefähren Standort,
-bereits erteilte Freigaben und Geräte ohne Kamera. Geräte- und Anmeldetests
+deaktivierter Debug-Modus wurden bestätigt. Zehn Unit-Tests prüfen die
+Berechtigungsauswahl sowie Standortalter, Genauigkeit, Straßenbereinigung und
+die Freigabe unterstützter Reichweiten. Geräte- und Anmeldetests
 sind damit nicht belegt.
 Die Datei-Prüfsummen stehen unter `signing/release-verification.json`.
 
