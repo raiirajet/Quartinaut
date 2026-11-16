@@ -1,0 +1,21 @@
+{
+  "version_code": 31,
+  "version_name": "5.11.2-signed-preview",
+  "application_id": "ch.quartinaut.nativeapp",
+  "debuggable": false,
+  "apk_certificate_verified": true,
+  "aab_signature_verified": true,
+  "certificate_sha256": "A7F498276029BC545335FA8D9A12140FF5FEEEB215AC97AA9F4193F1BBE3F6AE",
+  "artifacts": [
+    {
+      "file": "Quartinaut-5.11.2-signiert.apk",
+      "size": 93757035,
+      "sha256": "f0602ca9d66c4bea82ed94adb5e1075cf3296ae190935951b21980d7a60486c7"
+    },
+    {
+      "file": "Quartinaut-5.11.2-signiert.aab",
+      "size": 68533559,
+      "sha256": "f41b720e73ba77e3400b265ba3811dd354992f7b3e476196ac47615a0f4ffa12"
+    }
+  ]
+}

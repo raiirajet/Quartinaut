@@ -44,3 +44,22 @@ Die produktiven Funktionsquellen und der Firebase-Zugang sind daher für eine
 vollständige Umsetzung erforderlich. Die Reichweitenfreigabe bleibt bis zur
 gemeinsamen Umsetzung und Prüfung deaktiviert. Diese Prüfung hat keine
 produktiven Firebase-Regeln oder Funktionen verändert.
+
+### Nach erfolgreicher Firebase-Anmeldung
+
+Der Zugriff auf `quartinaut` wurde am selben Tag erfolgreich hergestellt.
+Die aktive App verwendet weiterhin die Standard-Datenbank `(default)` in
+`nam5`. Die zweite Datenbank `default` ist Enterprise in `eur3` und wird nicht
+verändert. Die aktuellen Firestore- und Storage-Regeln wurden vor einer
+Änderung lokal gesichert. Sie unterscheiden sich vom breiteren, bisher nicht
+bereitgestellten Regelentwurf unter `firebase/`.
+
+Die produktiven Quellen von `quartinautHub`, `quartinautPhoto` und
+`quartinautTarget` wurden über die Google-Cloud-Funktions-API abgerufen und
+lokal gesichert. Damit ist die vorher fehlende Quellcodebasis verfügbar.
+Die genaue Freischaltung der neuen Beitragsreichweiten ist noch zu klären;
+es wurden keine Live-Regeln oder Standort-Funktionen geändert.
+
+SHA-1 und SHA-256 der neuen dauerhaften Android-Signieridentität wurden
+erfolgreich bei der bestehenden Firebase-Android-App registriert; die
+öffentlichen Registrierungsnachweise liegen unter `signing/`.

@@ -1,4 +1,5 @@
 .gradle/
+.kotlin/
 .idea/
 *.iml
 local.properties
@@ -9,6 +10,9 @@ artifacts/
 *.keystore
 *.aab
 *.apk
+signing-private.json
+SIGNIERUNG-PRIVAT.txt
+Quartinaut-Signierung-Backup.zip
 
 # Original public static assets are reconstructed by the sync script at build time
 app/src/main/assets/q-original/
@@ -25,3 +29,7 @@ firebase/rules-tests/node_modules/
 functions/nativeChats/node_modules/
 
 functions/enhancements/node_modules/
+
+# Generated offline geometry and Python helper bytecode
+app/src/main/assets/geo/municipality_2025.geojson
+**/__pycache__/

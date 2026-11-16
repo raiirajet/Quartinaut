@@ -18,7 +18,8 @@ jobs:
       QUARTINAUT_KEYSTORE_PASSWORD: ${{ secrets.QUARTINAUT_KEYSTORE_PASSWORD }}
       QUARTINAUT_KEY_ALIAS: ${{ secrets.QUARTINAUT_KEY_ALIAS }}
       QUARTINAUT_KEY_PASSWORD: ${{ secrets.QUARTINAUT_KEY_PASSWORD }}
-      QUARTINAUT_SIGNING_SHA256: ${{ vars.QUARTINAUT_SIGNING_SHA256 }}
+      # Public certificate pin; the private key is stored only in Secrets.
+      QUARTINAUT_SIGNING_SHA256: A7F498276029BC545335FA8D9A12140FF5FEEEB215AC97AA9F4193F1BBE3F6AE
     steps:
       - name: Checkout
         uses: actions/checkout@v4

@@ -101,7 +101,7 @@ jobs:
       - name: Package native Android Studio sources and original images
         run: |
           zip -q -r Quartinaut_Native_Quellcode.zip \
-            README.md OFFICIAL_EVENTS_DATA.md ANDROID_STATUS.md AUDIT_NATIVE_54_2026-11-13.md FIREBASE_NATIVE_FOUNDATION.md CHAT_SECURITY_AND_MEDIA.md audit .gitignore \
+            README.md ANDROID_SIGNING.md signing OFFICIAL_EVENTS_DATA.md ANDROID_STATUS.md AUDIT_NATIVE_54_2026-11-13.md FIREBASE_NATIVE_FOUNDATION.md CHAT_SECURITY_AND_MEDIA.md audit .gitignore \
             settings.gradle.kts build.gradle.kts gradle.properties firebase.json .firebaserc \
             scripts app/build.gradle.kts app/google-services.json app/src firebase \
             functions/appearance functions/nativeChats functions/enhancements \
@@ -120,8 +120,8 @@ jobs:
           name: Quartinaut-Native-Debug-APK
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
-      - name: Publish preview APK to GitHub Releases
-        if: github.ref == 'refs/heads/native-android-v1'
+      - name: Publish legacy preview APK before permanent release signing is configured
+        if: github.ref == 'refs/heads/native-android-v1' && hashFiles('signing/release-certificate.json') == ''
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

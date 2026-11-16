@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "815175119171-m4vnv8rluuiq11rqjo57l3u0ggvh4ilp.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "ch.quartinaut.nativeapp",
+            "certificate_hash": "a58c30dad91c279a4adb4dae957f26d4f1966db2"
+          }
+        },
+        {
           "client_id": "815175119171-47mfvnm16c5tcmk8onp3dgtjt1ig0d06.apps.googleusercontent.com",
           "client_type": 3
         }
