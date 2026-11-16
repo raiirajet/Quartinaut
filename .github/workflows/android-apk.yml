@@ -63,6 +63,10 @@ jobs:
         run: |
           node --check functions/enhancements/index.js
           node --test functions/enhancements/test/validators.test.js
+      - name: Verify isolated regional requests
+        run: |
+          npm ci --prefix functions/audience
+          npm --prefix functions/audience run check
       - name: Validate official Swiss dates, regional scope and source evidence
         run: python3 -m unittest discover -s scripts -p 'test_official_calendar.py' -v
       - name: Verify Firestore and Storage rules in emulators
@@ -70,6 +74,8 @@ jobs:
           npm ci --prefix firebase/rules-tests
           npx -y firebase-tools@latest emulators:exec --only firestore,storage \
             --project demo-quartinaut-rules "npm --prefix firebase/rules-tests test"
+          npx -y firebase-tools@latest emulators:exec --config firebase.audience.json --only firestore \
+            --project demo-quartinaut-rules "npm --prefix firebase/rules-tests run test:audience"
       - name: Assemble debug APK (native)
         run: |
           set -o pipefail
@@ -101,12 +107,12 @@ jobs:
       - name: Package native Android Studio sources and original images
         run: |
           zip -q -r Quartinaut_Native_Quellcode.zip \
-            README.md OFFICIAL_EVENTS_DATA.md ANDROID_STATUS.md AUDIT_NATIVE_54_2026-11-13.md FIREBASE_NATIVE_FOUNDATION.md CHAT_SECURITY_AND_MEDIA.md audit .gitignore \
+            README.md ANDROID_SIGNING.md signing OFFICIAL_EVENTS_DATA.md ANDROID_STATUS.md AUDIT_NATIVE_54_2026-11-13.md FIREBASE_NATIVE_FOUNDATION.md CHAT_SECURITY_AND_MEDIA.md audit .gitignore \
             settings.gradle.kts build.gradle.kts gradle.properties firebase.json .firebaserc \
             scripts app/build.gradle.kts app/google-services.json app/src firebase \
-            functions/appearance functions/nativeChats functions/enhancements \
-            firebase.appearance.json firebase.chats.json firebase.enhancements.json web-bridge \
-            -x 'firebase/rules-tests/node_modules/*'
+            functions/appearance functions/nativeChats functions/enhancements functions/audience \
+            firebase.appearance.json firebase.chats.json firebase.enhancements.json firebase.audience.json web-bridge \
+            -x 'firebase/rules-tests/node_modules/*' 'functions/audience/node_modules/*'
       - name: Upload native source ZIP
         uses: actions/upload-artifact@v4
         with:
@@ -120,8 +126,8 @@ jobs:
           name: Quartinaut-Native-Debug-APK
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
-      - name: Publish preview APK to GitHub Releases
-        if: github.ref == 'refs/heads/native-android-v1'
+      - name: Publish legacy preview APK before permanent release signing is configured
+        if: github.ref == 'refs/heads/native-android-v1' && hashFiles('signing/release-certificate.json') == ''
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

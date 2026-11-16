@@ -1,0 +1,9 @@
+{
+  "alias": "quartinaut",
+  "algorithm": "RSA 4096",
+  "validity_days": 10000,
+  "sha256": "A7F498276029BC545335FA8D9A12140FF5FEEEB215AC97AA9F4193F1BBE3F6AE",
+  "sha1": "A58C30DAD91C279A4ADB4DAE957F26D4F1966DB2",
+  "application_id": "ch.quartinaut.nativeapp",
+  "firebase_project": "quartinaut"
+}

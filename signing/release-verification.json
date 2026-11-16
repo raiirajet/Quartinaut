@@ -1,0 +1,29 @@
+{
+  "version_code": 33,
+  "version_name": "5.11.4-location-preview",
+  "application_id": "ch.quartinaut.nativeapp",
+  "debuggable": false,
+  "apk_certificate_verified": true,
+  "aab_signature_verified": true,
+  "certificate_sha256": "A7F498276029BC545335FA8D9A12140FF5FEEEB215AC97AA9F4193F1BBE3F6AE",
+  "android_tests": {
+    "tests": 10,
+    "failures": 0,
+    "errors": 0
+  },
+  "audience_policy_tests": 10,
+  "audience_emulator_tests": 9,
+  "legacy_storage_test_note": "One existing chat-media test fails unchanged in the baseline; see audit/2026-11-16-location/deployment.json.",
+  "artifacts": [
+    {
+      "file": "Quartinaut-5.11.4-signiert.apk",
+      "size": 93789795,
+      "sha256": "0e2723127894b6f5d9ac392870c8cdb1c958861469d97d3a14204a42dc14fcab"
+    },
+    {
+      "file": "Quartinaut-5.11.4-signiert.aab",
+      "size": 68561885,
+      "sha256": "2cb3caabd452f2c78f3c5832b216e5dd3f0057f501983ba7bd95d4b9e784069e"
+    }
+  ]
+}

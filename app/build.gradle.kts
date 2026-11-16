@@ -6,6 +6,17 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.gms.google-services")
 }
+
+// Keep the long-lived signing identity outside source control. Debug builds
+// remain available without credentials; release builds fail if any are absent.
+val releaseSigningValues = listOf(
+    "QUARTINAUT_KEYSTORE_FILE",
+    "QUARTINAUT_KEYSTORE_PASSWORD",
+    "QUARTINAUT_KEY_ALIAS",
+    "QUARTINAUT_KEY_PASSWORD"
+).associateWith { providers.environmentVariable(it).orNull }
+val releaseSigningReady = releaseSigningValues.values.all { !it.isNullOrBlank() }
+
 android {
     namespace = "ch.quartinaut.nativeapp"
     compileSdk = 35
@@ -13,11 +24,25 @@ android {
         applicationId = "ch.quartinaut.nativeapp"
         minSdk = 26
         targetSdk = 35
-        versionCode = 30
-        versionName = "5.11.1-icons-reach-preview"
+        versionCode = 33
+        versionName = "5.11.4-location-preview"
+    }
+    signingConfigs {
+        if (releaseSigningReady) {
+            create("quartinautRelease") {
+                storeFile = file(requireNotNull(releaseSigningValues["QUARTINAUT_KEYSTORE_FILE"]))
+                storePassword = releaseSigningValues["QUARTINAUT_KEYSTORE_PASSWORD"]
+                keyAlias = releaseSigningValues["QUARTINAUT_KEY_ALIAS"]
+                keyPassword = releaseSigningValues["QUARTINAUT_KEY_PASSWORD"]
+            }
+        }
     }
     buildTypes {
-        release { isMinifyEnabled = false }
+        release {
+            isMinifyEnabled = false
+            isDebuggable = false
+            if (releaseSigningReady) signingConfig = signingConfigs.getByName("quartinautRelease")
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -26,6 +51,22 @@ android {
     buildFeatures { compose = true }
     packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
 }
+
+val requireReleaseSigning = tasks.register("requireReleaseSigning") {
+    doLast {
+        val missing = releaseSigningValues.filterValues { it.isNullOrBlank() }.keys
+        check(missing.isEmpty()) {
+            "Release signing is required. Missing environment variables: ${missing.joinToString()}. See ANDROID_SIGNING.md."
+        }
+        check(file(requireNotNull(releaseSigningValues["QUARTINAUT_KEYSTORE_FILE"])).isFile) {
+            "Release keystore does not exist. See ANDROID_SIGNING.md."
+        }
+    }
+}
+tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+    dependsOn(requireReleaseSigning)
+}
+
 kotlin {
     compilerOptions {
         jvmTarget.set(JvmTarget.JVM_17)
@@ -59,4 +100,5 @@ dependencies {
     debugImplementation("com.google.firebase:firebase-appcheck-debug")
     implementation("androidx.core:core-ktx:1.15.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
+    testImplementation("junit:junit:4.13.2")
 }

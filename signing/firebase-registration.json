@@ -1,0 +1,18 @@
+{
+  "project_id": "quartinaut",
+  "android_app_id": "1:815175119171:android:2ae4bed9a9393de5e23ff6",
+  "package_name": "ch.quartinaut.nativeapp",
+  "registered_on": "2026-11-16",
+  "certificates": [
+    {
+      "name": "projects/quartinaut/androidApps/1:815175119171:android:2ae4bed9a9393de5e23ff6/sha/b3cf301f4c3bb37c",
+      "shaHash": "a7f498276029bc545335fa8d9a12140ff5feeeb215ac97aa9f4193f1bbe3f6ae",
+      "certType": "SHA_256"
+    },
+    {
+      "name": "projects/quartinaut/androidApps/1:815175119171:android:2ae4bed9a9393de5e23ff6/sha/bf7a42b4c714b018",
+      "shaHash": "a58c30dad91c279a4adb4dae957f26d4f1966db2",
+      "certType": "SHA_1"
+    }
+  ]
+}

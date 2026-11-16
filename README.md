@@ -1,6 +1,28 @@
 # Quartinaut Native Android
 
-**Quartinaut Native Android 5.10.0 UX Preview · Kotlin + Jetpack Compose · ohne WebView.**
+**Quartinaut Native Android 5.11.4 Location Preview · Build 33 · Kotlin + Jetpack Compose.**
+
+## Standort und regionale Anliegen
+
+Build 33 ergänzt GPS-/Netzwerkabfrage mit Fortschritt und Zeitlimit sowie die
+lokale Anzeige einer Straße ohne Hausnummer. Gemeinde-, Umkreis- und
+schweizweite Anliegen verwenden einen gesonderten geschützten Firebase-Dienst.
+Die neue APK zeigt keinen technischen roten Reichweitenhinweis mehr.
+Details zu Zugriffskontrolle und Prüfung: [POST_AUDIENCE_ROLLOUT.md](POST_AUDIENCE_ROLLOUT.md).
+
+## Berechtigungen beim ersten Start
+
+Vor der Anmeldung fragt Quartinaut erstmals die fehlenden Android-Freigaben
+für Standort und Kamera sowie ab Android 13 für Benachrichtigungen ab.
+Ein ungefährer Standort genügt. Bereits erteilte Freigaben werden übersprungen;
+eine Ablehnung führt nicht zu wiederholten automatischen Dialogen. Die App ist
+auch ohne diese Freigaben zugänglich.
+
+Unter Einstellungen → **Standort, Kamera und Berechtigungen verwalten** können
+die Freigaben später erneut geprüft und angefragt werden. Bei ausgeschaltetem
+Standortdienst gibt es einen direkten Weg zu den Android-Standorteinstellungen.
+Internetzugriff wird von Android automatisch erlaubt; die Bildauswahl verwendet
+weiterhin den System-Dateidialog ohne umfassenden Speicherzugriff.
 
 ## Android-APK direkt herunterladen
 
@@ -14,13 +36,21 @@ Wenn ein neuer Build mit höherem `versionCode` veröffentlicht wird,
 zeigt Quartinaut beim nächsten Öffnen **„Update verfügbar“**.
 In den Einstellungen kann die Prüfung auch manuell gestartet werden.
 
-**Wichtige Einschränkung:** Die bisherigen Debug-APKs haben noch keinen
-dauerhaft festgelegten Signaturschlüssel. Android kann deshalb eine neue
-Test-APK unter Umständen nicht über die bestehende Version installieren.
-Eine Deinstallation kann lokale Entwürfe und Appdaten löschen.
-Vor nahtlosen Updates muss die App einmalig auf eine dauerhaft stabile,
-sicher verwahrte Release-Signatur umgestellt werden.
+**Wechsel zur festen Signatur:** Die bisherigen Debug-APKs verwenden
+wechselnde Schlüssel. Am 16. November 2026 wurde eine dauerhafte Release-
+Signieridentität eingerichtet und deren Zertifikat in Firebase registriert.
+Beim ersten Wechsel von einer alten Debug-APK zur signierten Release-APK kann
+Android eine Neuinstallation verlangen. Eine Deinstallation löscht lokale
+Entwürfe und Appdaten; diese vorher sichern. Künftige Release-Updates müssen
+mit demselben Schlüssel und einem höheren `versionCode` erstellt werden.
 Es findet keine stille Installation statt.
+
+Die Vorbereitung für feste Release-Signierung mit APK-/App-Bundle-Build und
+Zertifikatsprüfung ist in [ANDROID_SIGNING.md](ANDROID_SIGNING.md) beschrieben.
+Der dauerhafte Keystore wurde am 16. November 2026 erstellt. Die privaten
+Signierdaten müssen für CI noch über einen berechtigten Zugang in die
+GitHub-Actions-Secrets übernommen werden; das öffentliche Zertifikat liegt
+unter `signing/`.
 
 
 Eigenständige Android-App auf Grundlage des von der Eigentümerin bereitgestellten Quartinaut-5.4-Release-Kandidaten. Es handelt sich nicht um eine umverpackte Website. Produktives Hosting und Firebase-Regeln werden beim APK-Build nicht verändert.
@@ -47,7 +77,11 @@ gradle :app:assembleDebug
 
 APK: `app/build/outputs/apk/debug/app-debug.apk`. Im GitHub-Entwicklungszweig werden Debug-APK und Quellcode in **Actions** automatisch als Downloads veröffentlicht.
 
-Für eine **produktive Android-App** sind eine separate Firebase-Android-App-Registrierung, die korrekten App-Fingerprints, eigene stabile Signierung, Google Sign-in/FCM-Setup, App Check sowie Sicherheits-, Geräte- und Regressionstests notwendig. Die jetzigen GitHub-Debug-APKs werden nicht mit einem stabilen produktiven Signaturschlüssel signiert; ältere Preview-Versionen müssen deshalb vor der Neuinstallation gegebenenfalls deinstalliert werden.
+Die native Firebase-Android-App ist registriert; SHA-1 und SHA-256 des festen
+Release-Schlüssels sind in Firebase hinterlegt. Für die produktive Verteilung
+bleiben Google-Anmeldung, FCM, App Check und Updates auf echten Geräten zu
+prüfen. Die alten GitHub-Debug-APKs verwenden weiterhin ihre früheren
+Debug-Signaturen.
 
 ## Backend
 
@@ -112,11 +146,10 @@ firebase deploy --project quartinaut --config firebase.chats.json --only functio
 ### Wichtige Veröffentlichungsgrenzen
 
 Ein erfolgreicher GitHub-Build beweist keine vollständig durchgeführten
-End-to-End-Gerätetests auf verschiedenen Android-Geräten. Die APK ist weiterhin
-eine **Debug-Testversion** mit nicht dauerhaft festgelegtem Release-Signierschlüssel.
-Für ein nahtlos updatefähiges Produktionsrelease ist ein sicher aufbewahrter,
-vom App-Eigentümer bereitgestellter Keystore nötig. Keine Schlüssel oder
-Zugangsdaten in das Repository übernehmen.
+End-to-End-Gerätetests auf verschiedenen Android-Geräten. Die bisherigen GitHub-Preview-APKs sind Debug-Testversionen. Für Release-
+Builds ab Build 31 ist jetzt eine dauerhafte Signieridentität eingerichtet;
+der private Keystore muss von der Eigentümerin sicher aufbewahrt werden.
+Keine Schlüssel oder Zugangsdaten in das Repository übernehmen.
 
 Die optimierte `functions/enhancements/index.js` ist Quellcode im
 GitHub-Entwicklungszweig. Der Android-Build deployed keine Funktionen oder

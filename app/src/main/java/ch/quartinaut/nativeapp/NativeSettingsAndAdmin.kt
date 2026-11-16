@@ -18,6 +18,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 
 private val HomeLabels = linkedMapOf(
@@ -37,6 +39,7 @@ fun NativeSettingsScreen(repo: QuartinautRepository,mode: String,
                          updateMode: (String) -> Unit, navigate: (String) -> Unit) {
     val context=LocalContext.current
     var showWelcomeAgain by remember { mutableStateOf(false) }
+    var showPermissionSetup by remember { mutableStateOf(false) }
     val notificationPermission=rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
@@ -137,6 +140,9 @@ fun NativeSettingsScreen(repo: QuartinautRepository,mode: String,
         }
         Text("Die Freigabe gilt nur für dieses Gerät und kann in Android jederzeit widerrufen werden.",
             style=MaterialTheme.typography.bodySmall)
+        OutlinedButton(onClick={showPermissionSetup=true}, modifier=Modifier.fillMaxWidth()) {
+            Text("Standort, Kamera und Berechtigungen verwalten")
+        }
         HorizontalDivider()
         NativeAppUpdateArea(compact=false)
         HorizontalDivider()
@@ -167,6 +173,12 @@ fun NativeSettingsScreen(repo: QuartinautRepository,mode: String,
     }
     if(showWelcomeAgain) NativeWelcomeTour(repo.user?.uid.orEmpty(),forceShow=true) {
         showWelcomeAgain=false
+    }
+    if(showPermissionSetup) Dialog(
+        onDismissRequest={showPermissionSetup=false},
+        properties=DialogProperties(usePlatformDefaultWidth=false,decorFitsSystemWindows=false)
+    ) {
+        NativePermissionSetup(autoRequest=false,onFinish={showPermissionSetup=false})
     }
 }
 @Composable
@@ -211,6 +223,20 @@ fun NativeAdminScreen(repo: QuartinautRepository, navigate: (String) -> Unit) {
         }
         Text("Zur Prüfung ("+queue.size+")",fontWeight=FontWeight.SemiBold)
         LazyColumn(verticalArrangement=Arrangement.spacedBy(9.dp)) {
+            items(repo.requests.filter {it.id.startsWith("arq_")&&it.str("status")=="wartet_freigabe"},key={it.id}) { request ->
+                Card {
+                    Column(Modifier.fillMaxWidth().padding(14.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                        Text("Anliegen · "+request.title(),fontWeight=FontWeight.Bold)
+                        Text(request.str("text"))
+                        Text(request.str("area")+" · "+audienceLabel(request.str("audienceLevel"),
+                            (request.get("radiusKm") as? Number)?.toInt()?:10))
+                        Row {
+                            OutlinedButton(onClick={repo.moderateScopedRequest(request.id,true)},enabled=!repo.busy) {Text("Freigeben")}
+                            TextButton(onClick={repo.moderateScopedRequest(request.id,false)},enabled=!repo.busy) {Text("Ablehnen")}
+                        }
+                    }
+                }
+            }
             items(queue) { item ->
                 Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)) {
                     Column(Modifier.fillMaxWidth().padding(14.dp),

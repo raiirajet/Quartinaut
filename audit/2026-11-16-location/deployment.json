@@ -1,0 +1,24 @@
+{
+  "project": "quartinaut",
+  "database": "(default)",
+  "function": {
+    "function": "quartinautAudience",
+    "version": "v2",
+    "trigger": "callable",
+    "location": "europe-west6",
+    "memory": 512,
+    "runtime": "nodejs22"
+  },
+  "rules_sha256": "0cd45c3bd3bab65f96bfb5db9f6c78cdd335562ba76a5196b0bb1fe1d50ef7a5",
+  "live_rules_match": true,
+  "anonymous_http_status": 401,
+  "policy_tests_passed": 10,
+  "audience_emulator_tests_passed": 9,
+  "source_hashes": {
+    "functions/audience/index.js": "bc159a92863c3cb5f2071d82b31471453b29798e0db12ae9936a581123531179",
+    "functions/audience/policy.js": "031c4280827670a962fb2f1a02e033db2fe345cd1eb8c904d5854fd3dbb485a0",
+    "functions/audience/package-lock.json": "b2c3aea9c5d7393a4d6b79eaa5d2d264d8cec8f27b1ed268eefb37c9f157dabe"
+  },
+  "legacy_test_note": "11/12 existing chat/storage tests pass locally. Chat-media upload returns storage/unauthorized; reproduced with the original rules from commit 2797116871eb6f937d03d152378998d3a5f2a740. Storage rules were not changed or deployed.",
+  "device_tests_performed": false
+}

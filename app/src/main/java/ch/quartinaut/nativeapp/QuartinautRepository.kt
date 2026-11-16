@@ -11,6 +11,8 @@ import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.Source
+import com.google.android.gms.tasks.Tasks
 import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageMetadata
@@ -95,6 +97,9 @@ class QuartinautRepository(context: Context) {
     var myPostsBusyIds by mutableStateOf<Set<String>>(emptySet())
         private set
     private var myPostsRequestSequence=0L
+    private var scopedRequestSequence=0L
+    var hasAudienceLocation by mutableStateOf(false)
+        private set
     var enhancementLoading by mutableStateOf(false)
         private set
     var enhancementError by mutableStateOf("")
@@ -155,6 +160,7 @@ class QuartinautRepository(context: Context) {
                 enhancedItems=emptyList();enhancementLoading=false;enhancementError="";enhancementReady=false
                 myPostsItems=emptyList();myPostsLoaded=false;myPostsLoading=false
                 myPostsBusyIds=emptySet();myPostsRequestSequence++
+                hasAudienceLocation=false;scopedRequestSequence++
                 chatId = ""
                 dashboardBackground = null
                 dashboardBackgroundStatus = "checking"
@@ -374,7 +380,14 @@ class QuartinautRepository(context: Context) {
                 return@addSnapshotListener
             }
             val wasEmpty = profile.isEmpty()
+            val scopeChanged=!wasEmpty && (profile["areaKey"]!=snapshot.get("areaKey") ||
+                profile["cantonCode"]!=snapshot.get("cantonCode"))
             profile = snapshot.data ?: emptyMap()
+            if(scopeChanged) {
+                requests=requests.filterNot {it.id.startsWith("arq_")}
+                hasAudienceLocation=false;scopedRequestSequence++
+                if(active())startListening(uid)
+            }
             if (wasEmpty && active()) {
                 PushTokenRegistrar.sync(appContext)
                 restorePublicCache(uid)
@@ -417,14 +430,16 @@ class QuartinautRepository(context: Context) {
             })
         val req = db.collection("requests")
         if (isAdmin()) {
-            observe("Alle Anliegen (Admin)", req.orderBy("createdAt", Query.Direction.DESCENDING)) { requests = it }
+            observe("Alle Anliegen (Admin)", req.orderBy("createdAt", Query.Direction.DESCENDING)) {
+                requests = (requests.filter { doc -> doc.id.startsWith("arq_") } + it).distinctBy { doc -> doc.id }
+            }
         } else {
             observe("Öffentliche Anliegen", req.whereEqualTo("cantonCode", canton).whereEqualTo("status", "offen")
                 .orderBy("createdAt", Query.Direction.DESCENDING)) { publicItems ->
-                requests = (requests.filter { doc -> doc.str("uid") == uid } + publicItems).distinctBy { doc -> doc.id }
+                requests = (requests.filter { doc -> doc.id.startsWith("arq_") || doc.str("uid") == uid } + publicItems).distinctBy { doc -> doc.id }
             }
             observe("Eigene Anliegen", req.whereEqualTo("uid", uid).orderBy("createdAt", Query.Direction.DESCENDING)) { own ->
-                requests = (requests.filter { doc -> doc.str("uid") != uid } + own).distinctBy { doc -> doc.id }
+                requests = (requests.filter { doc -> doc.id.startsWith("arq_") || doc.str("uid") != uid } + own).distinctBy { doc -> doc.id }
             }
         }
         observe("Gemeinde-Alarme", db.collection("alerts").orderBy("createdAt", Query.Direction.DESCENDING)) { alerts = it }
@@ -437,7 +452,57 @@ class QuartinautRepository(context: Context) {
         // Chat metadata is fetched through quartinautPrivateChats, not via a
         // direct Firestore list query blocked by the production security rules.
         loadServerChats()
+        loadScopedRequests()
         loadHub()
+    }
+    fun loadScopedRequests() {
+        val uid=user?.uid ?:return
+        if(!active())return
+        val ticket=++scopedRequestSequence
+        functions.getHttpsCallable("quartinautAudience").call(mapOf("action" to "feed"))
+            .addOnCompleteListener { task ->
+                if(user?.uid!=uid||ticket!=scopedRequestSequence)return@addOnCompleteListener
+                if(!task.isSuccessful) {
+                    syncIssues=syncIssues+("Regionale Anliegen" to callableDiagnostic(task.exception,"Regionale Anliegen nicht erreichbar."))
+                    return@addOnCompleteListener
+                }
+                val data=task.result.data as? Map<*,*> ?:emptyMap<String,Any?>()
+                hasAudienceLocation=data["hasLocation"]==true
+                val ids=(data["ids"] as? List<*>)?.filterIsInstance<String>()
+                    ?.filter {it.matches(Regex("arq_[a-f0-9]{32}"))}?.take(200) ?:emptyList()
+                val reads=ids.map { id -> db.collection("quartinautAudienceFeeds").document(uid)
+                    .collection("items").document(id).get(Source.SERVER) }
+                Tasks.whenAllSuccess<DocumentSnapshot>(reads).addOnCompleteListener { loaded ->
+                    if(user?.uid!=uid||ticket!=scopedRequestSequence)return@addOnCompleteListener
+                    if(loaded.isSuccessful) {
+                        requests=(requests.filterNot {it.id.startsWith("arq_")}+
+                            loaded.result.filter {it.exists()}).distinctBy {it.id}
+                        syncIssues=syncIssues-"Regionale Anliegen"
+                    } else syncIssues=syncIssues+("Regionale Anliegen" to
+                        callableDiagnostic(loaded.exception,"Regionale Anliegen konnten nicht geladen werden."))
+                }
+            }
+    }
+    fun setAudienceLocation(latitude:Double,longitude:Double) {
+        val uid=user?.uid ?:return
+        functions.getHttpsCallable("quartinautAudience").call(mapOf(
+            "action" to "location.set","center" to mapOf("lat" to latitude,"lng" to longitude)
+        )).addOnCompleteListener { task ->
+            if(user?.uid!=uid)return@addOnCompleteListener
+            if(task.isSuccessful) {hasAudienceLocation=true;loadScopedRequests()}
+            else showMessage(callableDiagnostic(task.exception,"Der Umkreis-Standort konnte nicht gespeichert werden."))
+        }
+    }
+    fun moderateScopedRequest(id:String,approve:Boolean) {
+        if(busy)return
+        busy=true
+        functions.getHttpsCallable("quartinautAudience").call(mapOf(
+            "action" to if(approve) "approve" else "reject","id" to id
+        )).addOnCompleteListener { task ->
+            busy=false
+            if(task.isSuccessful) {message="Anliegen geprüft.";loadScopedRequests()}
+            else message=callableDiagnostic(task.exception,"Anliegen konnte nicht geprüft werden.")
+        }
     }
     fun loadHub() {
         if (user == null || !active()) return
@@ -514,8 +579,8 @@ class QuartinautRepository(context: Context) {
                       audienceLatitude: Double? = null,
                       audienceLongitude: Double? = null) {
         val uid = user?.uid ?: return
-        if(!canPublishAudience(audienceLevel,audienceRadiusKm,audienceLatitude,audienceLongitude)) {
-            message="Die gewählte Reichweite ist noch nicht verbindlich aktiviert."; return
+        if(!canPublishAudience(audienceLevel,audienceRadiusKm,audienceLatitude,audienceLongitude,REQUEST_AUDIENCE_BACKEND_READY)) {
+            message="Bitte Reichweite und Umkreis-Standort prüfen."; return
         }
         if (title.trim().length < 4 || description.trim().length < 5) {
             message = "Bitte Titel und Beschreibung ausfüllen."; return
@@ -524,6 +589,26 @@ class QuartinautRepository(context: Context) {
         val hours = when (urgency) { "Heute" -> 24L; "Morgen" -> 48L; "Diese Woche" -> 168L; else -> 336L }
         val id = operationId.takeIf {it.matches(Regex("req_[0-9a-f]{32}"))}
             ?: "req_" + UUID.randomUUID().toString().replace("-", "")
+        if(audienceLevel!="canton") {
+            busy=true
+            functions.getHttpsCallable("quartinautAudience").call(mapOf(
+                "action" to "create","opId" to id,
+                "item" to mapOf("title" to title.trim(),"text" to description.trim(),
+                    "category" to category,"type" to kind,"urgency" to urgency,
+                    "audienceLevel" to audienceLevel,"radiusKm" to audienceRadiusKm,
+                    "center" to if(audienceLevel=="radius")mapOf("lat" to audienceLatitude,"lng" to audienceLongitude) else null,
+                    "photoPaths" to photoPaths)
+            )).addOnCompleteListener { task ->
+                if(user?.uid!=uid)return@addOnCompleteListener
+                busy=false
+                if(task.isSuccessful) {
+                    val status=(task.result.data as? Map<*,*>)?.get("status")
+                    message=if(status=="offen") "Eintrag gespeichert – veröffentlicht." else "Eintrag gespeichert – wartet auf Freigabe."
+                    loadScopedRequests();onCreated()
+                } else message=callableDiagnostic(task.exception,"Anliegen konnte nicht gespeichert werden.")
+            }
+            return
+        }
         val status = if (isAdmin()) "offen" else "wartet_freigabe"
         val data = hashMapOf<String, Any>(
             "id" to id, "tenantId" to "quartinaut", "uid" to uid,
@@ -615,8 +700,10 @@ class QuartinautRepository(context: Context) {
             failure?.invoke("Bitte anmelden, um zu reagieren.")
             return
         }
-        functions.getHttpsCallable("quartinautSocial")
-            .call(values + mapOf("action" to action,"kind" to kind,"id" to id))
+        val scoped=id.startsWith("arq_")&&kind=="request"
+        functions.getHttpsCallable(if(scoped) "quartinautAudience" else "quartinautSocial")
+            .call(values + mapOf("action" to if(scoped) "social.$action" else action,"kind" to kind,"id" to id,
+                "opId" to UUID.randomUUID().toString()))
             .addOnCompleteListener { task ->
                 if(!task.isSuccessful) {
                     val error=task.exception?.localizedMessage
@@ -636,8 +723,10 @@ class QuartinautRepository(context: Context) {
             onResult(null)
             return
         }
-        functions.getHttpsCallable("quartinautPhoto")
-            .call(mapOf("action" to "read", "path" to path))
+        val scopedPhoto=requests.any { it.id.startsWith("arq_") &&
+            (it.get("photoPaths") as? List<*>)?.contains(path)==true }
+        functions.getHttpsCallable(if(scopedPhoto) "quartinautAudience" else "quartinautPhoto")
+            .call(mapOf("action" to if(scopedPhoto) "photo.read" else "read", "path" to path))
             .addOnCompleteListener { task ->
                 if (!task.isSuccessful) {
                     // No direct Firebase Storage URL: protected images need the callable.
@@ -983,8 +1072,9 @@ class QuartinautRepository(context: Context) {
     fun startServerRequestChat(request:DocumentSnapshot,onOpen:()->Unit) {
         val uid=user?.uid ?:return
         busy=true
-        functions.getHttpsCallable("quartinautPrivateChats").call(mapOf(
-            "action" to "start","requestId" to request.id
+        val scoped=request.id.startsWith("arq_")
+        functions.getHttpsCallable(if(scoped) "quartinautAudience" else "quartinautPrivateChats").call(mapOf(
+            "action" to if(scoped) "chat.start" else "start","requestId" to request.id,"id" to request.id
         )).addOnCompleteListener { result ->
             if(user?.uid!=uid)return@addOnCompleteListener
             busy=false
@@ -1022,7 +1112,9 @@ class QuartinautRepository(context: Context) {
         enhancementError=""
         // A parallel read must not temporarily revoke already-confirmed
         // write permissions for a completely unrelated post.
-        functions.getHttpsCallable("quartinautEnhancements")
+        val scoped=DocString(args["id"]).startsWith("arq_")
+        val aggregate=action in listOf("posts.mine","favorites.list","radar.list")
+        functions.getHttpsCallable(if(scoped) "quartinautAudience" else "quartinautEnhancements")
             .call(args + ("action" to action))
             .addOnCompleteListener { task ->
                 if(user?.uid!=uid)return@addOnCompleteListener
@@ -1041,7 +1133,21 @@ class QuartinautRepository(context: Context) {
                     enhancementReady=true
                     syncIssues=syncIssues - "Erweiterungen"
                     val payload=task.result?.data as? Map<*,*> ?: emptyMap<String,Any?>()
-                    onDone(payload.entries.associate { DocString(it.key) to it.value })
+                    val original=payload.entries.associate { DocString(it.key) to it.value }
+                    if(aggregate) {
+                        functions.getHttpsCallable("quartinautAudience").call(args+("action" to action))
+                            .addOnCompleteListener { extra ->
+                                if(user?.uid!=uid)return@addOnCompleteListener
+                                if(extra.isSuccessful) {
+                                    val additional=(extra.result.data as? Map<*,*>)?.get("items") as? List<*> ?: emptyList<Any>()
+                                    val old=original["items"] as? List<*> ?: emptyList<Any>()
+                                    onDone(original+("items" to (old+additional)))
+                                } else {
+                                    syncIssues=syncIssues+("Regionale Anliegen" to callableDiagnostic(extra.exception,"Regionale Anliegen nicht erreichbar."))
+                                    onDone(original)
+                                }
+                            }
+                    } else onDone(original)
                 }
             }
     }
