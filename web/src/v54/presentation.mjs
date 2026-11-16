@@ -38,7 +38,7 @@ export function cleanPriorityOrder(values){
 }
 export function cleanDensity(value){return value==='compact'?'compact':'comfortable';}
 const STATUS = Object.freeze({
- requested:'Angefragt',accepted:'Bestätigt',declined:'Abgelehnt',cancelled:'Storniert',
+ offen:'Offen',wartet_freigabe:'In Prüfung',erledigt:'Erledigt',archiviert:'Archiviert',abgelaufen:'Abgelaufen',gelöscht:'Gelöscht',paused:'Pausiert',archived:'Archiviert',deleted:'Gelöscht',requested:'Angefragt',accepted:'Bestätigt',declined:'Abgelehnt',cancelled:'Storniert',
  confirmed:'Angemeldet',waitlisted:'Auf Warteliste',returned:'Zurückgegeben',
  borrowed:'Ausgeliehen',reserved:'Reserviert',available:'Verfügbar',
  expired:'Abgelaufen',completed:'Abgeschlossen',published:'Veröffentlicht',

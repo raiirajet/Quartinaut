@@ -1,10 +1,10 @@
 /* Quartinaut 4.6.2 — fast public shell; never cache Firebase, private or authenticated data. */
-const VERSION = 'quartinaut-shell-v5.11.5';
+const VERSION = 'quartinaut-shell-v5.11.6';
 const ASSETS = [
   './','./index.html','./offline.html','./quartinaut-bundle-50.css','./quartinaut-v53.css','./quartinaut-v54.css',
 
 
-  './app-release-5115.js','./quartinaut-desktop-5115.css','./quartinaut-native-5114.css','./src/native/parity.mjs','./src/native/catalog.mjs','./src/native/location.mjs','./assets/native/qt3d_atlas_safe.webp','./assets/native/icon-192.png','./assets/native/icon-512.png','./assets/native/quartinaut-brand.svg','./assets/native/coats-index.js','./assets/native/public-manifest.json','./assets/native/official_calendar_ch_2026_2030.json','./assets/native/municipal_calendar_verified_sg.json','./assets/native/municipality_2025.geojson','./vendor/qrcode-1.4.4.js','./theme-bootstrap.js','./firebase-config.js','./manifest.webmanifest',
+  './app-release-5116.js','./quartinaut-quality-5116.css','./src/site-ui.mjs','./quartinaut-desktop-5115.css','./quartinaut-native-5114.css','./src/native/parity.mjs','./src/native/catalog.mjs','./src/native/location.mjs','./assets/native/qt3d_atlas_safe.webp','./assets/native/icon-192.png','./assets/native/icon-512.png','./assets/native/quartinaut-brand.svg','./assets/native/coats-index.js','./assets/native/public-manifest.json','./assets/native/official_calendar_ch_2026_2030.json','./assets/native/municipal_calendar_verified_sg.json','./assets/native/municipality_2025.geojson','./vendor/qrcode-1.4.4.js','./theme-bootstrap.js','./firebase-config.js','./manifest.webmanifest',
   './src/v2/preferences.js','./src/v2/wizard.js','./src/v2/pwa-updates.js',
   './src/v3/community.js','./src/v46/features.js','./src/v462/dashboard-background.js','./src/v47/dashboard-editor.js','./src/v47/sync.js','./src/v48/accessibility.js','./src/v50-ics.mjs','./src/v53/presentation.mjs','./src/v54/presentation.mjs','./src/v54/swiss-map.mjs','./src/v54/wappen.mjs','./assets/icons/quartinaut-logo.svg',
   './assets/icons/icon-192.png','./assets/icons/icon-512.png',

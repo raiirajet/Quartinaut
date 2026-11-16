@@ -1,0 +1,24 @@
+{
+  "live": {
+    "version": "sites/quartinaut/versions/d26503575d407494",
+    "url": "https://quartinaut.web.app",
+    "releaseTime": "2026-11-16T12:48:30.396Z",
+    "config": {
+      "headers": [
+        {
+          "headers": {
+            "Referrer-Policy": "strict-origin-when-cross-origin",
+            "X-Content-Type-Options": "nosniff"
+          },
+          "glob": "**"
+        },
+        {
+          "headers": {
+            "Cache-Control": "no-cache"
+          },
+          "glob": "**/*.@(html|js|mjs|css|webmanifest)"
+        }
+      ]
+    }
+  }
+}
