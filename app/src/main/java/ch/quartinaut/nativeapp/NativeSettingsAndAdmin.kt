@@ -13,6 +13,8 @@ import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.School
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
@@ -48,11 +50,14 @@ fun NativeSettingsScreen(repo: QuartinautRepository,mode: String,
     }
     LaunchedEffect(repo.user?.uid) { repo.loadCommunitySettings() }
     val saved=repo.communitySettings
-    var home by remember { mutableStateOf("home") }
-    var digest by remember { mutableStateOf("off") }
-    var quiet by remember { mutableStateOf(false) }
-    val topics=remember { mutableStateListOf("chats","alerts","help") }
+    var home by rememberSaveable { mutableStateOf("home") }
+    var digest by rememberSaveable { mutableStateOf("off") }
+    var quiet by rememberSaveable { mutableStateOf(false) }
+    var dirty by rememberSaveable { mutableStateOf(false) }
+    val topics=rememberSaveable(saver=listSaver<androidx.compose.runtime.snapshots.SnapshotStateList<String>,String>(
+        save={it.toList()},restore={it.toMutableStateList()})) { mutableStateListOf("chats","alerts","help") }
     LaunchedEffect(saved) {
+        if(dirty) return@LaunchedEffect
         home=DocString(saved["homeView"]).ifBlank{"home"}
         digest=DocString(saved["digest"]).ifBlank{"off"}
         quiet=saved["quietHours"] == true
@@ -96,8 +101,8 @@ fun NativeSettingsScreen(repo: QuartinautRepository,mode: String,
         HorizontalDivider()
         Text("Meine Startseite",style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
         HomeLabels.forEach { (key,label) ->
-            Row(Modifier.fillMaxWidth().clickable {home=key},verticalAlignment=Alignment.CenterVertically) {
-                RadioButton(selected=home==key,onClick={home=key})
+            Row(Modifier.fillMaxWidth().clickable {dirty=true;home=key},verticalAlignment=Alignment.CenterVertically) {
+                RadioButton(selected=home==key,onClick={dirty=true;home=key})
                 Text(label)
             }
         }
@@ -106,6 +111,7 @@ fun NativeSettingsScreen(repo: QuartinautRepository,mode: String,
         Topics.forEach { (key,label) ->
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                 Checkbox(checked=key in topics,onCheckedChange={checked->
+                    dirty=true
                     if(checked) { if(key !in topics)topics.add(key) }
                     else topics.remove(key)
                 })
@@ -115,12 +121,12 @@ fun NativeSettingsScreen(repo: QuartinautRepository,mode: String,
         Text("Zusammenfassung",fontWeight=FontWeight.SemiBold)
         listOf("off" to "Keine","daily" to "Täglich","weekly" to "Wöchentlich").forEach { (key,label) ->
             Row(verticalAlignment=Alignment.CenterVertically) {
-                RadioButton(selected=digest==key,onClick={digest=key})
+                RadioButton(selected=digest==key,onClick={dirty=true;digest=key})
                 Text(label)
             }
         }
         Row(verticalAlignment=Alignment.CenterVertically) {
-            Switch(checked=quiet,onCheckedChange={quiet=it})
+            Switch(checked=quiet,onCheckedChange={dirty=true;quiet=it})
             Spacer(Modifier.width(12.dp))
             Text("Ruhezeiten berücksichtigen")
         }

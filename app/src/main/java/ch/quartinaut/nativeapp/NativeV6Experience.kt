@@ -422,11 +422,13 @@ fun NativeMunicipalityComparison(repo:QuartinautRepository,navigate:(String)->Un
     var choosing by rememberSaveable {mutableIntStateOf(1)}
     val first=options.firstOrNull {it.second.bfs==firstBfs}
     val second=options.firstOrNull {it.second.bfs==secondBfs}
-    val factsA by produceState<MunicipalityFacts?>(null,firstBfs) {
-        value=if(firstBfs.isBlank())null else withContext(Dispatchers.IO) {queryMunicipalityFacts(firstBfs)}
+    var factsA by remember { mutableStateOf<MunicipalityFacts?>(null) }
+    LaunchedEffect(firstBfs) {
+        factsA=if(firstBfs.isBlank())null else withContext(Dispatchers.IO) {queryMunicipalityFacts(firstBfs)}
     }
-    val factsB by produceState<MunicipalityFacts?>(null,secondBfs) {
-        value=if(secondBfs.isBlank())null else withContext(Dispatchers.IO) {queryMunicipalityFacts(secondBfs)}
+    var factsB by remember { mutableStateOf<MunicipalityFacts?>(null) }
+    LaunchedEffect(secondBfs) {
+        factsB=if(secondBfs.isBlank())null else withContext(Dispatchers.IO) {queryMunicipalityFacts(secondBfs)}
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement=Arrangement.spacedBy(12.dp)) {

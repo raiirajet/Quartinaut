@@ -51,7 +51,7 @@ function prepareControl(control){
  if(control.maxLength>0&&control.tagName==='TEXTAREA'){
   const counter=document.createElement('small');counter.className='qn-field-counter';counter.id=control.id+'-count';
   const refresh=()=>counter.textContent=`${control.value.length} von ${control.maxLength} Zeichen`;
-  control.after(counter);addDescription(control,counter.id);control.addEventListener('input',refresh);form?.addEventListener('quartinaut:draft-restored',refresh);refresh();
+  control.after(counter);addDescription(control,counter.id);control.addEventListener('input',refresh);form?.addEventListener('quartinaut:draft-restored',refresh);form?.addEventListener('quartinaut:view-restored',refresh);refresh();
  }
  if(control.type==='hidden'||control.matches('[type=submit],[type=button],[type=reset],[type=range]'))return;
  let touched=false,helper=null,siteMessage=false;

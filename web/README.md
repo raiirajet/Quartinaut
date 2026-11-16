@@ -1,9 +1,9 @@
-# Quartinaut Web 5.11.6 · Website quality review · Android Build 33
+# Quartinaut Web 5.11.7 · Website quality review · Android Build 34
 
 The live Web 5.4.2 source was captured from the owner's existing Firebase Hosting
 version `sites/quartinaut/versions/ecfb5a780cca5bcf`. The original production
 Firebase configuration and existing account, moderation and community flows
-were retained. `app-source-5116.mjs` is the editable application entry. `npm run build` bundles all local modules into `app-release-5116.js`, so an old Service Worker cannot mix outdated module exports into the new release. `app-release-5116.js` is the active entry point; earlier public
+were retained. `app-source-5117.mjs` is the editable application entry. `npm run build` bundles all local modules into `app-release-5117.js`, so an old Service Worker cannot mix outdated module exports into the new release. `app-release-5117.js` is the active entry point; earlier public
 release files remain for existing clients and rollback compatibility.
 
 ## Run and verify
@@ -35,7 +35,7 @@ screens. The sign-in view uses a broad two-column layout on desktop.
 
 The desktop layer is in `quartinaut-desktop-5115.css`. Keep the new bundled
 release filename and Service Worker version when publishing changes; older
-5.4.2, 5.11.4 and 5.11.5 installed caches are exercised by the upgrade tests.
+5.4.2, 5.11.4, 5.11.5 and 5.11.6 installed caches are exercised by the upgrade tests.
 
 ## Page and form quality
 
@@ -57,6 +57,29 @@ and Axe WCAG A/AA rules, with additional coverage in all four colour themes.
 It waits for finite animations before measuring colour contrast. Reports and
 screenshots are written to `artifacts/site-review/` outside published files.
 This is an automated accessibility check, not a conformance certification.
+
+## Stable navigation and editing
+
+`src/view-session.mjs` keeps per-view scroll positions, expanded sections and
+transient input values in memory, bounded to 40 views and cleared on account
+change. Hub submenus have separate history entries and restore their own
+positions. The map keeps its public drill-down state. Closing a modal restores
+focus without scrolling its parent. No draft values are put in URLs or browser
+history. Passwords and image files are not retained in the view history.
+
+Background updates defer replacing a focused editor. An explicit update keeps
+the user's fields, selection and selected chat image. Connectivity/visibility
+changes do not themselves rebuild the page. Required regional grant validation
+continues; invalidation can update the page while preserving presentation state.
+Application updates still require the user's update action; controller changes
+alone never reload an open document. Late chat/post responses cannot navigate
+away after the user has opened another menu.
+
+The paired Android update uses account-scoped SaveableStateHolder entries for
+pages, chat threads, map levels and detail views. Delayed home preferences and
+async navigation callbacks cannot take over deliberate/restored navigation.
+Separate in-memory result caches retain rows during refresh/failure and clear
+on account changes. Completed composers discard their saved view state.
 
 ## Shared app behavior
 
@@ -90,7 +113,7 @@ there is no background tracking. An optional street lookup sends the location
 to the public Swiss geo.admin.ch API, explicitly disclosed beside the control.
 Only its street-name attribute is displayed, after removing trailing house
 numbers. The street is neither persisted nor sent to Firebase. Firebase receives
-only the center rounded to 0.01 degrees, as in Android Build 33.
+only the center rounded to 0.01 degrees, as in Android Build 34.
 
 Regional requests use `quartinautAudience` and owner-bound
 `quartinautAudienceFeeds/{uid}/items/{id}` server reads. No unrestricted source
@@ -114,8 +137,8 @@ and the existing historical coat qualifications from the Android resources.
 From the repository root, use the separate Hosting-only configuration:
 
 ```sh
-npx -y firebase-tools@latest hosting:channel:deploy site-review-5116 --project quartinaut --config firebase.hosting.json --expires 7d
-npx -y firebase-tools@latest hosting:clone quartinaut:site-review-5116 quartinaut:live --project quartinaut
+npx -y firebase-tools@latest hosting:channel:deploy navigation-5117 --project quartinaut --config firebase.hosting.json --expires 7d
+npx -y firebase-tools@latest hosting:clone quartinaut:navigation-5117 quartinaut:live --project quartinaut
 ```
 
 The second command promotes the tested immutable preview version. It does not

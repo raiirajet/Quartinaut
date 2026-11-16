@@ -1,14 +1,14 @@
 {
   "name": "quartinaut-web",
-  "version": "5.11.6",
+  "version": "5.11.7",
   "private": true,
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "test:browser": "node tests/browser.cjs && node tests/cache-upgrade.cjs",
-    "check": "node --check app-release-5116.js && node --check src/native/parity.mjs && node --check sw.js",
+    "test:browser": "node tests/browser.cjs && node tests/navigation.cjs && node tests/cache-upgrade.cjs",
+    "check": "node --check app-release-5117.js && node --check src/native/parity.mjs && node --check sw.js",
     "serve": "python3 -m http.server 5114 --bind 127.0.0.1",
-    "build": "esbuild app-source-5116.mjs --bundle --format=esm --target=es2022 --external:https://* --outfile=app-release-5116.js",
+    "build": "esbuild app-source-5117.mjs --bundle --format=esm --target=es2022 --external:https://* --outfile=app-release-5117.js",
     "test:review": "node tests/site-review.cjs"
   },
   "devDependencies": {

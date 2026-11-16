@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Alignment
@@ -165,8 +166,18 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun QuartinautApp(repo: QuartinautRepository,
     mode: String, displayMode: String, updateMode: (String) -> Unit) {
+    key(repo.user?.uid ?: "signed-out") {
+        QuartinautSession(repo, mode, displayMode, updateMode)
+    }
+}
+
+@Composable
+private fun QuartinautSession(repo: QuartinautRepository,
+    mode: String, displayMode: String, updateMode: (String) -> Unit) {
+    val screenMemory=rememberSaveableStateHolder()
     // Restore screen and backstack when Android recreates the Activity.
     var page by rememberSaveable { mutableStateOf("home") }
+    var navigationGeneration by rememberSaveable { mutableLongStateOf(0L) }
     val history=rememberSaveable(
         saver=listSaver<androidx.compose.runtime.snapshots.SnapshotStateList<String>,String>(
             save={ it.toList() }, restore={ it.toMutableStateList() })
@@ -175,13 +186,15 @@ private fun QuartinautApp(repo: QuartinautRepository,
     var mapMunicipality by rememberSaveable { mutableStateOf("") }
     var selectedHubItem by remember { mutableStateOf<Map<String,Any?>>(emptyMap()) }
     var selectedRequest by remember { mutableStateOf<DocumentSnapshot?>(null) }
+    var selectedHubId by rememberSaveable { mutableStateOf("") }
+    var selectedRequestId by rememberSaveable { mutableStateOf("") }
     val authUser = repo.user
-    var appliedHome by remember(authUser?.uid) { mutableStateOf(false) }
+    var appliedHome by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(authUser?.uid) {
         if(authUser != null) repo.loadCommunitySettings()
     }
     LaunchedEffect(repo.communitySettings,authUser?.uid) {
-        if(!appliedHome && authUser != null && repo.communitySettings.isNotEmpty()) {
+        if(shouldApplyInitialHome(appliedHome,page,history.size) && authUser != null && repo.communitySettings.isNotEmpty()) {
             page = when(DocString(repo.communitySettings["homeView"])) {
                 "hub" -> "plus"; "bulletin" -> "board"
                 "events" -> "calendar"; "inbox" -> "official"
@@ -246,30 +259,45 @@ private fun QuartinautApp(repo: QuartinautRepository,
     }
     NativeWelcomeTour(authUser.uid)
     val navContext=LocalContext.current
+    val saveEntry={NativeBackEntry(page,mapCanton,mapMunicipality,selectedHubId,selectedRequestId).save()}
     val navTo: (String) -> Unit = { target ->
+        appliedHome=true
         if(target!=page) {
-            if(target=="home") history.clear() else history.add(page)
+            navigationGeneration++
+            if(target=="home") history.clear() else history.add(saveEntry())
             if(history.size>40) history.removeAt(0)
             if(target=="map" && page!="map") { mapCanton="";mapMunicipality="" }
             page=target
         }
-        if(target=="plus")repo.loadHub()
+        if(target=="plus" && !repo.hubLoaded)repo.loadHub()
         recordRecentlyVisited(navContext,repo.user?.uid.orEmpty(),target)
     }
     val goBack: () -> Unit = {
+        navigationGeneration++
+        appliedHome=true
         when {
             page=="chats" && repo.chatId.isNotBlank() -> repo.closeChat()
             page=="map" && mapMunicipality.isNotBlank() -> mapMunicipality=""
             page=="map" && mapCanton.isNotBlank() -> mapCanton=""
-            history.isNotEmpty() -> page=history.removeAt(history.lastIndex)
+            history.isNotEmpty() -> {
+                val entry=NativeBackEntry.restore(history.removeAt(history.lastIndex))
+                page=entry.page;mapCanton=entry.canton;mapMunicipality=entry.municipality
+                selectedHubId=entry.hubId;selectedRequestId=entry.requestId
+            }
             page!="home" -> page="home"
         }
     }
     BackHandler(enabled=page!="home" || history.isNotEmpty()) { goBack() }
     val dispatcher=LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
     val backAction: () -> Unit = { if(dispatcher!=null) dispatcher.onBackPressed() else goBack() }
-    val openHub: (Map<String,Any?>) -> Unit = { selectedHubItem=it;navTo("hub-detail") }
-    val openRequest: (DocumentSnapshot) -> Unit = { selectedRequest=it;navTo("request-detail") }
+    val openHub: (Map<String,Any?>) -> Unit = {
+        if(page=="hub-detail" && selectedHubId!=DocString(it["id"])) {history.add(saveEntry());navigationGeneration++}
+        navTo("hub-detail");selectedHubItem=it;selectedHubId=DocString(it["id"])
+    }
+    val openRequest: (DocumentSnapshot) -> Unit = {
+        if(page=="request-detail" && selectedRequestId!=it.id) {history.add(saveEntry());navigationGeneration++}
+        navTo("request-detail");selectedRequest=it;selectedRequestId=it.id
+    }
     val toolbarBackground=when(displayMode) {
         "light" -> Color.White
         "red" -> Color(0xFFD52B1E)
@@ -453,74 +481,105 @@ private fun QuartinautApp(repo: QuartinautRepository,
                 }
             )
         }) {
+            val screenKey=when(page) {
+                "map" -> "map:$mapCanton:$mapMunicipality"
+                "chats" -> "chats:${repo.chatId.ifBlank { "list" }}"
+                "hub-detail" -> "hub-detail:$selectedHubId"
+                "request-detail" -> "request-detail:$selectedRequestId"
+                else -> page
+            }
+            NativeRetainedScreen(authUser.uid,screenKey,screenMemory) {
+            val origin=NavigationOrigin(page,navigationGeneration)
+            val isCurrent={origin.matches(page,navigationGeneration)}
+            val pageNavigate:(String)->Unit={target->if(isCurrent())navTo(target)}
+            val pageBack:()->Unit={if(isCurrent())goBack()}
+            val pageOpenRequest:(DocumentSnapshot)->Unit={doc->if(isCurrent())openRequest(doc)}
+            val pageOpenHub:(Map<String,Any?>)->Unit={item->if(isCurrent())openHub(item)}
             when(page) {
-                "home" -> NativeOriginalHome(repo, navTo,openRequest,openHub)
-                "board" -> BulletinPage(repo, navTo, openRequest)
-                "plus" -> HubPage(repo, navTo)
+                "home" -> NativeOriginalHome(repo, pageNavigate,pageOpenRequest,pageOpenHub)
+                "board" -> BulletinPage(repo, pageNavigate, pageOpenRequest)
+                "plus" -> HubPage(repo, pageNavigate)
                 "chats" -> NativePrivateChatsPage(repo)
-                "enhancements" -> NativeExtrasDirectory(repo,navTo)
+                "enhancements" -> NativeExtrasDirectory(repo,pageNavigate)
                 "hub-section:entdecken", "hub-section:erstellen", "hub-section:meine",
                 "hub-section:gemeinde", "hub-section:sicherheit" ->
-                    NativeQuartierCategoryPage(page.substringAfter(":"),navTo)
-                "enh-posts" -> NativeMyPostsScreen(repo,navTo)
-                "enh-radar" -> NativeRadarScreen(repo,navTo)
-                "enh-assist" -> NativeSmartListing(repo,navTo)
-                "enh-loans" -> NativeLoanPlanner(repo,navTo)
-                "enh-map" -> NativeMapPlus(repo,navTo)
-                "enh-clubs" -> NativeClubCenter(repo,navTo)
-                "enh-trust" -> NativeTrustScreen(repo,navTo)
-                "enh-calendar" -> NativeCalendarPlus(repo,navTo)
+                    NativeQuartierCategoryPage(page.substringAfter(":"),pageNavigate)
+                "enh-posts" -> NativeMyPostsScreen(repo,pageNavigate)
+                "enh-radar" -> NativeRadarScreen(repo,pageNavigate)
+                "enh-assist" -> NativeSmartListing(repo,pageNavigate)
+                "enh-loans" -> NativeLoanPlanner(repo,pageNavigate)
+                "enh-map" -> NativeMapPlus(repo,pageNavigate)
+                "enh-clubs" -> NativeClubCenter(repo,pageNavigate)
+                "enh-trust" -> NativeTrustScreen(repo,pageNavigate)
+                "enh-calendar" -> NativeCalendarPlus(repo,pageNavigate)
                 "enh-qr" -> NativeQRHandover(repo)
-                "enh-offline" -> NativeOfflineScreen(repo,navTo)
-                "enh-favorites" -> NativeFavoriteScreen(repo,navTo)
-                "profile" -> ProfilePage(repo, navTo)
-                "create" -> NativeNewChooser(navTo)
-                "create-request" -> NativeRequestComposer(repo,initialKind="Suche") { navTo("board") }
-                "create-offer" -> NativeRequestComposer(repo,initialKind="Biete") { navTo("board") }
-                "request-detail" -> selectedRequest?.let { doc ->
-                    NativeRequestDetail(repo,doc,goBack,{repo.openRequestChat(doc){navTo("chats")}})
+                "enh-offline" -> NativeOfflineScreen(repo,pageNavigate)
+                "enh-favorites" -> NativeFavoriteScreen(repo,pageNavigate)
+                "profile" -> ProfilePage(repo, pageNavigate)
+                "create" -> NativeNewChooser(pageNavigate)
+                "create-request" -> NativeRequestComposer(repo,initialKind="Suche") { screenMemory.removeState("create-request");pageNavigate("board") }
+                "create-offer" -> NativeRequestComposer(repo,initialKind="Biete") { screenMemory.removeState("create-offer");pageNavigate("board") }
+                "request-detail" -> {
+                    val doc=repo.requests.firstOrNull {it.id==selectedRequestId} ?: selectedRequest?.takeIf {it.id==selectedRequestId}
+                    if(doc!=null)NativeRequestDetail(repo,doc,pageBack,{repo.openRequestChat(doc){pageNavigate("chats")}})
+                    else MissingDetailPage(pageBack)
                 }
-                "hub-detail" -> NativeHubDetail(repo,selectedHubItem,goBack,{navTo("enh-loans")},{navTo("enh-posts")})
+                "hub-detail" -> {
+                    val item=repo.hubItems.firstOrNull {DocString(it["id"])==selectedHubId}
+                        ?: selectedHubItem.takeIf {DocString(it["id"])==selectedHubId}
+                    if(!item.isNullOrEmpty())NativeHubDetail(repo,item,pageBack,{pageNavigate("enh-loans")},{pageNavigate("enh-posts")})
+                    else MissingDetailPage(pageBack)
+                }
                 "map" -> RegionPage(repo,mapCanton,mapMunicipality,
                     {mapCanton=it;mapMunicipality=""},{mapMunicipality=it},
-                    {navTo("municipal-compare")})
+                    {pageNavigate("municipal-compare")})
                 "alerts" -> DocumentsPage(repo, "Alarme", repo.alerts.filter {
                     it.str("cantonCode") == repo.canton() &&
                         (it.str("scopeLevel") == "canton" ||
                          it.str("areaKey") == repo.areaKey())
                 })
                 "official" -> DocumentsPage(repo, "Offizielle Mitteilungen", repo.notices)
-                "market" -> HubItemsPage(repo, "market", navTo, openHub)
-                "lend" -> HubItemsPage(repo, "lend", navTo, openHub)
-                "group" -> HubItemsPage(repo, "group", navTo, openHub)
-                "calendar" -> NativeMunicipalCalendarPage(repo,openHub,{navTo("official-calendar")})
-                "official-calendar" -> NativeOfficialCalendarScreen(repo,navTo)
-                "lost" -> HubItemsPage(repo, "lost", navTo, openHub)
-                "project" -> HubItemsPage(repo, "project", navTo, openHub)
-                "issue" -> HubItemsPage(repo, "issue", navTo, openHub)
-                "v50market", "v50loans", "v50associations" -> V50Page(repo, page, navTo)
-                "search" -> NativeUnifiedSearch(repo,navTo,openRequest,openHub) {code,bfs ->
-                    navTo("map");mapCanton=code;mapMunicipality=bfs
+                "market" -> HubItemsPage(repo, "market", pageNavigate, pageOpenHub)
+                "lend" -> HubItemsPage(repo, "lend", pageNavigate, pageOpenHub)
+                "group" -> HubItemsPage(repo, "group", pageNavigate, pageOpenHub)
+                "calendar" -> NativeMunicipalCalendarPage(repo,pageOpenHub,{pageNavigate("official-calendar")})
+                "official-calendar" -> NativeOfficialCalendarScreen(repo,pageNavigate)
+                "lost" -> HubItemsPage(repo, "lost", pageNavigate, pageOpenHub)
+                "project" -> HubItemsPage(repo, "project", pageNavigate, pageOpenHub)
+                "issue" -> HubItemsPage(repo, "issue", pageNavigate, pageOpenHub)
+                "v50market", "v50loans", "v50associations" -> V50Page(repo, page, pageNavigate)
+                "search" -> NativeUnifiedSearch(repo,pageNavigate,pageOpenRequest,pageOpenHub) {code,bfs ->
+                    pageNavigate("map");mapCanton=code;mapMunicipality=bfs
                 }
-                "personal-center" -> NativePersonalCenter(repo,navTo)
-                "community-pulse" -> NativeCommunityPulse(repo,navTo,openRequest)
-                "municipal-compare" -> NativeMunicipalityComparison(repo,navTo)
-                "calendar-planner" -> NativeCalendarPlanner(repo,navTo)
-                "safety-center" -> NativeSafetyCenter(repo,navTo)
-                "settings" -> NativeSettingsScreen(repo,mode,updateMode,navTo)
+                "personal-center" -> NativePersonalCenter(repo,pageNavigate)
+                "community-pulse" -> NativeCommunityPulse(repo,pageNavigate,pageOpenRequest)
+                "municipal-compare" -> NativeMunicipalityComparison(repo,pageNavigate)
+                "calendar-planner" -> NativeCalendarPlanner(repo,pageNavigate)
+                "safety-center" -> NativeSafetyCenter(repo,pageNavigate)
+                "settings" -> NativeSettingsScreen(repo,mode,updateMode,pageNavigate)
                 "sources" -> NativeSourceReferencesScreen()
-                "admin" -> NativeAdminScreen(repo,navTo)
+                "admin" -> NativeAdminScreen(repo,pageNavigate)
                 "help" -> NativeHelpScreen()
                 "diagnostics" -> NativeSyncDiagnostics(repo)
                 else -> {
                     if(page.startsWith("hub-create:")) {
-                        NativeCreateHubPage(repo,page.substringAfter(":")) { navTo("plus") }
-                    } else NativeOriginalHome(repo,navTo,openRequest,openHub)
+                        NativeCreateHubPage(repo,page.substringAfter(":")) { screenMemory.removeState(origin.screen);pageNavigate("plus") }
+                    } else NativeOriginalHome(repo,pageNavigate,pageOpenRequest,pageOpenHub)
                 }
+            }
             }
             if (repo.busy) LinearProgressIndicator(Modifier.fillMaxWidth().align(Alignment.TopCenter))
         }
         }
+    }
+}
+
+@Composable
+private fun MissingDetailPage(back:()->Unit) {
+    Column(Modifier.fillMaxWidth().padding(24.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+        Text("Eintrag nicht geladen",style=MaterialTheme.typography.headlineSmall)
+        Text("Der Eintrag ist noch nicht geladen oder nicht mehr verfügbar. Kehre zur Übersicht zurück und öffne ihn erneut.")
+        OutlinedButton(onClick=back){Text("Zurück zur Übersicht")}
     }
 }
 
@@ -725,8 +784,8 @@ private fun Metric(value: String,label: String) {
 @Composable
 private fun BulletinPage(repo: QuartinautRepository, go: (String) -> Unit,
     openRequest: (DocumentSnapshot) -> Unit) {
-    var query by remember { mutableStateOf("") }
-    var showPending by remember { mutableStateOf(false) }
+    var query by rememberSaveable { mutableStateOf("") }
+    var showPending by rememberSaveable { mutableStateOf(false) }
     val rows = repo.requests.filter { doc ->
         (doc.str("status") == "offen" || (showPending && doc.str("uid") == repo.user?.uid))
             && listOf(doc.title(), doc.str("text"), doc.str("category")).joinToString(" ")
@@ -815,7 +874,7 @@ private fun HubItemsPage(repo:QuartinautRepository,kind:String,go:(String)->Unit
     val labels = mapOf("market" to "Marktplatz","lend" to "Leihbörse",
         "group" to "Vereine & Gruppen","calendar" to "Gemeindekalender",
         "lost" to "Verloren & Gefunden","project" to "Quartieraktionen","issue" to "Mängel melden")
-    var query by remember(kind) { mutableStateOf("") }
+    var query by rememberSaveable(kind) { mutableStateOf("") }
     val rows=repo.hubItems.filter {
         DocString(it["kind"]) == kind &&
             (DocString(it["status"]) == "published" || it["isMine"] == true || it["isModerator"] == true) &&
@@ -830,7 +889,7 @@ private fun HubItemsPage(repo:QuartinautRepository,kind:String,go:(String)->Unit
         if(kind=="lend") OutlinedButton(onClick={go("v50loans")}) { Text("Meine Ausleihen") }
         if(kind=="group") OutlinedButton(onClick={go("v50associations")}) { Text("Meine Anmeldungen") }
         LazyColumn(verticalArrangement=Arrangement.spacedBy(10.dp)) {
-            items(rows) { item ->
+            items(rows,key={DocString(it["id"])}) { item ->
                 val price=if(item["priceChf"] != null) " · CHF " + DocString(item["priceChf"]) else ""
                 Panel(DocString(item["title"]),
                     DocString(item["description"]),
@@ -879,15 +938,16 @@ private fun ProfilePage(repo: QuartinautRepository, go:(String)->Unit) = ScrollP
 private fun RegionPage(repo: QuartinautRepository, selectedCode: String,selectedBfs: String,
     selectCanton: (String)->Unit, selectMunicipality: (String)->Unit,
     navigateComparison: ()->Unit) {
-    var search by remember(selectedCode) { mutableStateOf("") }
+    var search by rememberSaveable(selectedCode) { mutableStateOf("") }
     val screenContext=LocalContext.current
     val canton=repo.regions.firstOrNull { it.code==selectedCode }
     val selected=canton?.municipalities?.firstOrNull { it.bfs==selectedBfs }
     // All 26 cantonal coats are bundled. MunicipalityCoat prioritizes the
     // local SVG, so there is no reason to query Wikidata for every canton.
     val cantonCoatByCode=emptyMap<String,String>()
-    val coatByBfs by produceState<Map<String,String>>(initialValue=emptyMap(),canton?.code) {
-        value=if(canton==null) emptyMap() else
+    var coatByBfs by remember { mutableStateOf<Map<String,String>>(emptyMap()) }
+    LaunchedEffect(canton?.code) {
+        coatByBfs=if(canton==null) emptyMap() else
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 queryCantonWappen(canton,screenContext)
             }
@@ -1021,7 +1081,7 @@ private fun RegionPage(repo: QuartinautRepository, selectedCode: String,selected
 @Composable
 private fun V50Page(repo: QuartinautRepository, page:String,go:(String)->Unit) {
     val action = when(page) { "v50market" -> "market.list";"v50loans" -> "loan.list"; else -> "association.list" }
-    LaunchedEffect(page) { repo.loadV50(action) }
+    LaunchedEffect(page) { repo.ensureV50Loaded(action) }
     Column(Modifier.fillMaxSize().padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
         SectionTitle(when(page){"v50market"->"Marktplatz-Reservierungen";"v50loans"->"Ausleih-Kalender";else->"Vereinsanmeldungen"})
         OutlinedButton(onClick={repo.loadV50(action)},modifier=Modifier.fillMaxWidth()) { Text("Aktualisieren") }
@@ -1040,7 +1100,7 @@ private fun V50Page(repo: QuartinautRepository, page:String,go:(String)->Unit) {
                 style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.error)
         }
         LazyColumn(verticalArrangement=Arrangement.spacedBy(10.dp)) {
-            items(repo.v50Items) { entry ->
+            items(repo.v50Entries(action),key={DocString(it["id"])}) { entry ->
                 val title=DocString(entry["title"]).ifBlank {
                     DocString(entry["listingId"]).ifBlank {DocString(entry["eventId"])}
                 }
@@ -1102,7 +1162,7 @@ private fun V50Page(repo: QuartinautRepository, page:String,go:(String)->Unit) {
                     }
                 }
             }
-            if(repo.v50Items.isEmpty() && !repo.v50Loading) item {
+            if(repo.v50Entries(action).isEmpty() && !repo.v50Loading) item {
                 Text(when {
                     repo.v50Error.isNotBlank() -> "Die Buchungen konnten nicht geladen werden."
                     page=="v50loans" -> "Noch keine Ausleihanfragen. Öffne einen fremden Leihartikel und sende eine Anfrage."
@@ -1114,7 +1174,7 @@ private fun V50Page(repo: QuartinautRepository, page:String,go:(String)->Unit) {
 }
 @Composable
 private fun SearchPage(repo:QuartinautRepository,go:(String)->Unit) {
-    var query by remember {mutableStateOf("")}
+    var query by rememberSaveable {mutableStateOf("")}
     val entries=repo.requests.filter {it.str("status")=="offen"
         && (it.title()+" "+it.str("text")).contains(query,ignoreCase=true)}
     val hubs=repo.hubItems.filter{(DocString(it["title"])+DocString(it["description"])).contains(query,ignoreCase=true)}

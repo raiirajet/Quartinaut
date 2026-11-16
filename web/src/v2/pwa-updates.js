@@ -1,5 +1,5 @@
 // PWA-Versionsverwaltung: kein manueller Cache-Reset, kein Reload bei ungespeicherten Eingaben.
-const PWA_RELEASE='5.11.6';
+const PWA_RELEASE='5.11.7';
 let acceptedUpdate=false;
 function banner(message, action, handler) {
   let host=document.getElementById('v2UpdateBanner');

@@ -1,0 +1,68 @@
+{
+  "live": {
+    "version": "sites/quartinaut/versions/ee5cbbe27295ae93",
+    "url": "https://quartinaut.web.app",
+    "releaseTime": "2026-11-16T18:19:57.289Z",
+    "config": {
+      "headers": [
+        {
+          "headers": {
+            "X-Content-Type-Options": "nosniff",
+            "Referrer-Policy": "strict-origin-when-cross-origin"
+          },
+          "glob": "**"
+        },
+        {
+          "headers": {
+            "Cache-Control": "no-cache"
+          },
+          "glob": "**/*.@(html|js|mjs|css|webmanifest)"
+        }
+      ]
+    }
+  },
+  "site-review-5116": {
+    "version": "sites/quartinaut/versions/ee5cbbe27295ae93",
+    "url": "https://quartinaut--site-review-5116-3ooxw64o.web.app",
+    "releaseTime": "2026-11-16T18:15:55.795Z",
+    "config": {
+      "headers": [
+        {
+          "headers": {
+            "X-Content-Type-Options": "nosniff",
+            "Referrer-Policy": "strict-origin-when-cross-origin"
+          },
+          "glob": "**"
+        },
+        {
+          "headers": {
+            "Cache-Control": "no-cache"
+          },
+          "glob": "**/*.@(html|js|mjs|css|webmanifest)"
+        }
+      ]
+    }
+  },
+  "backup-v5115-review-20261116": {
+    "version": "sites/quartinaut/versions/d26503575d407494",
+    "url": "https://quartinaut--backup-v5115-review-20261116-ybs9klim.web.app",
+    "releaseTime": "2026-11-16T18:17:40.594Z",
+    "config": {
+      "headers": [
+        {
+          "headers": {
+            "Referrer-Policy": "strict-origin-when-cross-origin",
+            "X-Content-Type-Options": "nosniff"
+          },
+          "glob": "**"
+        },
+        {
+          "headers": {
+            "Cache-Control": "no-cache"
+          },
+          "glob": "**/*.@(html|js|mjs|css|webmanifest)"
+        }
+      ]
+    }
+  }
+}

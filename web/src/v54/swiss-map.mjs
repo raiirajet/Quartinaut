@@ -97,14 +97,15 @@ const coatIcon=(coat,name,code='')=>coat?.url
   :`<span class="v541-coat-icon v541-coat-missing" aria-label="Wappen nicht verfügbar"><span aria-hidden="true">🛡</span></span>`;
 const cantonRow=(c,count)=>`<button class="v54-item" data-v54-canton="${escapeText(c.code)}" type="button">${coatIcon(cantonCoat(c.code),c.name)}<span class="v54-item-code">${escapeText(c.code)}</span><span class="v54-item-main"><strong>${escapeText(c.name)}</strong><small>${c.municipalities.length} Gemeinden</small></span><span class="v54-item-hint">${count?`${count} Registrierungen`:''} ›</span></button>`;
 const municipalityRow=(c,m,current)=>`<button class="v54-item ${current===String(m.bfsCode)?'is-current':''}" data-v54-municipality="${escapeText(m.bfsCode)}" type="button">${coatIcon(municipalityCoat(m.bfsCode),m.name)}<span class="v54-item-main"><strong>${escapeText(m.name)}</strong><small>Kanton ${escapeText(c.code)}</small></span><span aria-hidden="true">›</span></button>`;
-export function mountSwissMapExplorer(host,{cantons=[],counts={},ownArea='',goRoute=()=>{}}={}){
+export function mountSwissMapExplorer(host,{cantons=[],counts={},ownArea='',goRoute=()=>{},viewState={}}={}){
   const root=host?.closest('[data-v54-explorer]'),baseSvg=host?.querySelector('svg');if(!root||!baseSvg)return;
   const base=baseSvg.cloneNode(true),side=root.querySelector('[data-v54-profile]'),list=root.querySelector('[data-v54-list]'),
     crumb=root.querySelector('[data-v54-breadcrumb]'),search=root.querySelector('[data-v54-search]'),status=root.querySelector('[data-v54-status]'),
     back=root.querySelector('[data-v54-back]'),legend=root.querySelector('[data-v54-legend]'),mapCurrent=root.querySelector('[data-v541-map-current]'),labelToggle=root.querySelector('[data-v541-label-toggle]');
   const byCode=new Map(cantons.map(c=>[c.code,c]));
   const sortedCantons=[...cantons].sort((a,b)=>a.name.localeCompare(b.name,'de-CH'));
-  let canton=null,municipality=null,q='',request=0,labelMode='names';
+  let canton=null,municipality=null,q='',request=0,labelMode='names',restoring=true;
+  const savedView={...viewState};
   const getMunicipality=(c,id)=>c?.municipalities.find(m=>String(m.bfsCode)===String(id));
   function countrySvg(){const svg=base.cloneNode(true);svg.classList.add('v54-country-svg');svg.querySelectorAll('[data-code]').forEach(p=>{
     const c=byCode.get(p.dataset.code);p.setAttribute('role','button');p.setAttribute('tabindex','0');p.setAttribute('aria-label',`${c?.name||p.dataset.code} öffnen`);
@@ -177,6 +178,7 @@ export function mountSwissMapExplorer(host,{cantons=[],counts={},ownArea='',goRo
     svg.querySelectorAll('[data-v54-map-municipality]').forEach(p=>p.classList.toggle('is-selected',p.dataset.v54MapMunicipality===municipality));
     if(municipality)zoom(svg,svg.querySelector(`[data-v54-map-municipality="${municipality}"]`),.7);else svg.setAttribute('viewBox','0 0 960 600');}
   function profile(){
+    Object.assign(viewState,{canton:canton?.code||'',municipality:municipality||'',query:q,labelMode});
     const facts=(rows)=>`<div class="v54-facts">${rows.map(([a,b])=>`<span><small>${escapeText(a)}</small><strong>${escapeText(b)}</strong></span>`).join('')}</div>`;
     if(!canton){side.innerHTML=`<span class="v54-kicker">Schweiz · Übersicht</span><h3>Entdecke die Schweiz</h3>${facts([['Kantone',cantons.length],['Gemeinden',cantons.reduce((n,c)=>n+c.municipalities.length,0).toLocaleString('de-CH')]])}<p>Tippe auf einen Kanton. Die Farben zeigen wie bisher die Quartinaut-Registrierungen.</p>`;}
     else if(!municipality){
@@ -210,18 +212,22 @@ export function mountSwissMapExplorer(host,{cantons=[],counts={},ownArea='',goRo
   }
   function chooseMunicipality(id){const mid=String(id||'');let found=canton;
     if(!getMunicipality(found,mid)){found=cantons.find(c=>getMunicipality(c,mid));if(!found)return;chooseCanton(found.code);}
-    municipality=mid;highlightMunicipality();profile();scheduleCoats(found,mid);side.scrollIntoView?.({block:'nearest',behavior:'smooth'});
+    municipality=mid;highlightMunicipality();profile();scheduleCoats(found,mid);if(!restoring)side.scrollIntoView?.({block:'nearest',behavior:'smooth'});
   }
   root.addEventListener('click',e=>{
     if(e.target.closest('[data-v54-reset]')){reset();return;}
-    if(e.target.closest('[data-v541-label-toggle]')){labelMode=labelMode==='names'?'arms':'names';renderMunicipalityLabels();updateMapCaption();return;}
+    if(e.target.closest('[data-v541-label-toggle]')){labelMode=labelMode==='names'?'arms':'names';viewState.labelMode=labelMode;renderMunicipalityLabels();updateMapCaption();return;}
     const route=e.target.closest('[data-route]');if(route){goRoute(route.dataset.route);return;}
     if(e.target.closest('[data-v54-back]')){if(municipality){municipality=null;highlightMunicipality();profile();}else reset();return;}
     const m=e.target.closest('[data-v54-municipality],[data-v54-map-municipality]');if(m){chooseMunicipality(m.dataset.v54Municipality||m.dataset.v54MapMunicipality);return;}
     const c=e.target.closest('[data-v54-canton],[data-code]');if(c)chooseCanton(c.dataset.v54Canton||c.dataset.code);
   });
   root.addEventListener('keydown',e=>{if(!['Enter',' '].includes(e.key)||!e.target.matches('svg [role="button"]'))return;e.preventDefault();e.target.dispatchEvent(new MouseEvent('click',{bubbles:true}));});
-  search.addEventListener('input',()=>{q=search.value;renderList();});
+  search.addEventListener('input',()=>{q=search.value;viewState.query=q;renderList();});
   root.addEventListener('error',e=>{if(e.target?.matches?.('.v541-coat-icon img')){const badge=e.target.closest('.v541-coat-icon');if(badge){badge.classList.add('v541-coat-missing');badge.innerHTML='<span aria-hidden="true">🛡</span>';}}},true);
   reset();
+  if(savedView.canton)chooseCanton(savedView.canton);
+  if(savedView.municipality)chooseMunicipality(savedView.municipality);
+  q=savedView.query||'';search.value=q;labelMode=savedView.labelMode||'names';
+  profile();restoring=false;
 }

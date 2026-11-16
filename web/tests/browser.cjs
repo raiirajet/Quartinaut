@@ -9,7 +9,7 @@ const origin=process.env.QUARTINAUT_TEST_ORIGIN||'http://127.0.0.1:5114';
  async function check(name,fn){try{await fn();}catch(err){console.log('FAIL',name,await page.evaluate(()=>({text:document.querySelector('#main').innerText.slice(0,2000),model:window.__model(),calls:window.__calls.slice(-10)})),errors);await page.screenshot({path:artifacts+'/failure.png',fullPage:true});await browser.close();throw err;}results.push(name);console.log('PASS '+name);count++;}
  const context=await browser.newContext({viewport:{width:390,height:844},ignoreHTTPSErrors:true,serviceWorkers:'block',geolocation:{latitude:47.45,longitude:9.162,accuracy:20},permissions:['geolocation']});
  const page=await context.newPage(),errors=[];page.on('pageerror',err=>errors.push(err.message));
- await context.route('**/app-release-5116.js',async route=>{let s=await fs.readFile(path.join(__dirname,'../app-release-5116.js'),'utf8');s=s.replace('void initAuth();',fixture);await route.fulfill({body:s,contentType:'text/javascript'});});
+ await context.route('**/app-release-5117.js',async route=>{let s=await fs.readFile(path.join(__dirname,'../app-release-5117.js'),'utf8');s=s.replace('void initAuth();',fixture);await route.fulfill({body:s,contentType:'text/javascript'});});
  await context.route('**/api3.geo.admin.ch/**',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({results:[{attributes:{stn_label:'Bahnhofstrasse 12a',house_number:'12a',addressLine:'Nicht verwenden 99'}}]})}));
  await page.goto(origin,{waitUntil:'networkidle'});
  page.setDefaultTimeout(15000);
