@@ -2,8 +2,8 @@
 const VERSION = 'quartinaut-shell-v5.4.2';
 const ASSETS = [
   './','./index.html','./offline.html','./quartinaut-bundle-50.css','./quartinaut-v53.css','./quartinaut-v54.css',
-  
-  
+
+
   './app-release-542.js','./theme-bootstrap.js','./firebase-config.js','./manifest.webmanifest',
   './src/v2/preferences.js','./src/v2/wizard.js','./src/v2/pwa-updates.js',
   './src/v3/community.js','./src/v46/features.js','./src/v462/dashboard-background.js','./src/v47/dashboard-editor.js','./src/v47/sync.js','./src/v48/accessibility.js','./src/v50-ics.mjs','./src/v53/presentation.mjs','./src/v54/presentation.mjs','./src/v54/swiss-map.mjs','./src/v54/wappen.mjs','./assets/icons/quartinaut-logo.svg',
