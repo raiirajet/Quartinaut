@@ -11,7 +11,8 @@
       "README.md",
       "**/tests/**",
       "**/package*.json",
-      "**/*.md"
+      "**/*.md",
+      "app-source-*.mjs"
     ],
     "headers": [
       {

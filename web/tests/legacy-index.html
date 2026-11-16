@@ -1,0 +1,113 @@
+<!DOCTYPE html><html lang="de" data-theme-choice="system"><head>
+  <meta name="robots" content="index,follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Quartinaut">
+  <meta property="og:locale" content="de_CH">
+  <meta property="og:title" content="Quartinaut - Hilfe und Alarme im Quartier">
+  <meta property="og:description" content="Hyperlokale Community-Plattform fuer Nachbarschaftshilfe, verifizierte Alarme und schnelle Koordination in deiner Gemeinde.">
+  <meta property="og:url" content="https://quartinaut.web.app/">
+  <meta property="og:image" content="./assets/icons/icon-512.png">
+  <meta property="og:image:alt" content="Quartinaut Logo">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Quartinaut - Hilfe und Alarme im Quartier">
+  <meta name="twitter:description" content="Hyperlokale Community-Plattform fuer Nachbarschaftshilfe, verifizierte Alarme und schnelle Koordination in deiner Gemeinde.">
+  <meta name="twitter:image" content="./assets/icons/icon-512.png">
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin="">
+  <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin="">
+  <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin="">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#24584a">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="Quartinaut ist eine minimalistische hyperlokale Nachbarschafts-PWA für lokale Hilfe und verifizierte Gemeinde-Alarme.">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Quartinaut">
+  <meta name="application-name" content="Quartinaut">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="canonical" href="https://quartinaut.web.app/">
+  <link rel="icon" type="image/png" sizes="32x32" href="./assets/icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="./assets/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
+  <script src="./theme-bootstrap.js"></script>
+  <link rel="stylesheet" href="./quartinaut-bundle-50.css">
+  <link rel="stylesheet" href="./quartinaut-v53.css">
+  <link rel="stylesheet" href="./quartinaut-v54.css">
+  <title>Quartinaut – Gemeinsam in deiner Nähe</title>
+</head>
+<body>
+  <a class="v48-skip-link" href="#main">Zum Hauptinhalt springen</a>
+  <noscript>Diese App benötigt JavaScript.</noscript>
+
+  <div id="app" class="app-shell">
+    <header class="topbar" aria-label="App Kopfbereich">
+      <button class="brand reset-button" data-route="home" aria-label="Zur Startseite">
+        <span class="v2-brand-logo-frame" aria-hidden="true"><img class="v2-brand-logo" src="./assets/icons/quartinaut-logo.svg" alt="" width="70" height="50" decoding="async" fetchpriority="high"></span>
+        <span class="brand-copy">
+          <strong>Quartinaut</strong>
+          <small>Deine Schweizer Gemeindeplattform</small>
+        </span>
+      </button>
+      <div class="top-actions">
+        <button class="icon-button top-theme" id="themeButton" type="button" aria-label="Darstellung wechseln" title="Darstellung wechseln">
+          <svg class="touch-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path></svg>
+        </button>
+        <button class="icon-button top-help" id="helpButton" aria-label="Hilfe und Änderungsanfragen" title="Hilfe und Änderungsanfragen">
+          <svg class="touch-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9.5 9a2.7 2.7 0 1 1 4.35 2.1c-.97.69-1.85 1.35-1.85 2.65"></path><path d="M12 17h.01"></path><circle cx="12" cy="12" r="9"></circle></svg>
+        </button>
+        <div class="header-auth-actions" id="headerAuthActions">
+          <button class="primary-button small" id="headerRegisterButton" type="button">Konto erstellen</button>
+          <button class="ghost-button small" id="headerLoginButton" type="button">Anmelden</button>
+        </div>
+        <button class="icon-button v21-inbox-shortcut" data-community-route="inbox" type="button" aria-label="Mitteilungen anzeigen" hidden>
+          <svg class="touch-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Z"/><path d="M10 21h4"/></svg><span class="v21-inbox-count" hidden></span>
+        </button>
+        <button class="icon-button v2-profile-link" data-route="profile" type="button" aria-label="Mein Profil öffnen" title="Mein Profil" hidden>
+          <svg class="touch-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-5 3.5-8 8-8s8 3 8 8"></path></svg>
+        </button>
+        <button class="ghost-button small" id="logoutButton" hidden="">
+          <svg class="touch-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M10 6H6v12h4"></path><path d="M14 8l4 4-4 4"></path><path d="M18 12H9"></path></svg>
+          <span>Abmelden</span>
+        </button>
+      </div>
+    </header>
+
+    <div id="permissionBanner" class="permission-banner" hidden></div>
+    <div id="v2Connectivity" class="v2-connectivity" role="status" aria-live="polite" hidden></div>
+    <main id="main" class="main" tabindex="-1"></main>
+    <footer class="legal-footer" aria-label="Rechtliche Informationen">
+      <button class="ghost-button small" data-action="open-legal" data-legal="privacy" type="button">Datenschutz</button>
+      <button class="ghost-button small" data-action="open-legal" data-legal="terms" type="button">Nutzungsbedingungen</button>
+      <button class="ghost-button small" data-action="open-legal" data-legal="imprint" type="button">Impressum</button>
+    </footer>
+
+    <nav class="bottom-nav v2-bottom-nav v4-nav v41-nav" data-nav-style="glass3d" aria-label="Hauptnavigation">
+      <button data-route="home" class="nav-item active" aria-label="Startseite"><span class="v41-nav-icon-shell"><img class="qnav3d-image" src="./assets/icons/navigation/start.png" alt="" aria-hidden="true" width="48" height="48" decoding="async"></span><small>Start</small></button>
+      <button data-route="hub" class="nav-item" aria-label="Quartier+"><span class="v41-nav-icon-shell"><img class="qnav3d-image" src="./assets/icons/navigation/quartier.png" alt="" aria-hidden="true" width="48" height="48" decoding="async"></span><small>Quartier+</small></button>
+      <button data-v4-create class="nav-item v2-create-nav" type="button" aria-label="Neuen Beitrag erstellen"><span class="v41-nav-icon-shell"><img class="qnav3d-image" src="./assets/icons/navigation/neu.png" alt="" aria-hidden="true" width="48" height="48" decoding="async"></span><small>Neu</small></button>
+      <button data-route="chats" class="nav-item" aria-label="Private Chats"><span class="v41-nav-icon-shell"><img class="qnav3d-image" src="./assets/icons/navigation/chats.png" alt="" aria-hidden="true" width="48" height="48" decoding="async"></span><small>Chats</small></button>
+      <button data-route="profile" class="nav-item" aria-label="Profil"><span class="v41-nav-icon-shell"><img class="qnav3d-image" src="./assets/icons/navigation/profil.png" alt="" aria-hidden="true" width="48" height="48" decoding="async"></span><small>Profil</small></button>
+    </nav>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+
+  <template id="modalTemplate">
+    <div class="modal-backdrop" role="presentation">
+      <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <header class="modal-header">
+          <h2 id="modalTitle"></h2>
+          <button class="icon-button" data-close-modal="" aria-label="Schliessen">×</button>
+        </header>
+        <div class="modal-body"></div>
+      </section>
+    </div>
+  </template>
+
+  <script src="./firebase-config.js"></script>
+  <script src="./app-release-542.js" type="module"></script>
+
+
+</body></html>

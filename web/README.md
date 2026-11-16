@@ -3,22 +3,23 @@
 The live Web 5.4.2 source was captured from the owner's existing Firebase Hosting
 version `sites/quartinaut/versions/ecfb5a780cca5bcf`. The original production
 Firebase configuration and existing account, moderation and community flows
-were retained. `app-release-5114.js` is the active entry point; earlier public
+were retained. `app-source-5114.mjs` is the editable application entry. `npm run build` bundles all local modules into `app-release-5114.js`, so an old Service Worker cannot mix outdated module exports into the new release. `app-release-5114.js` is the active entry point; earlier public
 release files remain for existing clients and rollback compatibility.
 
 ## Run and verify
 
-No application build step is required. Serve this directory:
+The committed release bundle can be served directly. After source edits, rebuild it before publishing:
 
 ```sh
 python3 -m http.server 5114 --bind 127.0.0.1
 npm ci
+npm run build
 npm run check
 npm test
 npm run test:browser
 ```
 
-Browser tests require Chromium. Set `CHROMIUM_PATH` if it is not installed at
+Browser tests include an actual installed 5.4.2 Service Worker upgrading at the same origin, including cached obsolete module exports. Browser tests require Chromium. Set `CHROMIUM_PATH` if it is not installed at
 `/usr/bin/chromium`; CI installs a compatible Playwright browser. Tests inject
 fixtures into an intercepted JavaScript module, never into published code.
 `tests/`, dependency files and local artifacts are excluded from Hosting.
