@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+<svg id="b" width="226.57" height="265.39" version="1.0" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+ <path d="m1 1 4.0831 171.51c2.9165 122.51 213.49 122.51 216.41 0l4.0831-171.51z" fill="#fae43f"/>
+ <path d="m1.006 0.99458 1.5 63.094 180.28 180.28c22.413-15.247 37.91-39.195 38.688-71.844l0.1875-7.3125-164.22-164.22z" color="#000000" fill="#c83221" stroke="#000" stroke-width="1px"/>
+ <path id="a" d="m203.01 146.59-53.375 6.1562-6.0312 52.438 18.406 18.406 6.0312-52.438 53.375-6.1562z" color="#000000" fill="#fff" stroke="#000" stroke-width="1px"/>
+ <use x="-38.75179" y="-38.75179" width="248.03149" height="248.03149" xlink:href="#a"/>
+ <use x="-77.50359" y="-77.50359" width="248.03149" height="248.03149" xlink:href="#a"/>
+ <use x="-116.25538" y="-116.25538" width="248.03149" height="248.03149" xlink:href="#a"/>
+ <path d="m1 1 4.0831 171.51c2.9165 122.51 213.49 122.51 216.41 0l4.0831-171.51z" fill="none" stroke="#000" stroke-width="2"/>
+</svg>

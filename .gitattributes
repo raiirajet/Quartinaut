@@ -1,0 +1,2 @@
+# Keep the copied Android coats and their original license/source bytes intact.
+web/assets/native/wappen/** -whitespace linguist-vendored

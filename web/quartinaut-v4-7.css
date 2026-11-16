@@ -1,0 +1,15 @@
+/* Quartinaut 4.7 — photo editor and query filters. Only appears under Settings. */
+.v47-editor-backdrop{position:fixed;inset:0;z-index:99990;background:rgba(4,16,15,.82);display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto}
+.v47-editor{background:var(--surface,#fff);color:var(--text,#17342f);width:min(100%,660px);max-height:calc(100dvh - 32px);overflow:auto;border-radius:20px;padding:clamp(16px,3vw,28px);box-shadow:0 20px 60px #0006}
+.v47-editor h2{margin:0 0 9px}.v47-editor p{line-height:1.45}.v47-editor-frame{position:relative;border-radius:14px;overflow:hidden;margin:16px 0;background:#15352d;touch-action:none}
+.v47-editor-frame canvas{display:block;width:100%;height:auto;touch-action:none;cursor:grab}
+.v47-editor input[type=range]{display:block;width:100%;min-height:44px;accent-color:#1f8066}
+.v47-editor-actions{display:flex;gap:12px;justify-content:flex-end;flex-wrap:wrap;margin-top:12px}
+.v47-editor-actions button{min-height:44px}.v47-editor-status{min-height:1.5em}
+.v47-search-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;align-items:end;margin:14px 0}
+.v47-search-filters label{font-size:.92rem;display:grid;gap:6px}
+.v47-search-filters .check-row{min-height:44px;display:flex;align-items:center;gap:10px}
+.v47-search-filters input,.v47-search-filters select{width:100%;padding:11px;min-height:44px;border-radius:9px;border:1px solid var(--border,#8aaca0);background:var(--surface,#fff);color:var(--text,#17342f)}
+.v47-pagination{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-top:16px}.v47-pagination button{min-height:44px}
+.v47-target-detail{max-height:min(60vh,500px);overflow:auto;overflow-wrap:anywhere;white-space:pre-wrap}
+@media(max-width:400px){.v47-pagination{flex-wrap:wrap;justify-content:center}}

@@ -1,0 +1,14 @@
+/* Version 4.5.2 – Email Auth and clearly legible loading screens. */
+.v452-email-fields { display:grid; gap:12px; min-width:0; }
+.v452-email-fields label { display:grid; gap:6px; }
+.v452-auth-form input[type=email], .v452-auth-form input[type=password] { min-height:46px; font:inherit; }
+.v452-auth-divider { display:flex; align-items:center; gap:10px; text-align:center; opacity:.8; }
+.v452-auth-divider::before,.v452-auth-divider::after { content:''; flex:1; height:1px; background:currentColor; opacity:.22; }
+.v452-auth-divider span { font-size:.9rem; }
+.v452-google-button { min-height:48px; }
+.v452-verify { max-width:540px; margin-inline:auto; }
+.v452-verify .form-grid { margin-top:16px; }
+.v452-verify button { min-height:48px; }
+.v452-mail-mark { display:grid;place-items:center;width:58px;height:58px;border-radius:18px;background:var(--surface-soft,#e5eee8);color:var(--text,#173325);font-size:2rem; }
+/* Never override theme surface/text colors; use accessible inherited theme variables. */
+@media (max-width:620px) { .v452-verify { width:100%; } }

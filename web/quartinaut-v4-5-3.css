@@ -1,0 +1,32 @@
+/* Quartinaut 4.5.3: Einstellungen neu geordnet; no changes to Firebase/data models. */
+.v453-settings-page{max-width:830px;margin-inline:auto}
+.v453-settings-lead{font:500 .89rem/1.5 system-ui,sans-serif;color:var(--muted);padding:2px 8px 8px;margin:0}
+.v453-settings-page .v41-group-label{margin-top:26px;margin-bottom:10px}
+.v453-settings-page .v41-setting-group{box-shadow:0 2px 13px #0d372011}
+.v453-settings-page .v41-setting-content{padding:13px 17px 20px}
+.v453-settings-page .v41-setting-content .card{margin-top:8px}
+.v453-settings-page .v41-setting summary{min-height:76px}
+.v453-settings-page .v41-setting[open]>summary{background:color-mix(in srgb,var(--primary) 6%,var(--surface))}
+.v453-settings-page .v41-setting-content .v3-home-settings{margin:0;background:var(--surface-soft);box-shadow:none}
+.v453-settings-page .v41-setting-content .v3-home-settings>label{display:block;margin-bottom:7px}
+.v453-settings-page .v41-setting-content .v2-preferences{background:transparent;padding:8px 0;border:0}
+.v453-settings-page .v41-setting-content .v2-preferences .v2-section-heading{margin-bottom:7px}
+.v453-settings-page .v41-setting-content .v2-preferences .v2-section-heading h2{font-size:1rem}
+.v453-status-help,.v453-intro{margin:3px 0 13px;color:var(--muted);font-size:.87rem;line-height:1.45}
+.v453-status-help strong{color:var(--text)}
+.v453-notifications-inline{padding:0!important;margin:0!important;border:0!important;background:transparent!important;box-shadow:none!important}
+.v453-notifications-inline .notification-preferences-form{margin-top:12px}
+.v453-notifications-inline .notification-setting-group{background:var(--surface-soft)}
+.v453-verify-row{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:12px 14px;margin:0 0 15px;border:1px solid var(--line);border-radius:13px;background:var(--surface-soft)}
+.v453-verify-row strong{color:var(--text)}.v453-verify-row .help{margin:3px 0 0;color:var(--muted)}
+.v453-simple-mode{margin-top:15px;padding:14px 0 0;border-top:1px solid var(--line)}
+.v453-privacy-actions{display:grid;gap:13px;margin-top:11px}
+.v453-sensitive-settings{margin-top:12px;border:1px solid var(--line-strong);border-radius:12px;padding:12px;background:var(--surface-soft)}
+.v453-sensitive-settings summary{min-height:44px!important;display:flex;align-items:center;font-weight:650;color:var(--danger);cursor:pointer;padding:6px 3px!important}
+.v453-sensitive-settings .danger-zone{margin-top:12px}
+.v453-admin-settings{margin-top:25px}
+.v453-admin-settings .v2-admin-panel summary{display:flex;justify-content:space-between;align-items:center;padding:16px;cursor:pointer;list-style:none;font-weight:700}
+.v453-admin-settings .v2-admin-panel summary::-webkit-details-marker{display:none}
+.v453-admin-settings .v2-admin-panel>.v41-setting-content{padding:15px}
+.v453-settings-page .v41-setting summary:focus-visible{outline:3px solid var(--primary);outline-offset:-3px}
+@media(max-width:600px){.v453-settings-page .v41-setting-content{padding:12px}.v453-settings-lead{padding:4px 2px 6px}.v453-verify-row{align-items:flex-start;flex-direction:column}.v453-settings-page .v41-setting summary{min-height:73px}}

@@ -1,0 +1,19 @@
+
+/* Quartinaut 4.3 – beitragsfotos: kontrastreich in allen vier Themes */
+.v43-photo-field{border:1px solid var(--border,#a1aaa7);border-radius:16px;padding:14px;margin:10px 0;min-width:0;background:var(--surface,transparent);color:var(--text,inherit)}
+.v43-photo-field legend{font-weight:750;padding:0 6px}
+.v43-photo-pick{display:inline-flex;flex-direction:column;gap:7px;font-weight:650;cursor:pointer;max-width:100%}
+.v43-photo-pick input{width:100%;max-width:100%;color:inherit;font:inherit}
+.v43-photo-field .help{margin:8px 0;color:var(--muted,var(--text,inherit))}
+.v43-photo-preview,.v43-gallery{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0;align-items:flex-start}
+.v43-photo-chip{position:relative;width:104px;height:104px;border:1px solid var(--border,#999);border-radius:12px;overflow:hidden;background:var(--surface-alt,#eee)}
+.v43-photo-chip img{width:100%;height:100%;object-fit:cover;display:block}
+.v43-photo-chip button{position:absolute;right:3px;top:3px;width:36px;height:36px;border:0;border-radius:50%;background:#171717;color:#fff;font-size:26px;line-height:1;cursor:pointer}
+.v43-photo-chip button:focus-visible{outline:3px solid #d6a600;outline-offset:1px}
+.v43-photo-status{font-size:.86rem;color:var(--text,inherit);margin:4px 0}
+.v43-photo-status.v43-error{color:#c0392b;font-weight:700}
+.v43-gallery img{width:calc((100% - 20px)/3);min-width:82px;max-width:200px;aspect-ratio:4/3;object-fit:cover;border-radius:12px;border:1px solid var(--border,#888);background:var(--surface-alt,#ddd)}
+.v43-gallery img.v43-photo-unavailable{display:none}
+[data-theme-choice="amoled"] .v43-photo-field,[data-theme-choice="dark"] .v43-photo-field{background:#141414;color:#f6f6f6;border-color:#696969}
+[data-theme-choice="white"] .v43-photo-field{background:#fff;color:#202124;border-color:#b8c0c9}
+@media(max-width:430px){.v43-photo-chip{width:88px;height:88px}.v43-gallery img{min-width:72px}}
