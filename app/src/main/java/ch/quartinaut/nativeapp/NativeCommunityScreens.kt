@@ -161,13 +161,17 @@ fun NativeCreateHubPage(
     var capacity by remember(uid,initialKind) { mutableStateOf(load("capacity","0")) }
     var venue by remember(uid,initialKind) { mutableStateOf(load("venue","")) }
     var localDate by remember(uid,initialKind) { mutableStateOf(load("localDate","")) }
-    val draftFields=listOf("title","description","kind","category","price","capacity","venue","localDate")
+    var audienceScope by rememberSaveable(uid,initialKind) { mutableStateOf(load("audienceScope","canton")) }
+    var audienceRadius by rememberSaveable(uid,initialKind) { mutableIntStateOf(load("audienceRadius","10").toIntOrNull() ?: 10) }
+    var audienceLat by rememberSaveable(uid,initialKind) { mutableStateOf(load("audienceLat","").toDoubleOrNull()) }
+    var audienceLng by rememberSaveable(uid,initialKind) { mutableStateOf(load("audienceLng","").toDoubleOrNull()) }
+    val draftFields=listOf("title","description","kind","category","price","capacity","venue","localDate","audienceScope","audienceRadius","audienceLat","audienceLng")
     val clearDraft: ()->Unit = {
         val editor=draftPrefs.edit()
         draftFields.forEach { field -> editor.remove(draftKey+"_"+field) }
         editor.apply()
     }
-    LaunchedEffect(uid,initialKind,title,description,kind,category,price,capacity,venue,localDate) {
+    LaunchedEffect(uid,initialKind,title,description,kind,category,price,capacity,venue,localDate,audienceScope,audienceRadius,audienceLat,audienceLng) {
         if(uid.isNotBlank() && (title.isNotBlank() || description.isNotBlank())) {
             kotlinx.coroutines.delay(550)
             draftPrefs.edit()
@@ -179,6 +183,10 @@ fun NativeCreateHubPage(
                 .putString(draftKey+"_capacity",capacity)
                 .putString(draftKey+"_venue",venue)
                 .putString(draftKey+"_localDate",localDate)
+                .putString(draftKey+"_audienceScope",audienceScope)
+                .putString(draftKey+"_audienceRadius",audienceRadius.toString())
+                .putString(draftKey+"_audienceLat",audienceLat?.toString() ?: "")
+                .putString(draftKey+"_audienceLng",audienceLng?.toString() ?: "")
                 .apply()
         }
     }
@@ -327,6 +335,10 @@ fun NativeCreateHubPage(
                             modifier=Modifier.fillMaxWidth(),
                             label={Text("Ort oder Treffpunkt (optional)")},singleLine=true)
                     }
+                    PublicationAudiencePicker(audienceScope,audienceRadius,audienceLat,audienceLng,
+                        onScope={audienceScope=it;confirmed=false},
+                        onRadius={audienceRadius=it;confirmed=false},
+                        onCoordinates={lat,lon->audienceLat=lat;audienceLng=lon;confirmed=false})
                     NativePostPhotoPicker(repo,"community",photoToken,
                         photoPaths.toList()) { updated ->
                         photoPaths.clear();photoPaths.addAll(updated)
@@ -336,7 +348,7 @@ fun NativeCreateHubPage(
                 } else {
                     Text("Vorschau deines Beitrags",color=MaterialTheme.colorScheme.onSurface,
                         style=MaterialTheme.typography.titleMedium)
-                    Text((NativeKinds[kind] ?: kind)+" · "+category,color=green)
+                    Text((NativeKinds[kind] ?: kind)+" · "+category+" · "+audienceLabel(audienceScope,audienceRadius),color=green)
                     HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
                     Text(title.trim(),color=MaterialTheme.colorScheme.onSurface,
                         fontWeight=FontWeight.Bold,
@@ -391,6 +403,9 @@ fun NativeCreateHubPage(
                         else -> {
                             if(!canAdvance||!confirmed) {
                                 error="Bitte die Angaben prüfen und bestätigen."
+                            } else if(!canPublishAudience(audienceScope,audienceRadius,audienceLat,audienceLng)) {
+                                error="Diese Reichweite ist noch nicht serverseitig freigegeben. Bitte Kanton wählen."
+                                confirmed=false
                             } else {
                                 val data=mapOf<String,Any?>(
                                     "kind" to kind,"title" to title.trim(),
@@ -398,6 +413,8 @@ fun NativeCreateHubPage(
                                     "priceChf" to (priceValue ?: 0.0),
                                     "capacity" to (count ?: 0),
                                     "venue" to venue.trim(),"startsAt" to date,
+                                    "audienceLevel" to audienceScope,
+                                    "radiusKm" to (if(audienceScope=="radius")audienceRadius else 15),
                                     "photoPaths" to photoPaths.toList())
                                 repo.createCommunityItem(data,{
                                     clearDraft()

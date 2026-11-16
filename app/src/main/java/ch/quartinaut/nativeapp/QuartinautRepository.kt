@@ -508,8 +508,15 @@ class QuartinautRepository(context: Context) {
     fun createRequest(title: String, description: String, category: String, kind: String,
                       urgency: String, onCreated: () -> Unit = {},
                       photoPaths: List<String> = emptyList(),
-                      operationId: String = "") {
+                      operationId: String = "",
+                      audienceLevel: String = "canton",
+                      audienceRadiusKm: Int = 10,
+                      audienceLatitude: Double? = null,
+                      audienceLongitude: Double? = null) {
         val uid = user?.uid ?: return
+        if(!canPublishAudience(audienceLevel,audienceRadiusKm,audienceLatitude,audienceLongitude)) {
+            message="Die gewählte Reichweite ist noch nicht verbindlich aktiviert."; return
+        }
         if (title.trim().length < 4 || description.trim().length < 5) {
             message = "Bitte Titel und Beschreibung ausfüllen."; return
         }
@@ -527,7 +534,9 @@ class QuartinautRepository(context: Context) {
             "author" to displayName().take(2).uppercase(),
             "authorRole" to "resident", "authorVerified" to (profile["verified"] == true),
             "authorAccountType" to DocString(profile["accountType"]).ifBlank { "resident" },
-            "status" to status, "anonymousOffer" to false, "radiusKm" to 15,
+            "status" to status, "anonymousOffer" to false,
+            "audienceLevel" to audienceLevel,
+            "radiusKm" to (if(audienceLevel=="radius") audienceRadiusKm else 15),
             "createdAt" to now, "submittedAt" to now,
             "expiresAt" to Instant.now().plusSeconds(hours * 3600).toString(),
             "reports" to 0, "recurringMode" to "einmalig", "escalationLevel" to "keine",

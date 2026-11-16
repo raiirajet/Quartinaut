@@ -49,6 +49,10 @@ fun NativeRequestComposer(
     var kind by rememberSaveable(uid,initialKind) { mutableStateOf(readDraft("kind",initialKind)) }
     var category by rememberSaveable(uid,initialKind) { mutableStateOf(readDraft("category","Alltagshilfe")) }
     var urgency by rememberSaveable(uid,initialKind) { mutableStateOf(readDraft("urgency","Diese Woche")) }
+    var audienceScope by rememberSaveable(uid,initialKind) { mutableStateOf(readDraft("audienceScope","canton")) }
+    var audienceRadius by rememberSaveable(uid,initialKind) { mutableIntStateOf(readDraft("audienceRadius","10").toIntOrNull() ?: 10) }
+    var audienceLat by rememberSaveable(uid,initialKind) { mutableStateOf(readDraft("audienceLat","").toDoubleOrNull()) }
+    var audienceLng by rememberSaveable(uid,initialKind) { mutableStateOf(readDraft("audienceLng","").toDoubleOrNull()) }
     var categoriesOpen by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
     var confirmed by remember { mutableStateOf(false) }
@@ -65,7 +69,7 @@ fun NativeRequestComposer(
             save={it.toList()},restore={it.toMutableStateList()})) {
         mutableStateListOf<String>()
     }
-    LaunchedEffect(uid,initialKind,title,details,kind,category,urgency) {
+    LaunchedEffect(uid,initialKind,title,details,kind,category,urgency,audienceScope,audienceRadius,audienceLat,audienceLng) {
         if(uid.isNotBlank()) {
             kotlinx.coroutines.delay(550)
             draftPrefs.edit()
@@ -74,13 +78,19 @@ fun NativeRequestComposer(
                 .putString(draftKey+"_kind",kind)
                 .putString(draftKey+"_category",category)
                 .putString(draftKey+"_urgency",urgency)
+                .putString(draftKey+"_audienceScope",audienceScope)
+                .putString(draftKey+"_audienceRadius",audienceRadius.toString())
+                .putString(draftKey+"_audienceLat",audienceLat?.toString() ?: "")
+                .putString(draftKey+"_audienceLng",audienceLng?.toString() ?: "")
                 .apply()
         }
     }
     val clearDraft: ()->Unit = {
         draftPrefs.edit().remove(draftKey+"_title").remove(draftKey+"_details")
             .remove(draftKey+"_kind").remove(draftKey+"_category")
-            .remove(draftKey+"_urgency").apply()
+            .remove(draftKey+"_urgency")
+            .remove(draftKey+"_audienceScope").remove(draftKey+"_audienceRadius")
+            .remove(draftKey+"_audienceLat").remove(draftKey+"_audienceLng").apply()
     }
     BackHandler(enabled=step>0) { step-=1; error="" }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
@@ -141,7 +151,11 @@ fun NativeRequestComposer(
                         Text(value,color=MaterialTheme.colorScheme.onSurface)
                     }
                 }
-                Text("Gültig in deiner Gemeinde: "+quartierAreaLabel(repo.area(),repo.canton()),
+                PublicationAudiencePicker(audienceScope,audienceRadius,audienceLat,audienceLng,
+                    onScope={audienceScope=it;confirmed=false},
+                    onRadius={audienceRadius=it;confirmed=false},
+                    onCoordinates={lat,lon->audienceLat=lat;audienceLng=lon;confirmed=false})
+                Text("Ausgangspunkt: "+quartierAreaLabel(repo.area(),repo.canton()),
                     color=CreateText,style=MaterialTheme.typography.bodySmall)
             }
             Button(onClick={step=1},modifier=Modifier.fillMaxWidth().height(52.dp)) {
@@ -193,7 +207,7 @@ fun NativeRequestComposer(
             ComposerCard {
                 Text("So wird dein Beitrag angezeigt",color=MaterialTheme.colorScheme.onSurface,
                     style=MaterialTheme.typography.titleMedium)
-                Text(kind+" · "+category+" · "+urgency,
+                Text(kind+" · "+category+" · "+urgency+" · "+audienceLabel(audienceScope,audienceRadius),
                     color=CreateAccent,style=MaterialTheme.typography.labelLarge)
                 HorizontalDivider(color=CreateBorder)
                 Text(title.trim(),color=MaterialTheme.colorScheme.onSurface,fontWeight=FontWeight.Bold,
@@ -219,9 +233,16 @@ fun NativeRequestComposer(
                 OutlinedButton(onClick={step=1},modifier=Modifier.weight(1f),
                     enabled=!repo.busy) {Text("Bearbeiten")}
                 Button(onClick={
-                    repo.createRequest(title.trim(),details.trim(),category,kind,urgency,
-                        onCreated={ clearDraft();onDone() },photoPaths=photoPaths.toList(),
-                        operationId=operationId)
+                    if(!canPublishAudience(audienceScope,audienceRadius,audienceLat,audienceLng)) {
+                        error="Diese Reichweite ist noch nicht serverseitig freigegeben. Bitte Kanton wählen."
+                        confirmed=false
+                    } else {
+                        repo.createRequest(title.trim(),details.trim(),category,kind,urgency,
+                            onCreated={ clearDraft();onDone() },photoPaths=photoPaths.toList(),
+                            operationId=operationId,
+                            audienceLevel=audienceScope,audienceRadiusKm=audienceRadius,
+                            audienceLatitude=audienceLat,audienceLongitude=audienceLng)
+                    }
                 },modifier=Modifier.weight(1f),
                     enabled=confirmed&&!repo.busy) {
                     if(repo.busy) CircularProgressIndicator(Modifier.size(18.dp),
